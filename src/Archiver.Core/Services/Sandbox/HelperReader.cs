@@ -62,35 +62,51 @@ internal sealed class HelperReader : ISandboxedArchiveReader
 
     public void Dispose() => _scope.Dispose();
 
-    public async Task<ArchiveListResult> ListAsync(CancellationToken cancellationToken)
+    public async Task<ArchiveListSummary> ListAsync(Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken)
     {
-        var entries = new List<ArchiveEntryInfo>();
-        void Take(ArchiveHelperEntry e)
+        long passed = 0;
+        void Pass(ArchiveHelperEntry e)
         {
             string path = EntryDiskName.StripLeadingDotSlash(e.Name!).TrimEnd('/');
             if (path.Length == 0)
                 return;
-            entries.Add(new ArchiveEntryInfo
+            onEntry(new ArchiveEntryInfo
             {
                 Path = path,
                 Size = e.FileType == RegularFile ? e.Size ?? 0 : 0,
                 Modified = ModifiedTimeOf(e)?.ToLocalTime(),
                 IsDirectory = e.FileType == FolderType && e.Link is null,
             });
+            passed++;
         }
 
-        bool readable;
+        ArchiveListSummary unreadable = CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent)));
         try
         {
-            readable = await ListWithCharsetAsync(Take, entries.Clear, cancellationToken).ConfigureAwait(false) is not null;
+            // T-F540: an entry passed on cannot be taken back, so the page names are read in is
+            // settled first by listings that pass nothing on; then one listing in that page passes
+            // each entry on as it comes (two passes, as tar.exe's "-t" and "-tv").
+            string? charset = null;
+            if (HelperFormats.TakesHeaderCharset(_formatArguments))
+            {
+                if (await ListWithCharsetAsync(Discard, NothingToTakeBack, cancellationToken).ConfigureAwait(false) is null)
+                    return unreadable;
+                charset = _charset;
+            }
+            (_, bool anyNameless, _) = await ListOnceAsync(charset, Pass, cancellationToken).ConfigureAwait(false);
+            if (anyNameless)
+                return unreadable;
         }
         catch (CoreTextIOException failed)
         {
-            return CoreMessages.ListFailure(failed.Text);
+            return CoreMessages.Summary(CoreMessages.ListFailure(failed.Text));
         }
-        if (!readable)
-            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent));
-        return new ArchiveListResult { Success = true, Entries = entries };
+        return new ArchiveListSummary { Success = true, Count = passed };
+    }
+
+    private static void NothingToTakeBack()
+    {
+        // the settling listings passed nothing on
     }
 
     public async Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken)

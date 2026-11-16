@@ -35,21 +35,33 @@ public sealed class ArchiveListingRouter : IArchiveListingRouter
     }
 
     /// <inheritdoc/>
-    public async Task<ArchiveListResult> ListEntriesAsync(
+    public Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
+        CancellationToken cancellationToken = default) =>
+        ListingCallback.CollectAsync(onEntry => ListEntriesAsync(archivePath, onEntry, cancellationToken));
+
+    /// <inheritdoc/>
+    public async Task<ArchiveListSummary> ListEntriesAsync(
+        string archivePath,
+        Action<ArchiveEntryInfo> onEntry,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(onEntry);
         ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
             .ClassifyAsync([archivePath], _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
 
         if (classification.Unsupported.Count > 0)
-            return CoreMessages.ListFailure(classification.Unsupported[0].Text!);
+            return CoreMessages.Summary(CoreMessages.ListFailure(classification.Unsupported[0].Text!));
 
         if (classification.ZipPaths.Count > 0)
-            return await _archiveService.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
-        // T-F413: a gzip of one file, which tar.exe cannot read.
-        return BareGzip.IsBareGzip(archivePath)
-            ? await BareGzipEngine.ListAsync(archivePath, cancellationToken).ConfigureAwait(false)
-            : await _tarService.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
+            return await _archiveService.ListEntriesAsync(archivePath, onEntry, cancellationToken).ConfigureAwait(false);
+        // T-F413: a gzip of one file, which tar.exe cannot read; its one entry is listed whole.
+        if (BareGzip.IsBareGzip(archivePath))
+        {
+            return await ListingCallback.RunAsync(onEntry, async guarded =>
+                ArchiveListSummary.Replay(await BareGzipEngine.ListAsync(archivePath, cancellationToken).ConfigureAwait(false), guarded),
+                cancellationToken).ConfigureAwait(false);
+        }
+        return await _tarService.ListEntriesAsync(archivePath, onEntry, cancellationToken).ConfigureAwait(false);
     }
 }

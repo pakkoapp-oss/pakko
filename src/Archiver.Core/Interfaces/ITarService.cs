@@ -91,6 +91,18 @@ public interface ITarService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// T-F540: lists an archive's entries as they are read: each goes to <paramref name="onEntry"/>
+    /// in archive order and is not kept; the summary says how the listing ended. When it failed, the
+    /// caller discards every entry it was given. Never throws, except what <paramref name="onEntry"/>
+    /// throws - it reaches the caller as it was thrown, and the listing stops - and
+    /// <see cref="OperationCanceledException"/> on cancellation.
+    /// </summary>
+    Task<ArchiveListSummary> ListEntriesAsync(
+        string archivePath,
+        Action<ArchiveEntryInfo> onEntry,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a tar-family archive (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma) or a 7z from
     /// options.SourcePaths via tar.exe. Unlike ExtractAsync, this never runs the sandboxed
     /// AppContainer path — the input is trusted local files the user selected, not an untrusted

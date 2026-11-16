@@ -27,6 +27,9 @@ file sealed class FakeArchiveService : IArchiveService
     public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
+
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 }
@@ -47,6 +50,9 @@ file sealed class FakeTarService : ITarService
 
     public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
+
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
 
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();

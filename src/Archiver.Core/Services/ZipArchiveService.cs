@@ -1251,18 +1251,31 @@ public sealed class ZipArchiveService : IArchiveService
     }
 
     /// <inheritdoc/>
-    public async Task<ArchiveListResult> ListEntriesAsync(
+    public Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
+        CancellationToken cancellationToken = default) =>
+        ListingCallback.CollectAsync(onEntry => ListEntriesAsync(archivePath, onEntry, cancellationToken));
+
+    /// <inheritdoc/>
+    public async Task<ArchiveListSummary> ListEntriesAsync(
+        string archivePath,
+        Action<ArchiveEntryInfo> onEntry,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(onEntry);
         if (IsZipBlocked)
-            return CoreMessages.ListFailure(ZipBlockedReason);
+            return CoreMessages.Summary(CoreMessages.ListFailure(ZipBlockedReason));
         if (InputPaths.ArchiveProblem(archivePath) is { } pathProblem)
-            return CoreMessages.ListFailure(pathProblem);
+            return CoreMessages.Summary(CoreMessages.ListFailure(pathProblem));
+        return await ListingCallback.RunAsync(onEntry, guarded => StreamEntriesAsync(archivePath, guarded, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+    }
 
+    private async Task<ArchiveListSummary> StreamEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken)
+    {
         try
         {
-            List<ArchiveEntryInfo> entries = await Task.Run(() =>
+            long passed = await Task.Run(() =>
             {
                 using var catalog = ZipCatalog.Open(archivePath, NameCodePages);
 
@@ -1272,32 +1285,35 @@ public sealed class ZipArchiveService : IArchiveService
                 // A batch whose local headers cannot be read is listed without the AE-2 Crc32=null
                 // refinement: the Archive Browser could list such an archive before T-F189.
                 ZipLocate locate = IsEncryptedZip(archivePath) ? ZipLocate.BestEffort : ZipLocate.None;
-                // T-F529: the list is the result; it is kept only once the walk has ended.
-                var entries = new List<ArchiveEntryInfo>();
+                // T-F540: what the walk would refuse, refused before the first entry is passed on;
+                // then each entry goes to the caller as the walk reads it, never kept.
+                catalog.Check(locate);
+                long count = 0;
                 foreach (NamedZipEntry named in catalog.Entries(locate: locate))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    entries.Add(ToEntryInfo(named));
+                    onEntry(ToEntryInfo(named));
+                    count++;
                 }
-                return entries;
+                return count;
             }, cancellationToken).ConfigureAwait(false);
 
-            return new ArchiveListResult { Success = true, Entries = entries };
+            return new ArchiveListSummary { Success = true, Count = passed };
         }
         catch (InvalidDataException) when (!IsZipFile(archivePath))
         {
             // T-F221: .NET's own "Central Directory corrupt" for a file that was never a ZIP (an
             // empty or garbage stdin, a text file) said nothing useful.
-            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.NotAnArchiveList));
+            return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.Text(MessageCode.NotAnArchiveList)));
         }
         catch (InvalidDataException ex) when (CoreMessages.FromException(ex).Code == MessageCode.None)
         {
             // T-F341: .NET's own reader text is English only; say what Test and Extract say.
-            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ZipCorrupted));
+            return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ZipCorrupted)));
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            return CoreMessages.ListFailure(CoreMessages.FromException(ex));
+            return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.FromException(ex)));
         }
     }
 

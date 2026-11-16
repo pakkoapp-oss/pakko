@@ -182,6 +182,48 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         perEntry.Should().BeLessThanOrEqualTo(260, "measured 210 B");
     }
 
+    // T-F540: a streamed listing, measured from its callback halfway through: what the listing's own
+    // checks keep, never the entries the caller has already been given.
+    [Fact]
+    public async Task ZipListing_Streamed_HoldsAtMostItsBudgetPerEntry()
+    {
+        string zip = ZipOfEmptyEntries();
+        var service = new ZipArchiveService(new GroupPolicyOptions());
+        var probe = new HalfwayProbe(Entries);
+
+        ArchiveListSummary listed = await service.ListEntriesAsync(zip, e => probe.Filter(e.Path, e.IsDirectory));
+
+        listed.Count.Should().Be(Entries, listed.ErrorMessage);
+        Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(30, "measured 15 B: one batch (a list makes no collision check)");
+    }
+
+    [Fact]
+    public async Task TarListing_Streamed_HoldsAtMostItsBudgetPerEntry()
+    {
+        string tar = TarGzOfEmptyEntries();
+        var service = new TarSandboxedService(new GroupPolicyOptions());
+        var probe = new HalfwayProbe(Entries);
+
+        ArchiveListSummary listed = await service.ListEntriesAsync(tar, e => probe.Filter(e.Path, e.IsDirectory));
+
+        listed.Count.Should().Be(Entries, listed.ErrorMessage);
+        Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(100, "the names \"-t\" gave (about 64 B each) and their array");
+    }
+
+    [NativeX64Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task HelperListing_Streamed_HoldsAtMostItsBudgetPerEntry()
+    {
+        string tar = TarGzOfEmptyEntries();
+        var service = new TarSandboxedService(new GroupPolicyOptions()) { Helper = HelperSetupFor(tar) };
+        var probe = new HalfwayProbe(Entries);
+
+        ArchiveListSummary listed = await service.ListEntriesAsync(tar, e => probe.Filter(e.Path, e.IsDirectory));
+
+        listed.Count.Should().Be(Entries, listed.ErrorMessage);
+        Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(30, "nothing an entry: the helper names each one as it lists it");
+    }
+
     // T-F537: a caller with no synchronization context (pakko's console) resumes on the thread that
     // finished the listing, on top of its frames. Measured 540 B an entry there before the fix, the
     // frames below still holding tar.exe's output and both listings while the caller used the result.
