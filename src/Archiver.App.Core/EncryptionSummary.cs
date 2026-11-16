@@ -77,15 +77,15 @@ public sealed record EncryptionSummary(int EncryptedFiles, int TotalFiles, Entry
 
         /// <summary>The summary of the entries counted so far.</summary>
         public EncryptionSummary Summary() => new(_encrypted, _files, _badge, _hasAe2, _hasZipCrypto);
-    }
 
-    // A mixed archive is only as strong as its weakest entry; an unnamed method ranks lowest.
-    private static int Strength(EntryEncryption kind) => kind switch
-    {
-        EntryEncryption.Aes256 => 5,
-        EntryEncryption.Aes192 => 4,
-        EntryEncryption.Aes128 => 3,
-        EntryEncryption.ZipCrypto => 2,
-        _ => 1,
-    };
+        // A mixed archive is only as strong as its weakest entry; an unnamed method ranks lowest.
+        private static int Strength(EntryEncryption kind) => kind switch
+        {
+            EntryEncryption.Aes256 => 5,
+            EntryEncryption.Aes192 => 4,
+            EntryEncryption.Aes128 => 3,
+            EntryEncryption.ZipCrypto => 2,
+            _ => 1,
+        };
+    }
 }

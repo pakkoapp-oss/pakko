@@ -914,9 +914,7 @@ static async Task<bool> PrintArchiveListingAsync(
         onEntry => router.ListEntriesAsync(archivePath, onEntry, cancellationToken),
         header,
         entry => filter?.Includes(entry.Path, entry.IsDirectory) ?? true,
-        entry => layout.Technical
-            ? CliTechListing.EntryBlock(entry, format, terminal)
-            : [CliEntryFormatter.FormatRow(entry with { Path = CliTechListing.ForConsole(entry.Path, terminal) })],
+        entry => ListingRows(entry, layout.Technical, format, terminal),
         Console.Out).ConfigureAwait(false);
     if (!listed.Success)
     {
@@ -930,6 +928,12 @@ static async Task<bool> PrintArchiveListingAsync(
 
     return true;
 }
+
+// One entry's lines: -slt's block or l's row (split out of PrintArchiveListingAsync, S3776).
+static IReadOnlyList<string> ListingRows(ArchiveEntryInfo entry, bool technical, ArchiveFormat format, bool terminal) =>
+    technical
+        ? CliTechListing.EntryBlock(entry, format, terminal)
+        : [CliEntryFormatter.FormatRow(entry with { Path = CliTechListing.ForConsole(entry.Path, terminal) })];
 
 // The column header, or -slt's archive block, made before the listing (T-F540: printed with its
 // first row). Null when the archive's size cannot be read (T-F440: split out of

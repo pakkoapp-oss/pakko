@@ -463,7 +463,8 @@ Won't-fix categories recorded so far:
   path (`C:\Windows\System32\tar.exe`), specifically to resist PATH-hijacking. Moving it to
   configuration would reopen that exact risk — this is a security-motivated hardcode, not laziness.
 - **S3871 (exception should be `public`) on `TarSignatureVerificationException`,
-  `SandboxSetupException`, `TarArchiveRejectedException`**: all three are deliberately `internal`,
+  `SandboxSetupException`, `TarArchiveRejectedException`** (and `ListingCallback`'s private
+  `CallbackFailureException`, T-F540, unwrapped before it leaves that class): all are deliberately `internal` or `private`,
   never escape `Archiver.Core`'s public surface (always caught and converted to `ArchiveError`,
   per this file's own "`Archiver.Core` services must never throw to callers" rule). Making them
   `public` would be pure API-surface bloat against that rule, not a fix — a genuinely public

@@ -1193,7 +1193,7 @@ Add-SmokeStep 'CLI-066' {
     $peak = 0
     $rowsBeforeEnd = $false
     while (-not $process.HasExited) {
-        try { $process.Refresh(); $peak = [Math]::Max($peak, $process.PrivateMemorySize64) } catch { <# exited between the check and the read #> }
+        try { $process.Refresh(); $peak = [Math]::Max($peak, $process.PrivateMemorySize64) } catch [System.InvalidOperationException] { break <# exited between the check and the read #> }
         if (-not $rowsBeforeEnd -and (Test-Path -LiteralPath $out) -and (Get-Item -LiteralPath $out).Length -gt 65536 -and -not $process.HasExited) { $rowsBeforeEnd = $true }
         Start-Sleep -Milliseconds 100
     }

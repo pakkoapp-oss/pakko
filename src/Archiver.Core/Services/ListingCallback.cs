@@ -27,7 +27,7 @@ internal static class ListingCallback
                 Call(onEntry, entry);
             }).ConfigureAwait(false);
         }
-        catch (CallbackFailure failure)
+        catch (CallbackFailureException failure)
         {
             failure.Original.Throw();
             throw;
@@ -54,12 +54,12 @@ internal static class ListingCallback
         }
         catch (Exception thrown)
         {
-            throw new CallbackFailure(ExceptionDispatchInfo.Capture(thrown));
+            throw new CallbackFailureException(ExceptionDispatchInfo.Capture(thrown));
         }
     }
 
     // Not an IOException, nor any type a reader catches.
-    private sealed class CallbackFailure(ExceptionDispatchInfo original) : Exception("A listing's callback threw.", original.SourceException)
+    private sealed class CallbackFailureException(ExceptionDispatchInfo original) : Exception("A listing's callback threw.", original.SourceException) // NOSONAR: S3871 - private on purpose: unwrapped at the boundary, never seen outside this class
     {
         public ExceptionDispatchInfo Original { get; } = original;
     }

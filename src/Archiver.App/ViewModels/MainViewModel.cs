@@ -1371,7 +1371,7 @@ public sealed partial class MainViewModel : ObservableObject
             ArchiveListSummary summary = await _archiveListingRouter.ListEntriesAsync(archivePath, builder.Add);
             if (!summary.Success)
                 return new ListedArchive(summary, null, null);
-            ArchiveTree index = await Task.Run(builder.Build);
+            ArchiveTree index = await Task.Run(builder.ToTree);
             return new ListedArchive(summary, index, builder.Encryption);
         }
         catch (Exception ex)

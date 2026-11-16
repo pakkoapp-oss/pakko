@@ -344,6 +344,36 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             _rawNames = [];
             return entries;
         }
+
+        // One listed entry as the scan takes it; null for the archive's root itself, or with the refusal
+        // the entry earns (not thrown: the scan's other checks come first).
+        private static Entry? Checked(ArchiveHelperEntry e, bool refuseEncrypted, out Exception? refusal)
+        {
+            refusal = null;
+            if (e.Link is not null || e.FileType is not (RegularFile or FolderType))
+            {
+                refusal = new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
+                return null;
+            }
+            if (refuseEncrypted && e.Encrypted == true)
+            {
+                refusal = new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
+                return null;
+            }
+            bool isFolder = e.FileType == FolderType;
+            string name = EntryDiskName.StripLeadingDotSlash(e.Name!);
+            // T-F455: a folder stored without its '/' is still a folder.
+            if (isFolder && !name.EndsWith('/'))
+                name += "/";
+            if (name.TrimEnd('/').Length == 0)
+                return null;
+            if (!isFolder && e.Size is null)
+            {
+                refusal = new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
+                return null;
+            }
+            return new Entry(e.Index, name, isFolder, isFolder ? 0 : e.Size!.Value, e.SparseCount > 0, e.Encrypted == true, ModifiedTimeOf(e));
+        }
     }
 
     // tar.exe's scan rules (T-F49, T-F420), and a name with an unpaired surrogate: no file name a
@@ -360,36 +390,6 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             rest = rest[used..];
         }
         return false;
-    }
-
-    // One listed entry as the scan takes it; null for the archive's root itself, or with the refusal
-    // the entry earns (not thrown: the scan's other checks come first).
-    private static Entry? Checked(ArchiveHelperEntry e, bool refuseEncrypted, out Exception? refusal)
-    {
-        refusal = null;
-        if (e.Link is not null || e.FileType is not (RegularFile or FolderType))
-        {
-            refusal = new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
-            return null;
-        }
-        if (refuseEncrypted && e.Encrypted == true)
-        {
-            refusal = new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
-            return null;
-        }
-        bool isFolder = e.FileType == FolderType;
-        string name = EntryDiskName.StripLeadingDotSlash(e.Name!);
-        // T-F455: a folder stored without its '/' is still a folder.
-        if (isFolder && !name.EndsWith('/'))
-            name += "/";
-        if (name.TrimEnd('/').Length == 0)
-            return null;
-        if (!isFolder && e.Size is null)
-        {
-            refusal = new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
-            return null;
-        }
-        return new Entry(e.Index, name, isFolder, isFolder ? 0 : e.Size!.Value, e.SparseCount > 0, e.Encrypted == true, ModifiedTimeOf(e));
     }
 
     // ExpandSelection's rule (T-F05) by name: an entry named as requested, and everything below it.
