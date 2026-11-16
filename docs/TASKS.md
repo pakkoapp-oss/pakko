@@ -87,7 +87,7 @@ above stays as the record of what each stream holds.
 | 5b | Memory | T-F473 (the first global holder), T-F513 | input-sized collections: stream them or give them a stated limit | deterministic counters, one series on both tar builds |
 | 5c | Trimmed names | T-F510 | the source key (T-F511 PR 4) and the twin fixture | done on `fix/batch5c-trimmed-names`: the archive search stops at such a folder (`CLI-063`), `PathIdentity` answers for no twin; archiving them split off as T-F531 (next wave) |
 | 5d | Work folders | T-F528 | one owner for every folder Pakko writes before the result: where, how it is born, its sweep | plan mode and advisor first; the owner test; smoke of every extraction and archiving path |
-| 5e | Reading in batches | T-F529, T-F537, T-F538 | the ZIP central directory walked as a stream, .NET's reader given one batch at a time (`ZipCatalog`); only a compact name set kept | plan mode, advisor and an opus reviewer (an untrusted-input parser, and 5b's `RawZipEntryLocator` and listing kill); memory measured in every mode before and after |
+| 5e | Reading in batches | T-F529, T-F537, T-F538 | the ZIP central directory walked as a stream, .NET's reader given one batch at a time (`ZipCatalog`); only a compact name set kept | done on `perf/batch5e-batch-reading`: oracle of 1,476 archives against the old reader, counter tests red before, smoke CLI quick 41/41 on 1.10.0.29, tar.exe 33/33 on 3.8.9 and 3.5.2; memory table in `docs/DECISIONS.md`, "T-F529" |
 | 5f | Everything in batches | T-F540, T-F541, T-F542, T-F539, T-F535, T-F536 | the user, 2026-11-16: "as chunked as possible wherever possible, no bloated collections". No collection the size of the archive except the one set of names the global checks need (collisions, duplicates, 8.3 aliases, hard-link pairs), held once, as indices elsewhere: a list streamed to its caller, tar.exe's and the helper's readers on one copy of each name, the quarantine walked instead of listed, the App's browser and the scan on that | plan mode and advisor first; a counter test per holder (live bytes per entry, red before); memory and time of every mode at 1,000,000 and 4,000,000 entries before and after; PakkoW10 on both tar builds; the App browser on the device; an opus reviewer |
 | 5g | Pulled-in P3s | T-F521, T-F522, T-F533 | three P3s of the same code the agent pulled into this wave (2026-11-16) | each its red test |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
@@ -2068,32 +2068,6 @@ re-measured with T-F346's script before and after.
   bytes kept once), with T-F418's whole-listing judgement unchanged; budget test in
   `CatalogMemoryBudgetTests` at long names.
 
-### T-F538 - A ZIP's names and its data could come from two different central directories (P2, from T-F529)
-
-- [ ] **Status:** open, batch 5e (fixed by `ZipCatalog`; left: a fixture and a test, seen red on main).
-  Found 2026-11-15 reading .NET's reader for T-F529. Up to 5d, `ZipArchiveReader` took names from
-  `RawZipEntryLocator` and data from .NET's `ZipArchive`, paired by position. The two found the
-  directory differently: Pakko took the Zip64 record's offset whenever a Zip64 locator stood before
-  the end record; .NET takes it only when the classic record holds a 0xFFFF/0xFFFFFFFF marker
-  (`ZipArchive.TryReadZip64EndOfCentralDirectory`, v11.0.0). A crafted archive with two directories
-  of the same count, an unmasked classic record pointing at one and a locator at the other, was
-  listed and extracted with the names of one and the data, sizes and CRCs of the other: each file
-  got another entry's content, and the archive showed other tools something else again. `ZipCatalog` reads one directory, found by .NET's
-  rule, and shows .NET only its records.
-- **Test:** that archive: names and data from one directory on 5e, two on main.
-
-### T-F537 - The tar catalog budget test measures less than a list holds (P3, from T-F529)
-
-- [x] **Status:** done 2026-11-16 (batch 5e, graduates with T-F529). The test was right about what a
-  list keeps (210 B an entry, heap dump: 41.8 MB for 200,000 entries); the probe's 530 B was what a
-  caller with no synchronization context held while it used the result. Its code ran on the thread
-  that finished the listing, on top of the async frames still holding tar.exe's `-tv` output and both
-  listings (`dotnet-dump gcroot`: `SandboxedProcessLauncher.RunCreatedProcessAsync`'s box on that
-  stack). `pakko l` is such a caller. `TarSandboxedService.ListEntriesAsync` now yields to the pool
-  before returning (`ConfigureAwaitOptions.ForceYielding` on a completed task: on an unfinished one
-  it does not yield); `CatalogMemoryBudgetTests.TarListing_ToACallerWithoutAContext_...` measures
-  that caller (540 B red, 211 B green).
-
 ### T-F536 - A scan of many small entries makes one AMSI call each and holds the listing (P2, from T-F529)
 
 - [ ] **Status:** open, batch 5f. Measured 2026-11-15 (before 5e): scanning a tar of 1,000,000 empty
@@ -2112,29 +2086,6 @@ re-measured with T-F346's script before and after.
   (names as one string pool, rows built only for the open folder, `ArchiveEntryInfo` not kept for
   every entry), with the App's sort, search and selection unchanged; budget test in
   `Archiver.App.Core.Tests`, device check of browsing a 1,000,000-entry archive.
-
-### T-F529 - Read archives in batches: hold a compact name set, not every entry (P2, the user, 2026-11-14)
-
-- [ ] **Status:** open, batch 5e. The user asked whether every entry must be held at once. Measured
-  2026-11-14 (`docs/DECISIONS.md`, "T-F513"): .NET's `ZipArchive` reads the whole central directory into
-  objects on open (about 455 B an entry; it has no streaming read mode), and Pakko's own catalog adds
-  as much again (about 1 KB an entry for a list or test, 1.4 KB for an extraction); tar holds its whole
-  listing and several copies of each name (about 600 B). Only a few checks need the whole archive, and
-  they need names only: case collisions (`a.txt` first, `A.TXT` last), duplicates, T-F392's hard-link
-  pairs, 8.3 aliases; the App's browser needs a tree of names. Test needs nothing global.
-- **Shape:** read the central directory as a stream (`RawZipEntryLocator` already walks it), open each
-  entry through its local header with the BCL's `DeflateStream` (System.IO.Compression only), keep a
-  compact set of names for the global checks; the same for tar's listing. Every check of today stays
-  (AES/ZipCrypto, Zip64, T-F280's local/central agreement, MOTW, the entry checks): an untrusted-input
-  parser, so plan mode, advisor and a fresh opus reviewer.
-- **The catalog's bytes, not only its entries** (T-F513's closing review): long names stay under the
-  entry count and are held several times over; tar.exe's 1 GiB listing becomes several GiB once
-  copied and decoded. Bound the catalog by its bytes too, with a message that says so.
-- **T-F473 is folded in** (its leaner catalog is this reader's), and `CatalogMemoryBudgetTests`'
-  budgets (live bytes per entry, T-F513) are lowered to what this measures.
-- **Then:** raise T-F513's entry limit (2,000,000) as far as the measured memory allows (the user left
-  the value to the agent), and measure the memory of every mode (list, test, extract, scan, preview,
-  the App's browser) before and after, as a table for the user.
 
 ### T-F527 - A run can leave an entry its owner cannot delete, now next to the destination (P3, from T-F524's review)
 
@@ -2202,17 +2153,6 @@ re-measured with T-F346's script before and after.
   Next: measure whether one AppContainer process can open another's; if so, check and move through
   one handle (open with `DELETE`, ask, rename by handle) or a per-operation SID.
 - **Reported by:** the fresh reviewer, 2026-11-08.
-
-### T-F473 - A listing of millions of entries costs over 2 GiB in the Pakko process (P3)
-
-- [ ] **Status:** folded into T-F529 (2026-11-14, `docs/DECISIONS.md`, "T-F513": .NET's `ZipArchive` holds
-  434 of a ZIP's 1,040 MiB peak per million entries, and only reading without it removes that; the
-  limit of 2,000,000 entries now bounds both backends). Measured 2026-11-08 (T-F470's release batch, `docs/DECISIONS.md`): `TestAsync`
-  on 1,000,000 empty tar entries peaks at 557 MiB private bytes through the helper and 620 MiB through
-  tar.exe, so about 2.2 GiB at the 4,000,000-entry limit; the memory sits in the App, Shell or `pakko`,
-  outside the sandbox's job limit. Next: decide a lower entry limit, or a leaner catalog (one copy of
-  each name, the second listing compared as it streams instead of held).
-- **Reported by:** the agent, 2026-11-08.
 
 ### T-F469 - A tar.exe 3.8.9 listing that leaves out an unreadable name refuses every selection (P4, stream I, the tar.exe fallback)
 
