@@ -1065,8 +1065,8 @@ public sealed class HelperReaderTests : IDisposable
     }
 
     // T-F474's closing review: Directory.Delete leaves a read-only file (and so its folders) behind,
-    // which would keep the archive's plaintext in %TEMP% until the next day's sweep. Neither reader
-    // makes a 0444 entry read-only (measured on bsdtar 3.8.9 and 3.5.2); this keeps it so.
+    // which would keep the archive's plaintext in %TEMP% until the next day's sweep. tar.exe leaves a
+    // 0444 entry writable (bsdtar 3.8.9 and 3.5.2); archiveint.dll on ARM64 does not (T-F546).
     [Theory]
     [MemberData(nameof(Backends))]
     public async Task ExtractForScan_AReadOnlyEntry_TheQuarantineIsStillDeleted(string backend)
@@ -1080,6 +1080,28 @@ public sealed class HelperReaderTests : IDisposable
             await reader.ScanAsync(CancellationToken.None);
             ScanQuarantine main = await reader.ExtractForScanAsync(null, CancellationToken.None);
             string file = main.Files.Single().Path;
+            root = Path.GetDirectoryName(Path.GetDirectoryName(file))!;
+        }
+
+        Directory.Exists(root).Should().BeFalse("the quarantine holds the archive's plaintext");
+    }
+
+    // T-F546: archiveint.dll on ARM64 leaves a 0444 entry read-only (the canary, 2026-11-14 on), so
+    // the scope's delete must not depend on what a reader does with the mode.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task ExtractForScan_AFileMadeReadOnly_TheQuarantineIsStillDeleted(string backend)
+    {
+        string archive = Path.Combine(_temp.Path, "plain.tar");
+        TarBuilder.WriteTar(archive, [new TarBuilder.Entry { Name = "a.txt", Content = "a"u8.ToArray() }]);
+        string root;
+        using (ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(
+            archive, true, null, CancellationToken.None, backend == Helper ? Setup.Value : null))
+        {
+            await reader.ScanAsync(CancellationToken.None);
+            ScanQuarantine main = await reader.ExtractForScanAsync(null, CancellationToken.None);
+            string file = main.Files.Single().Path;
+            File.SetAttributes(file, File.GetAttributes(file) | FileAttributes.ReadOnly);
             root = Path.GetDirectoryName(Path.GetDirectoryName(file))!;
         }
 

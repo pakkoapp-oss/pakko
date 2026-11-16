@@ -14983,6 +14983,19 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F546 - the quarantine removed by its owner, read-only files included (2026-11-16)
+
+T-F474's closing review found that `Directory.Delete` leaves a read-only file behind and added a test
+for a 0444 entry, on the measurement that no reader keeps the mode. archiveint.dll on ARM64 does,
+and the ARM64 canary failed from that day. Not fixed per reader: the delete clears the flag itself.
+`TempOwner.TryRemove` (links on their own, read-only cleared, T-F511 PR 2) was tried first and is
+wrong here: `DirectoryWalker` does not enter a folder named "d " and clears the flag through a
+normalized path, so a read-only "a.txt." stops it, where the plain delete did not (T-F547).
+`QuarantineFiles`, the owner of tar.exe's names, walks with its own spelling and never through a link;
+`Remove` clears each file's flag so, then `Directory.Delete` (which removes such names, measured). A
+failure stays best-effort; the sweep takes it. The helper's folder holds only Pakko's copy of the
+helper and keeps its plain delete.
+
 ## Batch 5f - everything in batches (T-F539, T-F541, T-F542, T-F540, T-F535, T-F536; 2026-11-16)
 
 The user (2026-11-16): "as chunked as possible wherever possible, no bloated collections". After
