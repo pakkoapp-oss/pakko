@@ -41,7 +41,7 @@ internal sealed class LegacyArchiveTree
         {
             int slash = path.IndexOf('/', start);
             int end = slash < 0 ? path.Length : slash;
-            node.Children ??= new Dictionary<string, Node>(StringComparer.Ordinal);
+            node.Children ??= [with(StringComparer.Ordinal)];
             string name = path[start..end];
             if (!node.Children.TryGetValue(name, out Node? child))
             {

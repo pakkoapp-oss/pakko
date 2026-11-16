@@ -97,7 +97,7 @@ internal static class TarNames
     /// </summary>
     internal sealed class ListedNameBytes(System.Text.Encoding encoding)
     {
-        private readonly Dictionary<string, byte[]?> _listed = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
+        private readonly Dictionary<string, byte[]?> _listed = [with(StringComparer.Ordinal)];
         private bool _unknownText;
 
         public void OnLine(ReadOnlySpan<byte> printedLine)
@@ -133,14 +133,23 @@ internal static class TarNames
             }
             return _listed;
         }
-    }
 
-    private static void Add(Dictionary<string, byte[]?> listed, string key, byte[]? bytes)
-    {
-        if (!listed.TryGetValue(key, out byte[]? known))
-            listed[key] = bytes;
-        else if (known is not null && (bytes is null || !known.AsSpan().SequenceEqual(bytes)))
-            listed[key] = null;
+        private static void Add(Dictionary<string, byte[]?> listed, string key, byte[]? bytes)
+        {
+            if (!listed.TryGetValue(key, out byte[]? known))
+                listed[key] = bytes;
+            else if (known is not null && (bytes is null || !known.AsSpan().SequenceEqual(bytes)))
+                listed[key] = null;
+        }
+
+        // The bytes tar.exe printed for name, or null when the line or those bytes do not decode to it
+        // without loss. A folder's trailing '/' is one byte in every page, so the caller trims it by count.
+        private static byte[]? PrintedBytes(byte[] line, string text, string name, System.Text.Encoding encoding) =>
+            TarCommandLineEncoding.Decode(line, (uint)encoding.CodePage) == text
+            && UnescapePrinted(line, encoding) is { } printed
+            && TarCommandLineEncoding.Decode(printed, (uint)encoding.CodePage) == name
+                ? printed
+                : null;
     }
 
     /// <summary>
@@ -195,15 +204,6 @@ internal static class TarNames
                 yield return line;
         }
     }
-
-    // The bytes tar.exe printed for name, or null when the line or those bytes do not decode to it
-    // without loss. A folder's trailing '/' is one byte in every page, so the caller trims it by count.
-    private static byte[]? PrintedBytes(byte[] line, string text, string name, System.Text.Encoding encoding) =>
-        TarCommandLineEncoding.Decode(line, (uint)encoding.CodePage) == text
-        && UnescapePrinted(line, encoding) is { } printed
-        && TarCommandLineEncoding.Decode(printed, (uint)encoding.CodePage) == name
-            ? printed
-            : null;
 
     // The line with tar.exe's escapes resolved and every other byte kept as printed: re-encoding the
     // text would turn a raw NEC-selected 0xED 0x40 into the page's 0xFA 0x5C, and two forms of one

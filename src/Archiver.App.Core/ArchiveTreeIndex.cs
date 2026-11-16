@@ -16,13 +16,13 @@ public static class ArchiveTreeIndex
         var builder = new Builder();
         foreach (ArchiveEntryInfo entry in flatEntries)
             builder.Add(entry);
-        return builder.Build();
+        return builder.ToTree();
     }
 
     /// <summary>
     /// T-F535: takes a streamed listing's entries as they come - each one's path (the same string,
     /// not a copy) and the fields a row shows, never the entry itself - and the encryption summary
-    /// with them. Not thread-safe: one listing adds, then <see cref="Build"/> once.
+    /// with them. Not thread-safe: one listing adds, then <see cref="ToTree"/> once.
     /// </summary>
     public sealed class Builder
     {
@@ -41,7 +41,7 @@ public static class ArchiveTreeIndex
         public EncryptionSummary Encryption => _encryption.Summary();
 
         /// <summary>Sorts the index: N log N, off the UI thread for a large archive.</summary>
-        public ArchiveTree Build() => new([.. _rows]);
+        public ArchiveTree ToTree() => new([.. _rows]);
     }
 }
 
@@ -56,7 +56,7 @@ public sealed class ArchiveTree
 {
     private readonly Row[] _rows;
     private readonly int[] _sorted;
-    private readonly Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>?> _opened = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>?> _opened = [with(StringComparer.Ordinal)];
 
     // One entry: what a row shows, its optional fields as values beside one byte of which are
     // present (48 bytes, not 72 with a Nullable each). Its key is Path with a leading '/' left out

@@ -15023,7 +15023,7 @@ as 7-Zip), `# total` counting what was printed (`docs/CLI.md`).
 
 **The App's browser (T-F535).** `ArchiveTreeIndex.Builder` takes the streamed entries: the path
 (the same string) and a 48-byte row (optional fields as values beside one byte of flags, not a
-`Nullable` each: 72 bytes before), never the entry. `Build` sorts positions by path, a leading '/'
+`Nullable` each: 72 bytes before), never the entry. `ToTree` sorts positions by path, a leading '/'
 left out, then archive order: a folder's subtree is one range found by binary search, and no node or
 dictionary is made per folder. The trap of ordinal order: ' ' sorts before '/', so "a/b c" stands
 between "a/b" and "a/b/x" - a segment's own entries and its subtree are two ranges, and "the first

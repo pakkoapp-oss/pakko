@@ -1791,7 +1791,7 @@ public static class ArchiveTreeIndex
     {
         public void Add(ArchiveEntryInfo entry);
         public EncryptionSummary Encryption { get; }
-        public ArchiveTree Build(); // sorts: N log N, off the UI thread
+        public ArchiveTree ToTree(); // sorts: N log N, off the UI thread
     }
 }
 
