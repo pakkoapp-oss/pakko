@@ -332,7 +332,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             && (selectedSet is null
                 || selectedSet.Contains(e.FullName)
                 || selectedSet.Any(s => e.FullName.StartsWith(s + "/", StringComparison.Ordinal)));
-        int fileCount;
+        int fileCount = 0;
         ZipLocate locate = ZipArchiveService.IsEncryptedZip(archivePath) ? ZipLocate.BestEffort : ZipLocate.None;
         try
         {
@@ -350,7 +350,12 @@ public sealed class AntivirusScanService : IAntivirusScanService
             {
                 // T-F529: one walk counts the entries for the progress bar - and makes every check of
                 // the whole archive before any entry is scanned.
-                fileCount = catalog.Entries(locate: locate).Count(Scanned);
+                foreach (NamedZipEntry named in catalog.Entries(locate: locate))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (Scanned(named))
+                        fileCount++;
+                }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
             {
@@ -365,7 +370,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             using Stream? rawArchiveStream = locate == ZipLocate.BestEffort ? File.OpenRead(archivePath) : null;
             ZipArchiveService.ZipPasswordResolution? resolution = rawArchiveStream is null
                 ? null
-                : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages).ConfigureAwait(false);
+                : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages, cancellationToken: cancellationToken).ConfigureAwait(false);
             // T-F521: a structure that cannot be read is no reason to ask for a password.
             if (resolution?.Cause is { } unreadable)
             {

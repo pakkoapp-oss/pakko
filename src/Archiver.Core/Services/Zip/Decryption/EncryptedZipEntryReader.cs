@@ -5,8 +5,7 @@ using Archiver.Core.IO;
 
 namespace Archiver.Core.Services.Zip.Decryption;
 
-/// <summary>Outcome of either <see cref="EncryptedZipEntryReader.TryOpen(string, string, string, System.Text.Encoding?)"/>
-/// overload.</summary>
+/// <summary>Outcome of <see cref="EncryptedZipEntryReader.TryOpen(Stream, LocatedZipEntry, string, System.Text.Encoding?)"/>.</summary>
 internal enum EncryptedZipReadResult
 {
     Success,
@@ -54,37 +53,6 @@ internal enum EncryptedZipReadResult
 /// </summary>
 internal static class EncryptedZipEntryReader
 {
-    /// <summary>Name-based convenience overload — locates the entry by name in
-    /// <paramref name="zipPath"/> before delegating. Used directly by tests and by any caller that
-    /// hasn't already resolved a <see cref="LocatedZipEntry"/> some other way. Production
-    /// extraction code (ZipArchiveService) prefers the <see cref="LocatedZipEntry"/> overload
-    /// below instead, paired positionally via <see cref="RawZipEntryLocator.LocateAll(Stream)"/> — see
-    /// that method's own doc comment for why name-based lookup is avoided there. The returned
-    /// stream owns the file it opened.</summary>
-    public static (EncryptedZipReadResult Result, Stream? Content) TryOpen(
-        string zipPath, string entryFullName, string password, Encoding? passwordEncoding = null)
-    {
-        FileStream fileStream = File.OpenRead(zipPath);
-        try
-        {
-            LocatedZipEntry located = RawZipEntryLocator.Locate(fileStream, entryFullName);
-            if (!located.GeneralPurposeEncryptedBit)
-                throw new InvalidOperationException(
-                    $"'{entryFullName}' is not encrypted — the caller must check the general-purpose " +
-                    "encrypted bit before invoking EncryptedZipEntryReader.");
-
-            (EncryptedZipReadResult Result, Stream? Content) opened = Open(fileStream, located, password, passwordEncoding, ownsStream: true);
-            if (opened.Content is null)
-                fileStream.Dispose();
-            return opened;
-        }
-        catch
-        {
-            fileStream.Dispose();
-            throw;
-        }
-    }
-
     /// <summary>
     /// Opens the entry described by <paramref name="located"/> from <paramref name="zipStream"/>
     /// (which it seeks freely; the caller keeps ownership). T-F193: nothing is buffered — for

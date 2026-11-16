@@ -325,7 +325,7 @@ internal static partial class SandboxedProcessLauncher
                     }
                     else if (lineLength >= lines.MaxLineBytes)
                     {
-                        throw new IOException($"The child wrote a stdout line longer than {lines.MaxLineBytes} bytes.");
+                        throw lines.LineTooLong?.Invoke() ?? new IOException($"The child wrote a stdout line longer than {lines.MaxLineBytes} bytes.");
                     }
                     else
                     {
@@ -357,10 +357,11 @@ internal static partial class SandboxedProcessLauncher
 
     // T-F513: stdout counted as it is read. Past the limit the child is killed first - left running
     // it would block on a full pipe while stderr's reader waits for it to exit - then the read fails.
-    private sealed class LimitedStdOut(Stream inner, StdOutLimit limit, Action kill) : Stream
+    internal sealed class LimitedStdOut(Stream inner, StdOutLimit limit, Action kill) : Stream
     {
         private long _lines;
         private long _bytes;
+        private bool _lineOpen;
 
         public override bool CanRead => true;
         public override bool CanSeek => false;
@@ -383,7 +384,10 @@ internal static partial class SandboxedProcessLauncher
         {
             _bytes += read.Length;
             _lines += read.Count((byte)'\n');
-            if (_lines > limit.MaxLines)
+            if (!read.IsEmpty)
+                _lineOpen = read[^1] != (byte)'\n';
+            // T-F543: a last line with no '\n' yet is a line too.
+            if (_lines + (_lineOpen ? 1 : 0) > limit.MaxLines)
             {
                 kill();
                 throw limit.TooManyLines();

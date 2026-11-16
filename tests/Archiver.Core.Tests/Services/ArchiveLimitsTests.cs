@@ -25,9 +25,9 @@ public sealed class ArchiveLimitsTests : IDisposable
     [Fact]
     public void ZipNames_AtTheLimit_AreRead()
     {
-        using MemoryStream zip = ZipOf(3);
+        using var catalog = ZipCatalog.Open(ZipFileOf(3), Us, 3, ZipCatalog.DefaultBatchEntries, false);
 
-        RawZipEntryLocator.ReadEntryNames(zip, Us, maxEntries: 3).Select(n => n.Name).Should().Equal("f0.txt", "f1.txt", "f2.txt");
+        catalog.Names().Select(n => n.FullName).Should().Equal("f0.txt", "f1.txt", "f2.txt");
     }
 
     [Fact]
@@ -45,9 +45,9 @@ public sealed class ArchiveLimitsTests : IDisposable
     [Fact]
     public void ZipNames_DeclaringOneMoreThanTheLimit_AreRefused()
     {
-        using MemoryStream zip = ZipOf(3);
+        string zip = ZipFileOf(3);
 
-        Refused(() => RawZipEntryLocator.ReadEntryNames(zip, Us, maxEntries: 2), 2);
+        Refused(() => NamesOf(zip, maxEntries: 2), 2);
     }
 
     // A directory holding more records than its end record declares: .NET's reader throws on the
@@ -58,8 +58,9 @@ public sealed class ArchiveLimitsTests : IDisposable
     {
         using MemoryStream zip = ZipOf(3);
         DeclareEntries(zip, 1);
+        string path = FileOf(zip, "declared.zip");
 
-        FluentActions.Invoking(() => RawZipEntryLocator.ReadEntryNames(zip, Us, maxEntries: 2))
+        FluentActions.Invoking(() => NamesOf(path, maxEntries: 2))
             .Should().Throw<InvalidDataException>().WithMessage(RawZipEntryLocator.NumEntriesWrongText);
     }
 
@@ -68,7 +69,7 @@ public sealed class ArchiveLimitsTests : IDisposable
     {
         using MemoryStream zip = Zip64Declaring(1_000_000_000);
 
-        Refused(() => RawZipEntryLocator.ReadEntryNames(zip, Us), ArchiveLimits.MaxEntries);
+        Refused(() => NamesOf(FileOf(zip, "billion.zip"), ArchiveLimits.MaxEntries), ArchiveLimits.MaxEntries);
         Refused(() => RawZipEntryLocator.LocateAll(zip), ArchiveLimits.MaxEntries);
         Refused(() => RawZipEntryLocator.HasAnyEncryptedEntry(zip), ArchiveLimits.MaxEntries);
         Refused(() => RawZipEntryLocator.FindLocalHeaderMismatches(zip), ArchiveLimits.MaxEntries);
@@ -171,10 +172,21 @@ public sealed class ArchiveLimitsTests : IDisposable
 
     private string ZipFileOf(int entries)
     {
-        string path = Path.Combine(_folder, $"{entries}.zip");
         using MemoryStream zip = ZipOf(entries);
+        return FileOf(zip, $"{entries}.zip");
+    }
+
+    private string FileOf(MemoryStream zip, string name)
+    {
+        string path = Path.Combine(_folder, name);
         File.WriteAllBytes(path, zip.ToArray());
         return path;
+    }
+
+    private static void NamesOf(string zip, int maxEntries)
+    {
+        using var catalog = ZipCatalog.Open(zip, Us, maxEntries, ZipCatalog.DefaultBatchEntries, false);
+        _ = catalog.Names().ToList();
     }
 
     private static string Entry(int index) => $"E {index} 32768 5 1700000000 0 0 0 0061 -";

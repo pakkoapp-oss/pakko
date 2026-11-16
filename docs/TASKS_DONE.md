@@ -15229,3 +15229,44 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   `TestAsync_LocalHeaderPastTheEnd_ShowsNoTextOfPakkosOwnReader` encrypted.
 - **Reported by:** the agent, 2026-11-13.
 - **Graduated 2026-11-16:** batch 5g.
+
+### T-F543 - Batch 5e's reviewer's P3s: tar's -tv cap, the first walks' cancel, readers left without a budget (P3, 2026-11-16)
+
+- [x] **Status:** done 2026-11-16 (batch 5g), item by item. (1) Measured on 3.8.9 and 3.5.2
+  (docs/DECISIONS.md, "Batch 5g"): a long owner widens every later -tv line; the false
+  CatalogTooLarge it can cause is localized and kept. A line over the 1 MiB line limit (a 300 KiB
+  name of control characters, each escaped as \ooo, prints 1.2 MB on both builds) now fails as
+  CatalogTooLarge, not as an unlocalized IOException (StdOutLines.LineTooLong;
+  StdOutLinesTests.ALineTooLong_FailsWithTheCallersException and
+  EntryLimitTests.TarListing_ALineOverTheLineLimit_IsRefused_AsTooLarge, red without it). (2) Which
+  characters tar.exe escapes is T-F467's measurement on both builds; the byte cap is kept. (3)
+  ZipCatalog.Check, MeasureArchive, scan's count and the password probe's walk stop at a cancel
+  (ZipCatalogTests.Check_ACancel_StopsTheWalk, MeasureArchive_ACancel_StopsTheWalk,
+  ResolveArchivePassword_ACancel_StopsBeforeAskingForAPassword, red on a mutant; scan's count loop
+  has no test of its own). (4) RawZipEntryLocator.ReadEntryNames, Locate(Stream, string) and
+  EncryptedZipEntryReader.TryOpen(string, string, ...) deleted; their tests read through ZipCatalog
+  and a test helper, ZipEntryByName (LocateAll(Stream) stays: tests use it, a later cleanup). (5)
+  LimitedStdOut counts an open last line (StdOutLinesTests.TheLineLimit_CountsAnOpenLastLine, red
+  without it). (6) Scan's second-walk failure stays without a test, listed in
+  .claude/rules/tests.md.
+  Was: open, batch 5g. The fresh reviewer of batch 5e (2026-11-16) found, beside what 5e
+  fixed:
+  - `-tv` byte cap (`TarSandboxScope.RunAsync`, `nameCharLimit + entryLimit * 256`): bsdtar widens its
+    uname/gname columns for good, so one entry with a long pax `uname` pads every later line. A list can
+    then be refused as `CatalogTooLarge` while `-t` passes, and a uname over 1 MiB fails
+    `MaxVerboseLineBytes` with an unlocalized `IOException` (it listed before 5e). Measure with a
+    crafted pax archive, then cap per line actually read or take the columns from the end.
+  - The tar byte caps are totals over the entry limit, not per entry listed. If tar.exe writes
+    non-ASCII as `\ooo` in `-t`, a CJK-named archive meets the limit at a twelfth: measure when it
+    escapes.
+  - The first walks (`MeasureArchive`, test's `Check`, scan's count, `Located()` in
+    `SmallestEncryptedEntryThatPasses`) never look at the cancellation token: at 4,000,000 entries each
+    takes seconds.
+  - `RawZipEntryLocator.ReadEntryNames`, `Locate(Stream, string)` and
+    `EncryptedZipEntryReader.TryOpen(string, string, ...)` have no caller in `src` and no name budget:
+    delete them or give them `ZipCatalog`'s.
+  - `LastLineMayBeOpen` with `StdOutLimit` counting `\n` lets `MaxLines` + 1 lines through (harmless:
+    `-tv`'s count must still match `-t`'s).
+  - Scan's second walk now reports a batch that fails to read again as unreadable, without a test: no
+    seam fails a read the first walk passed.
+- **Graduated 2026-11-16:** batch 5g.

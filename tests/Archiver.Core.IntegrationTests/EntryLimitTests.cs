@@ -120,6 +120,25 @@ public sealed class EntryLimitTests : IDisposable
         stdOut.Should().Contain("c.txt");
     }
 
+    // T-F543: tar.exe escapes a control character as \ooo, so a 300 KiB name prints as a 1.2 MB line
+    // (measured on 3.8.9) - over the line limit, refused as the catalog's own limit.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TarListing_ALineOverTheLineLimit_IsRefused_AsTooLarge(bool verbose)
+    {
+        string archivePath = Path.Combine(_temp.Path, "escaped.tar");
+        using (FileStream file = File.Create(archivePath))
+        using (var writer = new System.Formats.Tar.TarWriter(file, System.Formats.Tar.TarEntryFormat.Pax))
+            writer.WriteEntry(new System.Formats.Tar.PaxTarEntry(System.Formats.Tar.TarEntryType.RegularFile,
+                "a" + new string((char)1, 300 * 1024)));
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
+
+        Func<Task> list = () => List(scope, verbose);
+
+        (await list.Should().ThrowAsync<CoreTextIOException>()).Which.Text.Code.Should().Be(MessageCode.CatalogTooLarge);
+    }
+
     // The plain listing's text, or the "-tv" lines as the readers get them since T-F529, joined.
     private static async Task<(int Exit, string Text, string StdErr)> List(TarSandboxScope scope, bool verbose)
     {

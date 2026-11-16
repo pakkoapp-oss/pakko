@@ -37,6 +37,28 @@ public sealed class StdOutLinesTests
         await tooMuch.Should().ThrowAsync<IOException>().WithMessage("*more than 6 bytes*");
     }
 
+    // T-F543: lines were counted by their '\n', so an open last line came through as one more than the
+    // limit (harmless for -tv, whose count must still match -t's, but the limit said otherwise).
+    [Theory]
+    [InlineData("a\nb\n", false)]
+    [InlineData("a\nb", false)]
+    [InlineData("a\nb\nc", true)]
+    [InlineData("a\nb\n\n", true)]
+    public void TheLineLimit_CountsAnOpenLastLine(string output, bool refused)
+    {
+        bool killed = false;
+        using var stream = new SandboxedProcessLauncher.LimitedStdOut(new MemoryStream(Encoding.ASCII.GetBytes(output)),
+            new StdOutLimit(2, 100, () => new IOException("lines"), () => new IOException("bytes")), () => killed = true);
+
+        Action read = () => stream.CopyTo(Stream.Null);
+
+        if (refused)
+            read.Should().Throw<IOException>().WithMessage("lines");
+        else
+            read.Should().NotThrow();
+        killed.Should().Be(refused);
+    }
+
     [Fact]
     public async Task OutputEndingInsideALine_Fails()
     {
@@ -80,6 +102,18 @@ public sealed class StdOutLinesTests
             new StdOutLines(l => lines.Add(Encoding.ASCII.GetString(l)), 16, 100, LastLineMayBeOpen: true), CancellationToken.None);
 
         lines.Should().Equal("a", "b");
+    }
+
+    [Fact]
+    public async Task ALineTooLong_FailsWithTheCallersException()
+    {
+        using var stream = new MemoryStream(Encoding.ASCII.GetBytes("abcdefghij\n"));
+        var refusal = new InvalidDataException("too long");
+
+        Func<Task> read = () => SandboxedProcessLauncher.ReadLinesWithinAsync(stream,
+            new StdOutLines(_ => { }, 4, 100, LineTooLong: () => refusal), CancellationToken.None);
+
+        (await read.Should().ThrowAsync<InvalidDataException>()).Which.Should().BeSameAs(refusal);
     }
 
     private static async Task Read(string text, int maxLine, long maxTotal)

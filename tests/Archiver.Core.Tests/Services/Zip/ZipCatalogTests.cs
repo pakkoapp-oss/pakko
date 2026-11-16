@@ -22,6 +22,28 @@ public sealed class ZipCatalogTests : IDisposable
 
     // --- Happy path ---
 
+    // T-F543: the first walks never looked at the token; at millions of entries each takes seconds.
+    [Fact]
+    public void Check_ACancel_StopsTheWalk()
+    {
+        string zip = Write("cancel.zip", MixedArchive());
+        using var catalog = ZipCatalog.Open(zip, Us);
+
+        FluentActions.Invoking(() => catalog.Check(cancellationToken: new CancellationToken(true)))
+            .Should().Throw<OperationCanceledException>();
+    }
+
+    [Fact]
+    public void MeasureArchive_ACancel_StopsTheWalk()
+    {
+        string zip = Write("measure.zip", MixedArchive());
+        using var catalog = ZipCatalog.Open(zip, Us);
+
+        FluentActions.Invoking(() => ZipArchiveService.MeasureArchive(
+                catalog, ZipLocate.None, _ => true, new System.Collections.BitArray(64), null, new CancellationToken(true)))
+            .Should().Throw<OperationCanceledException>();
+    }
+
     [Theory]
     [InlineData(1, false)]
     [InlineData(2, false)]

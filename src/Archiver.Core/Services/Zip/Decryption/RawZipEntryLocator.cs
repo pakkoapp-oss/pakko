@@ -61,17 +61,6 @@ internal static class RawZipEntryLocator
     private const int WinZipAesExtraMinLength = 7;
     private const ushort DataDescriptorFlag = 0x0008;
 
-    public static LocatedZipEntry Locate(Stream zipStream, string entryFullName)
-    {
-        // T-F234: matched by decoded name, the name every caller sees — a raw UTF-8 byte compare
-        // missed every legacy (OEM/ANSI) name.
-        var pages = ZipNameCodePages.Current();
-        CentralDirectoryRecord record = ReadCentralDirectory(zipStream).FirstOrDefault(r =>
-                ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, pages) == entryFullName)
-            ?? throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
-        return BuildFromLocalHeader(zipStream, record);
-    }
-
     /// <summary>T-F529: <see cref="LocateAll(Stream)"/> for some records only - one batch of a
     /// <see cref="ZipCatalog"/>, read from <paramref name="zipStream"/>, which it seeks.</summary>
     internal static List<LocatedZipEntry> LocateAll(Stream zipStream, IReadOnlyList<CentralDirectoryRecord> records)
@@ -87,7 +76,7 @@ internal static class RawZipEntryLocator
     /// in central-directory order — the same order <see cref="System.IO.Compression.ZipArchive.Entries"/>
     /// populates its own list in, so a caller can pair the two positionally by index. Deliberately
     /// NOT name-based: positional pairing needs no name at all, so it stays exact even for two
-    /// entries with the same name. (T-F234: names themselves come from <see cref="ReadEntryNames"/>.)
+    /// entries with the same name. (T-F234: names themselves come from <see cref="ZipCatalog"/>.)
     /// <para>
     /// Two full passes over <paramref name="zipStream"/> deliberately: <see cref="ReadCentralDirectory"/>
     /// reads only the central directory (one contiguous forward scan, no seeking away), THEN this
@@ -109,22 +98,6 @@ internal static class RawZipEntryLocator
     /// </summary>
     public static bool HasAnyEncryptedEntry(Stream zipStream) =>
         ReadCentralDirectory(zipStream).Any(record => (record.GeneralPurposeFlag & 0x0001) != 0);
-
-    /// <summary>
-    /// T-F234: every entry's name decoded by 7-Zip's rule (<see cref="ZipEntryNameDecoder"/>), with
-    /// its raw bytes, in central-directory order — the order <see cref="System.IO.Compression.ZipArchive.Entries"/>
-    /// uses, so the two pair positionally. Reads the central directory only: no local-header seeks
-    /// and no WinZip AES checks, so any archive whose directory .NET can read gets names too.
-    /// T-F298: also each entry's NTFS/extended-timestamp modification time, null when it has none.
-    /// </summary>
-    /// T-F513: an archive with more than <paramref name="maxEntries"/> entries is refused
-    /// (<see cref="ArchiveLimits.TooManyEntries"/>) before any of them is read.
-    public static List<(byte[] RawName, string Name, DateTime? ExtendedModifiedUtc)> ReadEntryNames(
-        Stream zipStream, ZipNameCodePages codePages, int maxEntries = ArchiveLimits.MaxEntries) =>
-        ReadCentralDirectory(zipStream, resolveZip64: false, maxEntries)
-            .Select(r => (r.NameBytes, ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, codePages),
-                ZipExtendedTime.TryReadModifiedUtc(r.Extra)))
-            .ToList();
 
     /// <summary>
     /// T-F280: the central-directory indexes of entries whose local header disagrees with the
