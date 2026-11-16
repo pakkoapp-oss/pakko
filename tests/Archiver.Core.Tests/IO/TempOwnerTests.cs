@@ -240,6 +240,36 @@ public sealed class TempOwnerTests : IDisposable
         File.Delete(@"\\?\" + literal);
     }
 
+    // T-F533: a destination typed as \\?\C:\w\out. is opened as written, so its work root is Pakko's
+    // own folder there, not a twin's; it was refused and stayed until the next run swept it.
+    [Fact]
+    public void TryRemove_LiteralPathWindowsWouldTrim_RemovedAndTheTwinKept()
+    {
+        string twin = Dir("out");
+        string literalDestination = @"\\?\" + Path.Combine(_temp.Path, "out.");
+        string root = Path.Combine(literalDestination, ".pakko-root");
+        Directory.CreateDirectory(Path.Combine(root, "sub"));
+        File.WriteAllText(Path.Combine(root, "sub", "staged.txt"), "x");
+
+        TempOwner.TryRemove(root).Should().BeTrue();
+
+        Directory.Exists(root).Should().BeFalse();
+        Directory.Exists(literalDestination).Should().BeTrue();
+        Directory.Exists(twin).Should().BeTrue();
+        Directory.Delete(literalDestination);
+    }
+
+    // T-F533: the literal exception is only for \\?\; written plainly the same name still reaches the twin.
+    [Fact]
+    public void TryRemove_PlainPathWindowsWouldTrim_StillRefused()
+    {
+        string twin = Dir("out");
+
+        TempOwner.TryRemove(Path.Combine(_temp.Path, "out.")).Should().BeFalse();
+
+        Directory.Exists(twin).Should().BeTrue();
+    }
+
     // T-F511: SweepStaleInTemp is public and, with no prefix, removes any old entry it cannot read
     // an owner from; outside %TEMP% such an entry may be the user's.
     [Fact]

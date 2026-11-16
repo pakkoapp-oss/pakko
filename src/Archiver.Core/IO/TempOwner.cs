@@ -112,10 +112,11 @@ public static class TempOwner
     /// T-F511: removes a temporary file or folder Pakko named: each link on its own, never its target,
     /// and a read-only file too. Best-effort: false when something in it is held, for a later sweep.
     /// A path Windows cannot open as spelled is refused: a name it trims would remove the twin.
+    /// T-F533: a literal path is opened as spelled, so no part of it is trimmed.
     /// </summary>
     public static bool TryRemove(string path)
     {
-        if (InputPaths.Problem(path) is not null)
+        if (!IsLiteral(path) && InputPaths.Problem(path) is not null)
             return false;
         try
         {
@@ -129,6 +130,8 @@ public static class TempOwner
             return false;
         }
     }
+
+    private static bool IsLiteral(string path) => path.StartsWith(@"\\?\", StringComparison.Ordinal);
 
     internal static void SweepStale(string directory, string prefix, string suffix, TempScope scope) =>
         SweepStale(directory, [(prefix, suffix)], scope);

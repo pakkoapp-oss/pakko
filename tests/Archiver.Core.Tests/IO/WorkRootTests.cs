@@ -88,6 +88,22 @@ public sealed class WorkRootTests : IDisposable
         Directory.GetFileSystemEntries(_temp.Path).Should().BeEmpty();
     }
 
+    // T-F533: DestinationFolder.TryCreate takes "\\?\C:\w\out." as typed; its root stayed behind, refused
+    // by TryRemove as a name Windows trims, until the next run there swept it.
+    [Fact]
+    public void LiteralDestinationWindowsWouldTrim_RootIsRemoved()
+    {
+        string destination = @"\\?\" + Path.Combine(_temp.Path, "out.");
+        Directory.CreateDirectory(destination);
+        using (var work = WorkRoot.Near(destination))
+        {
+            string staged = work.Folder("x");
+            File.WriteAllText(Path.Combine(staged, "a.txt"), "staged");
+        }
+        Directory.GetFileSystemEntries(destination).Should().BeEmpty();
+        Directory.Delete(destination);
+    }
+
     // A killed run's root, and the staging folder an older version left, are swept; a live run's stay.
     [Fact]
     public void FirstRole_SweepsDeadRootsAndOlderStaging_KeepsLiveOnes()

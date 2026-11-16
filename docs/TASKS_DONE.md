@@ -15169,3 +15169,19 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   to the destination). Test `ExtractForScan_TheHelperCopyStillOpen_TheQuarantineIsStillDeleted` holds
   the copy open as Windows does: red on x64 against the old layout. Tracking issue #245.
 - **Graduated 2026-11-16:** on its own PR, after batch 5f.
+
+### T-F533 - A work root under a `\\?\` destination Windows trims is left behind (P3, from T-F528)
+
+- [x] **Status:** done 2026-11-16 (batch 5g). `TempOwner.TryRemove` takes a `\\?\` path as spelled:
+  Windows trims no part of a literal path, so a name ending in a dot or a space there is no twin of
+  another. Every other path still goes through `InputPaths.Problem`, and the entry check of the
+  public operations is unchanged (the fix is in `TryRemove`, not `NameTrimmed`). Tests:
+  `TempOwnerTests` (removed under a literal path, still refused plainly),
+  `WorkRootTests.LiteralDestinationWindowsWouldTrim_RootIsRemoved`,
+  `TrimmedSourceNameTests.Extract_LiteralDestinationWindowsWouldTrim_LeavesNoWorkRoot` (ZIP and
+  tar), each red first.
+  Was: open, pulled into this wave (batch 5g, the agent, 2026-11-16). `DestinationFolder.TryCreate` accepts `\\?\C:\w\out.` as typed, but
+  `TempOwner.TryRemove` refuses any path `InputPaths.Problem` names, and `NameTrimmed` does not skip a
+  `\\?\` path: the root of every creation or extraction there stays until the next run in that folder
+  sweeps it (with a locked file's staged copy, for an extraction). Found by T-F528's opus review.
+- **Graduated 2026-11-16:** batch 5g.
