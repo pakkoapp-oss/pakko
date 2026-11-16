@@ -177,6 +177,8 @@ internal static class TarNames
             }
             return [.. bytes];
         }
+
+        private static bool IsOctalDigit(byte value) => value is >= (byte)'0' and <= (byte)'7';
     }
 
     /// <summary>
@@ -231,8 +233,6 @@ internal static class TarNames
                 yield return line;
         }
     }
-
-    private static bool IsOctalDigit(byte value) => value is >= (byte)'0' and <= (byte)'7';
 
     /// <summary>
     /// The verdict on <paramref name="listed"/> before anything is extracted, for the names that
