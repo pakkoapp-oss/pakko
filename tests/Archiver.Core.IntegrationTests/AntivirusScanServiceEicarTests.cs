@@ -135,8 +135,8 @@ public sealed class AntivirusScanServiceEicarTests(ITestOutputHelper output) : I
             return;
 
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "eicar.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "clean.txt" && f.Verdict == ThreatVerdict.Clean);
+        result.Findings.Should().ContainSingle().Which.Should().Match<ThreatFinding>(f => f.EntryPath == "eicar.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
+        result.CleanEntries.Should().Be(1, "clean.txt");
     }
 
     [SkipIfTarOrAmsiUnavailable]

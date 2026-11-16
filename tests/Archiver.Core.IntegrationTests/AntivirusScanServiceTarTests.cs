@@ -66,8 +66,8 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
-        result.Findings.Should().HaveCount(2);
-        result.Findings.Should().OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
+        result.Findings.Should().BeEmpty();
+        result.CleanEntries.Should().Be(2);
         scanner.ScannedContentNames.Should().Contain(["a.txt", "sub/b.txt"]);
         scanner.Disposed.Should().BeTrue();
     }
@@ -88,7 +88,8 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
-        result.Findings.Should().HaveCount(2).And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
+        result.Findings.Should().BeEmpty();
+        result.CleanEntries.Should().Be(2);
         scanner.ScannedContentNames.Should().Equal("a.txt");
     }
 
@@ -128,8 +129,9 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "clean.txt" && f.Verdict == ThreatVerdict.Clean);
+        result.Findings.Should().ContainSingle().Which.Should().Match<ThreatFinding>(f => f.EntryPath == "bad.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
+        result.CleanEntries.Should().Be(1);
+        scanner.ScannedContentNames.Should().BeEquivalentTo(["clean.txt", "bad.txt"]);
     }
 
     // T-F171: extraction now also takes out the first of several same-named copies, so the scan
@@ -173,8 +175,8 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
             SelectedEntryPaths = ["b.txt"],
         });
 
-        result.Findings.Should().ContainSingle();
-        result.Findings[0].EntryPath.Should().Be("b.txt");
+        result.Findings.Should().BeEmpty();
+        result.CleanEntries.Should().Be(1);
         scanner.ScannedContentNames.Should().ContainSingle().Which.Should().Be("b.txt");
     }
 
@@ -422,12 +424,14 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
             new TarBuilder.Entry { Name = trimmed, Content = Encoding.ASCII.GetBytes("EVIL") },
         ]);
 
-        ThreatScanResult result = await CreateService(new FakeAmsiScanner { DetectedText = "EVIL" })
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        ThreatScanResult result = await CreateService(scanner)
             .ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         string seen = string.Join(" | ", result.Findings.Select(f => "'" + f.EntryPath + "': " + f.Verdict));
-        result.Findings.Should().ContainSingle(f => f.EntryPath == trimmed && f.Verdict == ThreatVerdict.ThreatDetected, seen);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "a.txt" && f.Verdict == ThreatVerdict.Clean, seen);
+        result.Findings.Should().ContainSingle(seen).Which.Should().Match<ThreatFinding>(f => f.EntryPath == trimmed && f.Verdict == ThreatVerdict.ThreatDetected);
+        result.CleanEntries.Should().Be(1, seen);
+        scanner.ScannedContentNames.Should().BeEquivalentTo(["a.txt", trimmed]);
     }
 
     // An archive whose accented name this machine's tar.exe lists by best fit, or null (then the

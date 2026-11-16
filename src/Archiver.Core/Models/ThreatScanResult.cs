@@ -63,6 +63,13 @@ public sealed record ThreatScanResult
     /// </summary>
     public required ThreatVerdict OverallVerdict { get; init; }
 
-    /// <summary>Every per-entry (or whole-archive) finding that produced <see cref="OverallVerdict"/>.</summary>
+    /// <summary>
+    /// Every per-entry (or whole-archive) finding that is not Clean - a threat, or an entry or archive
+    /// that could not be judged. T-F544: the entries found clean are counted in <see cref="CleanEntries"/>,
+    /// not kept a finding each.
+    /// </summary>
     public IReadOnlyList<ThreatFinding> Findings { get; init; } = [];
+
+    /// <summary>T-F544: how many entries were scanned and found clean.</summary>
+    public long CleanEntries { get; init; }
 }

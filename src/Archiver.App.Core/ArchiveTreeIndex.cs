@@ -59,7 +59,7 @@ public sealed class ArchiveTree
     private readonly Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>?> _opened = new(StringComparer.Ordinal);
 
     // One entry: what a row shows, its optional fields as values beside one byte of which are
-    // present (40 bytes, not 72 with a Nullable each). Its key is Path with a leading '/' left out
+    // present (48 bytes, not 72 with a Nullable each). Its key is Path with a leading '/' left out
     // (the root's own).
     [StructLayout(LayoutKind.Auto)]
     internal readonly struct Row
