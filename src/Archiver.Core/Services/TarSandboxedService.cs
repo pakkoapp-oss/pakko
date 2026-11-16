@@ -494,7 +494,7 @@ public sealed class TarSandboxedService : ITarService
         // A selected subset (T-F05/T-F98 drill-down) has no single meaningful "root" to collapse,
         // same reasoning as ZIP's isSelectedSubset — always extract straight into destDir.
         bool isSelectedSubset = selectedEntryPaths is { Count: > 0 } || context.EntryFilter is not null;
-        IReadOnlyList<string> rootNames = catalog.RootNames;
+        IEnumerable<string> rootNames = catalog.RootNames;
 
         // T-F142: a subset selection must progress-report against its OWN byte total, not
         // declaredUncompressedSize (deliberately whole-archive, for the T-F94 bomb check below).
@@ -513,15 +513,17 @@ public sealed class TarSandboxedService : ITarService
         // Ended here, not by the byte poll: the poll does not run for an archive with no file bytes.
         progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = progressTotalBytes });
 
+        // T-F541: walked, never copied; two different roots are enough to decide.
         bool isSingleRootFolder = !isSelectedSubset
-            && rootNames.Count > 0
+            && rootNames.Any()
             && rootNames.All(n => n.Contains('/'))
             && rootNames
                 .Select(n => n[..n.IndexOf('/')])
                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(2)
                 .Count() == 1;
 
-        bool isSingleRootFile = !isSelectedSubset && rootNames.Count == 1 && !rootNames[0].Contains('/');
+        bool isSingleRootFile = !isSelectedSubset && rootNames.Take(2).ToList() is [string onlyRoot] && !onlyRoot.Contains('/');
 
         // T-F157: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync exactly — the
         // actualDest/StripRootPrefix decision (T-F154's single-file unwrap, T-F156's multi-root-in-
@@ -536,7 +538,7 @@ public sealed class TarSandboxedService : ITarService
             ? RootShape.SingleFolder
             : ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
         bool rootDuplicatesArchiveName = namedRootDropped || (context.EliminateDuplicateRootFolder && isSingleRootFolder
-            && ExtractionDestinationPlanner.RootDuplicatesArchiveName(rootNames[0][..rootNames[0].IndexOf('/')], archivePath));
+            && rootNames.First() is { } firstRoot && ExtractionDestinationPlanner.RootDuplicatesArchiveName(firstRoot[..firstRoot.IndexOf('/')], archivePath));
         (string? actualDest, bool stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 

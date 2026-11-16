@@ -64,7 +64,7 @@ internal sealed record HelperSetup(string HelperPath, IReadOnlyDictionary<string
 /// <param name="TotalDeclaredSize">Every file entry's declared size (T-F94).</param>
 /// <param name="RootNames">Entry names as they land, folders included, for the root-shape decision.</param>
 /// <param name="FileEntryNames">Every file entry's name, repeats included, for the trimmed twins (T-F419).</param>
-internal sealed record ReaderCatalog(long TotalDeclaredSize, IReadOnlyList<string> RootNames, IReadOnlyList<string> FileEntryNames);
+internal sealed record ReaderCatalog(long TotalDeclaredSize, IEnumerable<string> RootNames, IEnumerable<string> FileEntryNames);
 
 internal enum SelectionKind
 {

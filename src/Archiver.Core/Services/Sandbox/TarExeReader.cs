@@ -17,10 +17,8 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 {
     private const string ScanFirst = "ScanAsync comes first.";
     private readonly TarSandboxScope _scope;
-    private long _totalDeclaredSize;
+    private TarCatalog? _catalog;
     private string[]? _allNames;
-    private Dictionary<string, long>? _sizeByName;
-    private List<(string Name, long Size)>? _fileEntries;
     private Func<string, bool, bool>? _filter;
     private List<string>? _tarMembers;
     private List<string>? _expandedSelection;
@@ -58,16 +56,17 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
     public async Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken)
     {
-        (_totalDeclaredSize, _allNames, _sizeByName, _fileEntries) = await ScanForUnsafeEntriesAsync(_scope, cancellationToken)
-            .ConfigureAwait(false);
+        _catalog = await ScanForUnsafeEntriesAsync(_scope, cancellationToken).ConfigureAwait(false);
+        _allNames = _catalog.Names;
         // T-F196: `tar -C dir .` (the most common way to make a tar) prefixes every member with
         // "./". tar.exe itself resolves that away on disk (out\a.txt, not out\.\a.txt), so the
         // root-shape decision must see the same names. T-F197: folder entries count as roots too;
         // a bare "./" member names the archive's own top level, not a root.
+        // T-F541: views of the one catalog, not copies of its names.
         return new ReaderCatalog(
-            _totalDeclaredSize,
-            [.. _allNames.Select(EntryDiskName.StripLeadingDotSlash).Where(n => n.Length > 0)],
-            [.. _fileEntries.Select(e => e.Name)]);
+            _catalog.TotalDeclaredSize,
+            _allNames.Select(EntryDiskName.StripLeadingDotSlash).Where(n => n.Length > 0),
+            _catalog.Files().Select(e => e.Name));
     }
 
     public async Task<SelectionOutcome> SelectForExtractAsync(
@@ -85,8 +84,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // the files on disk still settle a Suspect after the extraction (below).
         if (tarMembers is not null || entryFilter is not null)
         {
-            TarListingVerdict verdict = TarNames.Judge(
-                allNames, await _scope.ReadHeaderNamesAsync(cancellationToken).ConfigureAwait(false), tarMembers);
+            TarListingVerdict verdict = await JudgeAsync(_scope, allNames, tarMembers, cancellationToken).ConfigureAwait(false);
             TarNames.EnsureNamesCanDecide(verdict, allowSuspect: tarMembers is null);
         }
         List<string>? expandedSelection = tarMembers;
@@ -100,7 +98,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         HashSet<string>? droppedFiles = null;
         if (entryFilter is not null)
         {
-            List<string> candidates = [.. tarMembers ?? (IEnumerable<string>)allNames];
+            IReadOnlyList<string> candidates = (IReadOnlyList<string>?)tarMembers ?? allNames;
             expandedSelection = [.. candidates.Where(name =>
                 EntryDiskName.StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, name.EndsWith('/')))];
             if (expandedSelection.Count == 0)
@@ -116,8 +114,8 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         _expandedSelection = expandedSelection;
         _droppedFiles = droppedFiles;
         long declaredBytes = tarMembers != null
-            ? tarMembers.Sum(n => _sizeByName!.GetValueOrDefault(n, 0L))
-            : _totalDeclaredSize;
+            ? DeclaredSizeOf(_catalog!, tarMembers)
+            : _catalog!.TotalDeclaredSize;
         int fileCount = expandedSelection != null
             ? expandedSelection.Count(n => !n.EndsWith('/'))
             : allNames.Count(n => !n.EndsWith('/'));
@@ -128,7 +126,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         ExtractionPoll? poll, List<SkippedFile> skippedFiles, CancellationToken cancellationToken)
     {
         string[] allNames = _allNames ?? throw new InvalidOperationException(ScanFirst);
-        List<(string Name, long Size)> fileEntries = _fileEntries!;
+        TarCatalog catalog = _catalog!;
         string outDir = _scope.OutputDirectory!;
 
         // T-F52: pre-create every directory the archive implies, at Pakko's own (unsandboxed)
@@ -160,21 +158,21 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         if (exitCode != 0)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarExtractionFailed, DescribeFailure(stdErr)));
 
-        List<DuplicateGroup> duplicateGroups = FindDuplicateGroups(fileEntries, allNames, _expandedSelection);
+        List<DuplicateGroup> duplicateGroups = FindDuplicateGroups(catalog, _expandedSelection);
         List<string>? foldersFromDisk = JudgeWhatTarExeWrote(allNames, outDir, preCreated, ref duplicateGroups);
         (string? firstCopyDir, HashSet<string> firstCopies, int copiesReported) = await ExtractFirstCopiesAsync(
             _scope, duplicateGroups, skippedFiles, cancellationToken)
             .ConfigureAwait(false);
 
-        // T-F462: the main pass's files, and the first copies that may count beside them.
-        string[] mainFiles = FilesBelow(outDir);
-        int filesFound = mainFiles.Length + (firstCopyDir is null ? 0
-            : FirstCopiesAtTheirPath(duplicateGroups, firstCopies.Select(f => QuarantineFiles.Relative(firstCopyDir, f).Replace('\\', '/')), mainFiles));
+        // T-F462: the main pass's files, and the first copies that may count beside them; T-F541: the
+        // quarantine walked, never listed whole (a second walk only for a run with first copies).
+        int filesFound = FilesBelow(outDir).Count() + (firstCopyDir is null ? 0
+            : FirstCopiesAtTheirPath(duplicateGroups, firstCopies.Select(f => QuarantineFiles.Relative(firstCopyDir, f).Replace('\\', '/')), FilesBelow(outDir)));
         int expectedMoves = (_expandedSelection != null
             ? _expandedSelection.Count(n => !n.EndsWith('/'))
             : allNames.Count(n => !n.EndsWith('/'))) + firstCopies.Count;
         return new TarQuarantine(this, outDir, foldersFromDisk, (firstCopyDir, firstCopies),
-            new TarQuarantineCounts(filesFound + copiesReported, FileEntriesInScope(fileEntries, _expandedSelection), expectedMoves));
+            new TarQuarantineCounts(filesFound + copiesReported, FileEntriesInScope(catalog, _expandedSelection), expectedMoves));
     }
 
     private List<string>? JudgeWhatTarExeWrote(
@@ -187,12 +185,10 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // T-F443: folders too, on every such run; a folder entry then comes from the quarantine.
         if (_tarMembers is not null)
             return null;
-        List<(string Path, bool IsFolder)> quarantinedItems = [.. QuarantineFiles.Walk(outDir)
-            .Select(item => (QuarantineFiles.Relative(outDir, item.Path).Replace('\\', '/'), item.IsFolder))];
-        string[] quarantinedFiles = [.. quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path)];
-        TarListingVerdict filesOnDisk = TarNames.JudgeExtracted(allNames, quarantinedFiles, []);
-        TarListingVerdict onDisk = filesOnDisk.Trust != TarNameTrust.Faithful ? filesOnDisk : TarNames.JudgeExtracted(allNames, quarantinedFiles,
-            quarantinedItems.Where(i => i.IsFolder && !preCreated.Contains(i.Path)).Select(i => i.Path));
+        // T-F541: one walk judges the files and the folders; a second only when the names are not faithful.
+        IEnumerable<(string Path, bool IsFolder)> Quarantined() => QuarantineFiles.Walk(outDir)
+            .Select(item => (QuarantineFiles.Relative(outDir, item.Path).Replace('\\', '/'), item.IsFolder));
+        (TarListingVerdict filesOnDisk, TarListingVerdict onDisk) = TarNames.JudgeExtracted(allNames, Quarantined(), preCreated);
         if (onDisk.Trust != TarNameTrust.Faithful)
         {
             if (_filter is not null)
@@ -201,7 +197,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             // says nothing about them (the fresh review).
             if (filesOnDisk.Trust != TarNameTrust.Faithful)
                 duplicateGroups = [];
-            return FoldersTarExeWrote(quarantinedItems, preCreated);
+            return FoldersTarExeWrote(Quarantined(), preCreated);
         }
         return null;
     }
@@ -209,7 +205,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     public async Task<ScanQuarantine> ExtractForScanAsync(IReadOnlyList<string>? selectedEntryPaths, CancellationToken cancellationToken)
     {
         string[] allNames = _allNames ?? throw new InvalidOperationException(ScanFirst);
-        List<(string Name, long Size)> fileEntries = _fileEntries!;
+        TarCatalog catalog = _catalog!;
         string outDir = _scope.OutputDirectory!;
 
         bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
@@ -219,8 +215,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // T-F441: a selection names entries by their listed names; they must be the entries' own.
         if (expandedSelection is { Count: > 0 })
         {
-            TarNames.EnsureNamesCanDecide(TarNames.Judge(
-                allNames, await _scope.ReadHeaderNamesAsync(cancellationToken).ConfigureAwait(false), expandedSelection));
+            TarNames.EnsureNamesCanDecide(await JudgeAsync(_scope, allNames, expandedSelection, cancellationToken).ConfigureAwait(false));
         }
 
         int totalEntries = expandedSelection != null
@@ -238,9 +233,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // scanned too. Everything the first-copy pass wrote is scanned, not only the files
         // extraction would keep.
         _expandedSelection = expandedSelection;
-        _scanDuplicates = FindDuplicateGroups(fileEntries, allNames, expandedSelection);
+        _scanDuplicates = FindDuplicateGroups(catalog, expandedSelection);
         return new ScanQuarantine(null, ScanFilesBelow(outDir), totalEntries + _scanDuplicates.Count,
-            FileEntriesInScope(fileEntries, expandedSelection), _scanDuplicates.Count > 0);
+            FileEntriesInScope(catalog, expandedSelection), _scanDuplicates.Count > 0);
     }
 
     public async Task<FirstCopiesForScan> ExtractFirstCopiesForScanAsync(CancellationToken cancellationToken)
@@ -260,9 +255,8 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // lost elsewhere; it is still scanned. Counted once the first copies are scanned.
         return new FirstCopiesForScan(ScanFilesBelow(firstDir), null, () =>
         {
-            string[] mainFiles = FilesBelow(outDir);
-            bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)_expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
-            return faithful ? FirstCopiesAtTheirPath(duplicates, FilesBelow(firstDir), mainFiles) : 0;
+            bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)_expandedSelection ?? allNames, FilesBelow(outDir), []).Trust == TarNameTrust.Faithful;
+            return faithful ? FirstCopiesAtTheirPath(duplicates, FilesBelow(firstDir), FilesBelow(outDir)) : 0;
         });
     }
 
@@ -270,9 +264,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     private static ScanFile[] ScanFilesBelow(string directory) =>
         [.. QuarantineFiles.EnumerateFiles(directory).Select(f => new ScanFile(f, QuarantineFiles.Relative(directory, f).Replace('\\', '/')))];
 
-    // A quarantine folder's files, relative to it, '/' between parts.
-    private static string[] FilesBelow(string directory) =>
-        [.. QuarantineFiles.EnumerateFiles(directory).Select(f => QuarantineFiles.Relative(directory, f).Replace('\\', '/'))];
+    // A quarantine folder's files, relative to it, '/' between parts, walked as they are read (T-F541).
+    private static IEnumerable<string> FilesBelow(string directory) =>
+        QuarantineFiles.EnumerateFiles(directory).Select(f => QuarantineFiles.Relative(directory, f).Replace('\\', '/'));
 
     public async Task<TestOutcome> TestAsync(
         IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken)
@@ -296,8 +290,8 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         TarExeReader reader, string outDir, List<string>? foldersFromDisk,
         (string? Directory, HashSet<string> Files) firstCopies, TarQuarantineCounts counts) : IQuarantinedEntries
     {
-        private readonly HashSet<string> _renamed = QuarantinedAs(reader._fileEntries!, EntryDiskName.Renames);
-        private readonly HashSet<string> _trimmed = QuarantinedAs(reader._fileEntries!, EntryDiskName.Trims);
+        private readonly HashSet<string> _renamed = QuarantinedAs(reader._catalog!.Files(), EntryDiskName.Renames);
+        private readonly HashSet<string> _trimmed = QuarantinedAs(reader._catalog!.Files(), EntryDiskName.Trims);
         private readonly IEnumerable<string> _folderNames = (IEnumerable<string>?)reader._expandedSelection ?? reader._allNames!;
 
         public int ExpectedMoves => counts.Moves;
@@ -345,7 +339,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
                 CreateFolderEntriesFromDisk(foldersFromDisk, placement);
         }
 
-        private static HashSet<string> QuarantinedAs(IReadOnlyList<(string Name, long Size)> fileEntries, Func<string, bool> which) =>
+        private static HashSet<string> QuarantinedAs(IEnumerable<(string Name, long Size)> fileEntries, Func<string, bool> which) =>
             new(fileEntries.Where(e => which(e.Name)).Select(e => EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(e.Name))),
                 StringComparer.OrdinalIgnoreCase);
 
@@ -462,7 +456,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     // T-F146: internal (was private) so AntivirusScanService can reuse the exact same T-F49
     // pre-scan for its own tar-family quarantine-extraction flow, without a second implementation
     // that could silently drift from what real extraction actually rejects.
-    internal static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName, List<(string Name, long Size)> FileEntries)> ScanForUnsafeEntriesAsync(
+    internal static async Task<TarCatalog> ScanForUnsafeEntriesAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
         (int nameExitCode, string[]? listedNames, string nameStdErr) = await scope.ListNamesAsync(cancellationToken).ConfigureAwait(false);
@@ -491,16 +485,11 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // the same pass — see DECISIONS.md's T-F90 entry for why the size column, unlike the
         // date column, is safe to parse regardless of locale.
         long totalDeclaredSize = 0;
-        // T-F142: per-entry sizes, keyed by the same raw name form as `names` — needed so a
-        // selected-subset extraction (Archive Browser -> Extract Selected) can compute its own
-        // subset byte total for progress reporting, distinct from totalDeclaredSize (deliberately
-        // whole-archive, for the T-F94 compression-bomb check — see that check's own comment).
-        // Retained here rather than re-parsed with a second "-tvf" pass, since this loop already
-        // reads every line's size column once.
-        var sizeByName = new Dictionary<string, long>(names.Length, StringComparer.Ordinal);
-        // T-F171: every file entry in archive order — sizeByName keeps one size per name, but
-        // same-named entries each need their own.
-        var fileEntries = new List<(string Name, long Size)>();
+        // T-F142/T-F171: each entry's own size by its index (same-named entries each have theirs), so
+        // a selected subset can total its own bytes for progress, distinct from totalDeclaredSize
+        // (deliberately whole-archive, for the T-F94 compression-bomb check). T-F541: one array, no
+        // dictionary or list of names beside the names.
+        long[] sizes = new long[names.Length];
 
         for (int i = 0; i < listing.Count; i++)
         {
@@ -513,13 +502,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             if (typeChar == 'd' && !names[i].EndsWith('/'))
                 names[i] += "/";
 
+            sizes[i] = typeChar == '-' ? listing.Sizes[i] : -1;
             if (typeChar == '-')
-            {
-                long size = listing.Sizes[i];
-                totalDeclaredSize += size;
-                sizeByName[names[i]] = size;
-                fileEntries.Add((names[i], size));
-            }
+                totalDeclaredSize += sizes[i];
         }
 
         // T-F05: the raw names (with tar's own trailing '/' on directory entries preserved) are
@@ -527,7 +512,14 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // member argument list without a second "-tf" invocation, and so the exact path form
         // tar.exe itself uses is what's ever passed back to it (see DECISIONS.md's T-F05 spike
         // entry — an unmatched/mismatched member name makes the whole "-xf" call fail non-zero).
-        return (totalDeclaredSize, names, sizeByName, fileEntries);
+        return new TarCatalog(totalDeclaredSize, names, sizes);
+    }
+
+    // T-F142: the files among a selection's members, each copy counted (a progress total).
+    private static long DeclaredSizeOf(TarCatalog catalog, List<string> members)
+    {
+        var selected = new HashSet<string>(members, StringComparer.Ordinal);
+        return catalog.Files().Where(f => selected.Contains(f.Name)).Sum(f => f.Size);
     }
 
     // T-F05: expands a UI-selected set of archive-internal paths (ArchiveEntryInfo.Path's
@@ -645,20 +637,30 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     private static async Task<(int ExitCode, string StdErr, long DeclaredSize, bool NothingRead)> ScanAndTestAsync(
         TarSandboxScope scope, IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken)
     {
-        (long declaredSize, string[] names, Dictionary<string, long> sizeByName, _) =
-            await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
+        TarCatalog catalog = await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
+        string[] names = catalog.Names;
         if (entryFilter is not null)
         {
             // T-F441: Test reads no files to disk, so a Suspect listing cannot be settled.
-            TarNames.EnsureNamesCanDecide(
-                TarNames.Judge(names, await scope.ReadHeaderNamesAsync(cancellationToken).ConfigureAwait(false)));
+            TarNames.EnsureNamesCanDecide(await JudgeAsync(scope, names, null, cancellationToken).ConfigureAwait(false));
         }
-        TestSubset subset = entryFilter is null ? new TestSubset(declaredSize, null, null) : TestSubset.Of(names, sizeByName, entryFilter);
+        TestSubset subset = entryFilter is null ? new TestSubset(catalog.TotalDeclaredSize, null, null) : TestSubset.Of(catalog, entryFilter);
         if (subset.NothingToRead)
             return (0, string.Empty, 0, true);
         (int exitCode, string stdErr) = await scope.TestAsync(
             ContentProgress(progress, subset.DeclaredSize), subset.Members, subset.ExcludedFiles, cancellationToken).ConfigureAwait(false);
         return (exitCode, stdErr, subset.DeclaredSize, false);
+    }
+
+    // T-F441's verdict on the listing by the headers' own names, a second copy of every name. T-F541:
+    // the caller resumes on a fresh stack, or it ran on top of the frames that read those names and
+    // held them through its whole filter (measured: 200,000 header names live; T-F537's pattern).
+    private static async Task<TarListingVerdict> JudgeAsync(
+        TarSandboxScope scope, string[] names, IReadOnlyCollection<string>? deciding, CancellationToken cancellationToken)
+    {
+        TarListingVerdict verdict = TarNames.Judge(names, await scope.ReadHeaderNamesAsync(cancellationToken).ConfigureAwait(false), deciding);
+        await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
+        return verdict;
     }
 
     // T-F410: the files a filtered test reads. Every name is asked, folders too, so a filter counts
@@ -669,18 +671,22 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     {
         public bool NothingToRead { get; private init; }
 
-        public static TestSubset Of(string[] names, Dictionary<string, long> sizeByName, Func<string, bool, bool> entryFilter)
+        public static TestSubset Of(TarCatalog catalog, Func<string, bool, bool> entryFilter)
         {
             var passedFiles = new List<string>();
             var leftOutFiles = new List<string>();
-            foreach (string name in names)
+            long size = 0;
+            for (int i = 0; i < catalog.Count; i++)
             {
+                string name = catalog.Names[i];
                 bool isFolder = name.EndsWith('/');
                 bool passes = EntryDiskName.StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, isFolder);
-                if (!isFolder)
-                    (passes ? passedFiles : leftOutFiles).Add(name);
+                if (isFolder)
+                    continue;
+                (passes ? passedFiles : leftOutFiles).Add(name);
+                if (passes && catalog.IsFile(i))
+                    size += catalog.SizeOf(i);
             }
-            long size = passedFiles.Sum(n => sizeByName.GetValueOrDefault(n, 0L));
             if (passedFiles.Count == 0)
                 return new TestSubset(0, null, null) { NothingToRead = true };
             if (leftOutFiles.Count == 0)
@@ -699,13 +705,12 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
     // Groups among the entries being extracted (the selection, or the whole archive). A name that
     // is also a folder entry is left out: the two cannot both exist on disk.
-    internal static List<DuplicateGroup> FindDuplicateGroups(
-        IReadOnlyList<(string Name, long Size)> fileEntries, IReadOnlyList<string> allNames, IReadOnlyCollection<string>? selection)
+    internal static List<DuplicateGroup> FindDuplicateGroups(TarCatalog catalog, IReadOnlyCollection<string>? selection)
     {
         HashSet<string>? selected = selection is null ? null : new HashSet<string>(selection, StringComparer.Ordinal);
-        HashSet<string> folders = FolderKeys(allNames);
+        HashSet<string> folders = FolderKeys(catalog.Names);
         var groups = new Dictionary<string, DuplicateGroup>(StringComparer.OrdinalIgnoreCase);
-        foreach ((string name, long size) in fileEntries)
+        foreach ((string name, long size) in catalog.Files())
         {
             if (selected is not null && !selected.Contains(name))
                 continue;
@@ -724,16 +729,27 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     // (U+01C5/U+01C6, measured), so such a "group" is two files on disk already. Paths: '/' between
     // parts, relative to their pass's folder.
     internal static int FirstCopiesAtTheirPath(
-        IEnumerable<DuplicateGroup> groups, IEnumerable<string> firstFiles, IEnumerable<string> mainFiles)
+        IReadOnlyCollection<DuplicateGroup> groups, IEnumerable<string> firstFiles, IEnumerable<string> mainFiles)
     {
         var first = new HashSet<string>(firstFiles, StringComparer.OrdinalIgnoreCase);
-        var mainPerKey = mainFiles.GroupBy(f => f, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        // T-F541: the main pass's files counted only at the groups' own paths, not grouped whole.
+        var mainPerKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (DuplicateGroup group in groups)
+            mainPerKey[GroupPath(group)] = 0;
+        foreach (string file in mainFiles)
+        {
+            if (mainPerKey.TryGetValue(file, out int count))
+                mainPerKey[file] = count + 1;
+        }
         return groups.Count(g =>
         {
-            string path = EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(g.FirstName));
-            return first.Contains(path) && mainPerKey.GetValueOrDefault(path) <= 1;
+            string path = GroupPath(g);
+            return first.Contains(path) && mainPerKey[path] <= 1;
         });
     }
+
+    private static string GroupPath(DuplicateGroup group) =>
+        EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(group.FirstName));
 
     /// <summary>
     /// T-F462: how many files the run must account for - every file entry being extracted (the
@@ -742,11 +758,10 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     /// A file named as a folder entry counts too (fresh review): tar.exe replaces the file "x" with
     /// a folder "x/" after it and exits 0, and "x /" or "x./" is a folder of its own beside "x".
     /// </summary>
-    internal static int FileEntriesInScope(
-        IReadOnlyList<(string Name, long Size)> fileEntries, IReadOnlyCollection<string>? selection)
+    internal static int FileEntriesInScope(TarCatalog catalog, IReadOnlyCollection<string>? selection)
     {
         HashSet<string>? selected = selection is null ? null : new HashSet<string>(selection, StringComparer.Ordinal);
-        return fileEntries.Count(e => selected is null || selected.Contains(e.Name));
+        return catalog.Files().Count(e => selected is null || selected.Contains(e.Name));
     }
 
     private static HashSet<string> FolderKeys(IReadOnlyList<string> allNames) => new(

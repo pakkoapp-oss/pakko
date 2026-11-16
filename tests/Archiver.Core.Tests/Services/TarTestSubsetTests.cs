@@ -1,5 +1,6 @@
 using Archiver.Core.Services;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -8,16 +9,13 @@ namespace Archiver.Core.Tests.Services;
 // every pattern, so the shorter side goes: "-T" with the files that passed or "-X" with the rest.
 public sealed class TarTestSubsetTests
 {
-    private static readonly string[] Names = ["./", "./a.txt", "./dir/", "./dir/b.txt", "./c.txt", "./d.txt"];
-    private static readonly Dictionary<string, long> Sizes = new()
-    {
-        ["./a.txt"] = 1, ["./dir/b.txt"] = 10, ["./c.txt"] = 100, ["./d.txt"] = 1000,
-    };
+    private static readonly TarCatalog Catalog = TarCatalogs.Of(
+        ("./", 0), ("./a.txt", 1), ("./dir/", 0), ("./dir/b.txt", 10), ("./c.txt", 100), ("./d.txt", 1000));
 
     [Fact]
     public void Of_FewerPass_ListsThePassedFilesForMinusT()
     {
-        var subset = TarExeReader.TestSubset.Of(Names, Sizes, (name, _) => name == "c.txt");
+        var subset = TarExeReader.TestSubset.Of(Catalog, (name, _) => name == "c.txt");
 
         subset.Members.Should().Equal("./c.txt");
         subset.ExcludedFiles.Should().BeNull();
@@ -28,7 +26,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_FewerLeftOut_ListsTheLeftOutFilesForMinusX()
     {
-        var subset = TarExeReader.TestSubset.Of(Names, Sizes, (name, _) => name != "c.txt");
+        var subset = TarExeReader.TestSubset.Of(Catalog, (name, _) => name != "c.txt");
 
         subset.Members.Should().BeNull();
         subset.ExcludedFiles.Should().Equal("./c.txt");
@@ -38,7 +36,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_EveryFilePasses_NoList()
     {
-        var subset = TarExeReader.TestSubset.Of(Names, Sizes, (_, isFolder) => !isFolder);
+        var subset = TarExeReader.TestSubset.Of(Catalog, (_, isFolder) => !isFolder);
 
         subset.Members.Should().BeNull();
         subset.ExcludedFiles.Should().BeNull();
@@ -48,7 +46,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_OnlyFoldersPass_NothingToRead()
     {
-        var subset = TarExeReader.TestSubset.Of(Names, Sizes, (_, isFolder) => isFolder);
+        var subset = TarExeReader.TestSubset.Of(Catalog, (_, isFolder) => isFolder);
 
         subset.NothingToRead.Should().BeTrue();
     }
@@ -58,7 +56,7 @@ public sealed class TarTestSubsetTests
     {
         var asked = new List<string>();
 
-        TarExeReader.TestSubset.Of(Names, Sizes, (name, _) =>
+        TarExeReader.TestSubset.Of(Catalog, (name, _) =>
         {
             asked.Add(name);
             return true;

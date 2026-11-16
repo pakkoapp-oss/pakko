@@ -91,6 +91,27 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         held.Should().BeLessThan(6 << 20, "one batch (1 MiB of records) and a digest a name, not 36 MB of raw names");
     }
 
+    // T-F541: what a tar extraction holds while its filter decides, halfway through the names: the
+    // names and a size each. Before, a dictionary of sizes, a list of the files and two copies of the
+    // names for the root decision were held beside them.
+    [Fact]
+    public async Task TarExtraction_WhileItSelects_HoldsAtMostItsBudgetPerEntry()
+    {
+        string tar = TarGzOfEmptyEntries();
+        var service = new TarSandboxedService(new GroupPolicyOptions());
+        var probe = new HalfwayProbe(Entries, pass: false);
+
+        await service.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [tar],
+            DestinationFolder = Path.Combine(_folder, "out"),
+            EntryFilter = probe.Filter,
+        });
+
+        probe.Halfway.Should().BeGreaterThan(0, "the filter saw the names' middle");
+        Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(100, "the names (about 64 B each), their array and their sizes");
+    }
+
     // The live bytes before the operation starts and at the filter's call in the middle of the walk.
     private sealed class HalfwayProbe(int entries, bool pass = true)
     {

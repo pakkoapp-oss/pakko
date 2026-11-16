@@ -310,6 +310,41 @@ internal static class TarNames
     public static TarListingVerdict JudgeExtracted(
         IReadOnlyList<string> listed, IEnumerable<string> quarantinedFiles, IEnumerable<string> quarantinedFolders)
     {
+        (HashSet<string> predictedFiles, HashSet<string> predictedFolders) = Predict(listed);
+        string? unaccounted = quarantinedFiles.FirstOrDefault(file => !predictedFiles.Contains(file))
+            ?? quarantinedFolders.FirstOrDefault(folder => !predictedFolders.Contains(folder));
+        return Verdict(unaccounted);
+    }
+
+    /// <summary>
+    /// T-F541: <see cref="JudgeExtracted(IReadOnlyList{string}, IEnumerable{string}, IEnumerable{string})"/>
+    /// of the files alone and of files and folders together, in one walk of the quarantine
+    /// (<paramref name="quarantined"/>, read once); a folder Pakko pre-created
+    /// (<paramref name="preCreated"/>) is not judged.
+    /// </summary>
+    public static (TarListingVerdict Files, TarListingVerdict All) JudgeExtracted(
+        IReadOnlyList<string> listed, IEnumerable<(string Path, bool IsFolder)> quarantined, IReadOnlySet<string> preCreated)
+    {
+        (HashSet<string> predictedFiles, HashSet<string> predictedFolders) = Predict(listed);
+        string? file = null, folder = null;
+        foreach ((string path, bool isFolder) in quarantined)
+        {
+            if (!isFolder && !predictedFiles.Contains(path))
+            {
+                file = path;
+                break;
+            }
+            if (isFolder && folder is null && !preCreated.Contains(path) && !predictedFolders.Contains(path))
+                folder = path;
+        }
+        return (Verdict(file), Verdict(file ?? folder));
+    }
+
+    private static TarListingVerdict Verdict(string? unaccounted) =>
+        unaccounted is null ? TarListingVerdict.Faithful : new TarListingVerdict(TarNameTrust.Lossy, unaccounted);
+
+    private static (HashSet<string> Files, HashSet<string> Folders) Predict(IReadOnlyList<string> listed)
+    {
         var predictedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var predictedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string name in listed)
@@ -323,15 +358,13 @@ internal static class TarNames
             for (int sep = path.LastIndexOf('/'); sep > 0; sep = path.LastIndexOf('/', sep - 1))
                 predictedFolders.Add(path[..sep]);
         }
-        string? unaccounted = quarantinedFiles.FirstOrDefault(file => !predictedFiles.Contains(file))
-            ?? quarantinedFolders.FirstOrDefault(folder => !predictedFolders.Contains(folder));
-        return unaccounted is null ? TarListingVerdict.Faithful : new TarListingVerdict(TarNameTrust.Lossy, unaccounted);
+        return (predictedFiles, predictedFolders);
     }
 
     /// <summary>
     /// Refuses the archive when its names are about to decide something they cannot:
     /// <paramref name="allowSuspect"/> only where a check after a full extraction
-    /// (<see cref="JudgeExtracted"/>) still follows.
+    /// (<see cref="JudgeExtracted(IReadOnlyList{string}, IEnumerable{string}, IEnumerable{string})"/>) still follows.
     /// </summary>
     /// <exception cref="TarArgumentEncodingException">The verdict does not let names decide.</exception>
     public static void EnsureNamesCanDecide(TarListingVerdict verdict, bool allowSuspect = false)
