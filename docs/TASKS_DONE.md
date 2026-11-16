@@ -15156,3 +15156,17 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   ones (a public contract change: App, Shell and CLI read `Findings`; rows in
   `CoreNeverThrowsContractTests`); counter test of live bytes at a scan's end.
 - **Graduated 2026-11-16:** with batch 5f.
+
+### T-F546 - A read-only file kept the quarantine on disk (P2, the canary on ARM64, 2026-11-16)
+
+- [x] **Status:** done 2026-11-16. From 2026-11-14 (T-F474) the ARM64 canary failed
+  `ExtractForScan_AReadOnlyEntry_TheQuarantineIsStillDeleted` (helper) every day: the scope's
+  `Directory.Delete` cannot remove a read-only file, and its catch was best-effort, so the quarantine
+  with the archive's plaintext stayed until the next sweep. archiveint.dll on ARM64 leaves a 0444 entry
+  read-only; tar.exe and x64's helper do not. The scope now removes its quarantine through
+  `QuarantineFiles.Remove`: each file's read-only flag cleared through its own spelling (the walk never
+  enters a link), then .NET's delete. Tests `ExtractForScan_AFileMadeReadOnly_TheQuarantineIsStillDeleted`
+  (sets the attribute itself, so red on x64 too, both readers) and `Remove_ReadOnlyFilesUnderNamesWindowsTrims_Removed`,
+  both seen red against the fix taken out. Tracking issue #245. `TempOwner.TryRemove` was tried
+  first and fails on a read-only "a.txt.": T-F547.
+- **Graduated 2026-11-16:** on its own PR, after batch 5f.

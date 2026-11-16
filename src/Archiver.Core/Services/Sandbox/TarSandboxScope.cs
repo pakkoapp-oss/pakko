@@ -261,7 +261,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             archive.Dispose();
             sid?.Dispose();
             if (quarantineRoot is not null)
-                try { Directory.Delete(quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+                QuarantineFiles.Remove(quarantineRoot);
             _ = profile?.TryDelete(); // only one this method created; the sweep takes it otherwise
 
             // AppContainer/ACL/attribute-list setup can fail at runtime (e.g. group policy
@@ -805,7 +805,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         _archive.Dispose();
         _sid.Dispose();
-        try { if (Directory.Exists(QuarantineRoot)) Directory.Delete(QuarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+        QuarantineFiles.Remove(QuarantineRoot);
         if (_helperRoot is not null)
             try { if (Directory.Exists(_helperRoot)) Directory.Delete(_helperRoot, recursive: true); } catch { /* best-effort: swept with %TEMP%'s quarantines */ }
         // T-F523: every run of this scope has ended (each waits for its process, and its job kills
