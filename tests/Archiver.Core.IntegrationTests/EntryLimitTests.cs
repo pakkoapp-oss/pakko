@@ -118,7 +118,7 @@ public sealed class EntryLimitTests : IDisposable
         stdOut.Should().Contain("c.txt");
     }
 
-    // --- The real limit, both tar backends: 2,000,001 empty entries (a 1 GB tar, about 20 MB gzipped) ---
+    // --- The real limit, both tar backends: 4,000,001 empty entries (a 2 GB tar, about 45 MB gzipped) ---
 
     [Fact]
     [Trait("Category", "Slow")]

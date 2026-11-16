@@ -245,11 +245,13 @@ internal sealed class ArchiveHelperOutput
 
     private void TakeEntry(string[] f)
     {
+        // The limit first: at ArchiveLimits.MaxEntries = MaxEntries, the entry past it has an index
+        // the protocol does not allow, and must read as too many entries, not a broken helper.
+        if (_entries.Count >= _entryLimit)
+            throw ArchiveLimits.TooManyEntries(_entryLimit);
         long index = Unsigned(f[1], MaxEntries - 1);
         if (index != _entries.Count)
             throw Broken("an entry index out of sequence");
-        if (_entries.Count >= _entryLimit)
-            throw ArchiveLimits.TooManyEntries(_entryLimit);
         int fileType = (int)Unsigned(f[2], ushort.MaxValue);
         long? size = f[3] == "-" ? null : Unsigned(f[3], MaxEntrySize);
         long? mtime = f[4] == "-" ? null : Signed(f[4], long.MinValue + 1, long.MaxValue);
