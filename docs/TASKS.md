@@ -88,13 +88,14 @@ above stays as the record of what each stream holds.
 | 5c | Trimmed names | T-F510 | the source key (T-F511 PR 4) and the twin fixture | done on `fix/batch5c-trimmed-names`: the archive search stops at such a folder (`CLI-063`), `PathIdentity` answers for no twin; archiving them split off as T-F531 (next wave) |
 | 5d | Work folders | T-F528 | one owner for every folder Pakko writes before the result: where, how it is born, its sweep | plan mode and advisor first; the owner test; smoke of every extraction and archiving path |
 | 5e | Reading in batches | T-F529, T-F537, T-F538 | the ZIP central directory walked as a stream, .NET's reader given one batch at a time (`ZipCatalog`); only a compact name set kept | plan mode, advisor and an opus reviewer (an untrusted-input parser, and 5b's `RawZipEntryLocator` and listing kill); memory measured in every mode before and after |
-| 5f | The catalog's consumers and pulled-in P3s | T-F535, T-F536, T-F521, T-F522, T-F533 | what holds or walks a whole archive after 5e (the App's browser, the scan), and three P3s of the same code the agent pulled into this wave (2026-11-16) | memory and time at 1,000,000 entries before and after; the App browser on the device |
+| 5f | Everything in batches | T-F540, T-F541, T-F542, T-F539, T-F535, T-F536 | the user, 2026-11-16: "as chunked as possible wherever possible, no bloated collections". No collection the size of the archive except the one set of names the global checks need (collisions, duplicates, 8.3 aliases, hard-link pairs), held once, as indices elsewhere: a list streamed to its caller, tar.exe's and the helper's readers on one copy of each name, the quarantine walked instead of listed, the App's browser and the scan on that | plan mode and advisor first; a counter test per holder (live bytes per entry, red before); memory and time of every mode at 1,000,000 and 4,000,000 entries before and after; PakkoW10 on both tar builds; the App browser on the device; an opus reviewer |
+| 5g | Pulled-in P3s | T-F521, T-F522, T-F533 | three P3s of the same code the agent pulled into this wave (2026-11-16) | each its red test |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
 
-Order: 1, 2, then 3 and 4 (independent), 5a, 5b, 5c, 5d, 5e, 5f, 6, 7, 8. Batch 5 was split by its checks (the agent, 2026-11-13); T-F512 and T-F515 were found merged and only waiting to graduate.
+Order: 1, 2, then 3 and 4 (independent), 5a, 5b, 5c, 5d, 5e, 5f, 5g, 6, 7, 8. Batch 5 was split by its checks (the agent, 2026-11-13); T-F512 and T-F515 were found merged and only waiting to graduate.
 
 **Findings during a batch.** A P1 or P2 from the batch's own area is fixed in the batch, test first.
 One from another area goes to the batch of that area, or to a new one before batch 8. A P3 is filed
@@ -1691,7 +1692,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F521 - A damaged encrypted ZIP reads as password-protected (P3, from T-F520's trace)
 
-- [ ] **Status:** open, pulled into this wave (batch 5f, the agent, 2026-11-16: 5e rewrites the code that reads it). Found 2026-11-13: an encrypted ZIP whose central directory puts a
+- [ ] **Status:** open, pulled into this wave (batch 5g, the agent, 2026-11-16: 5e rewrites the code that reads it). Found 2026-11-13: an encrypted ZIP whose central directory puts a
   local header past the end of the file is reported by extraction, and by a test with a password,
   as "This archive is password-protected and cannot be extracted/tested": the error of Pakko's own
   reader (`RawZipEntryLocator`) is taken as "cannot read the encryption", so the user is told to
@@ -1994,7 +1995,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F533 - A work root under a `\\?\` destination Windows trims is left behind (P3, from T-F528)
 
-- [ ] **Status:** open, pulled into this wave (batch 5f, the agent, 2026-11-16). `DestinationFolder.TryCreate` accepts `\\?\C:\w\out.` as typed, but
+- [ ] **Status:** open, pulled into this wave (batch 5g, the agent, 2026-11-16). `DestinationFolder.TryCreate` accepts `\\?\C:\w\out.` as typed, but
   `TempOwner.TryRemove` refuses any path `InputPaths.Problem` names, and `NameTrimmed` does not skip a
   `\\?\` path: the root of every creation or extraction there stays until the next run in that folder
   sweeps it (with a locked file's staged copy, for an extraction). Found by T-F528's opus review.
@@ -2029,9 +2030,37 @@ re-measured with T-F346's script before and after.
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
 
-### T-F539 - tar.exe's "-t" names are held three times while a listing reads them (P3, from T-F529, next wave)
+### T-F542 - The helper's reader holds its entries twice and copies them at every step (P2, the user, 2026-11-16)
 
-- [ ] **Status:** open, next wave. Measured 2026-11-16 at 4,096 names of 32,000 characters (131
+- [ ] **Status:** open, batch 5f. `HelperReader` keeps the helper's output (`_listed`, an
+  `ArchiveHelperEntry` per entry) and its own `Entry` list beside it, and each step makes a whole
+  copy more (`[.. entries.Where(...)]` for files, candidates, the selection, the scan's files, the
+  read's indices). Next: one array of compact entries (a name, its facts, flags), steps that walk it
+  or keep indices; `ArchiveHelperEntry` only as one line's parse. Counter test per step.
+
+### T-F541 - tar.exe's reader keeps names in several collections, and lists the quarantine whole (P2, the user, 2026-11-16)
+
+- [ ] **Status:** open, batch 5f. After 5e, a scan before extraction keeps `names` and, keyed by the
+  same names again, `sizeByName` and `fileEntries`; a selection, the duplicates and the folders to
+  create build further sets of names (`ExpandSelection`, `DuplicateGroups`, `preCreated`), and the
+  quarantine is listed into arrays before it is moved or scanned. Next: one array of names (T-F539),
+  sizes and kinds by index; the sets the global checks need over indices; the quarantine walked a file
+  at a time into the move and the scan. Counter test: live bytes per entry of a tar extraction halfway,
+  as `ZipExtraction_WhileItWalks` measures a ZIP's.
+
+### T-F540 - A list hands every entry to its caller at once (P2, the user, 2026-11-16)
+
+- [ ] **Status:** open, batch 5f. `ListEntriesAsync` returns `ArchiveListResult` with a
+  `List<ArchiveEntryInfo>` of every entry (about 160 B a ZIP entry, 200 a tar one: 640 MiB live at
+  4,000,000), though `pakko l` prints them one by one and the App's browser shows one folder.
+  Next: a list that streams its entries to the caller (an `IAsyncEnumerable` or a callback, a batch at
+  a time; its errors still the result's), `pakko l` printing as it reads, the App building its compact
+  index from the stream (T-F535); `ArchiveListResult` kept for the callers that want every entry,
+  built on the stream. Contract change: rows in `CoreNeverThrowsContractTests`, Shell/CLI tests.
+
+### T-F539 - tar.exe's "-t" names are held three times while a listing reads them (P3, from T-F529)
+
+- [ ] **Status:** open, batch 5f (pulled in with the user's "as chunked as possible", 2026-11-16). Measured 2026-11-16 at 4,096 names of 32,000 characters (131
   million, under T-F529's name limit): a tar list through tar.exe peaks at 1,140 MiB against 413 for
   the same ZIP. The "-t" output is held as bytes (`_listingBytes`, for "-T"), the `MemoryStream` that
   gathered them, a decoded text and the names split from it (`ReadBytesAsync`,
@@ -2150,7 +2179,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F522 - The commit's link check fails open when a folder's attributes cannot be read (P3, from T-F474)
 
-- [ ] **Status:** open, pulled into this wave (batch 5f, the agent, 2026-11-16: a security check that fails open). `ExtractionStaging.ReachesThroughLink` (T-F419) asks
+- [ ] **Status:** open, pulled into this wave (batch 5g, the agent, 2026-11-16: a security check that fails open). `ExtractionStaging.ReachesThroughLink` (T-F419) asks
   `ArchiveEntrySecurity.IsReparsePoint` for each folder between the destination and a staged item;
   that returns false on any exception. A folder that does not exist yet must stay false (the commit
   creates it), but one whose attributes cannot be read (access denied) is then committed into as if
