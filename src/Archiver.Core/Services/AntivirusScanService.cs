@@ -119,7 +119,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
     private readonly Sandbox.ArchiveintGate? _gate;
 
     // T-F406: a path that cannot be opened at all is reported, not handed to a reader.
-    private static List<string> TakeUsablePaths(IReadOnlyList<string> paths, List<ThreatFinding> findings)
+    private static List<string> TakeUsablePaths(IReadOnlyList<string> paths, ScanFindings findings)
     {
         var usable = new List<string>();
         foreach (string path in paths)
@@ -142,7 +142,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         if (options.ArchivePaths.Count == 0)
             return new ThreatScanResult { OverallVerdict = ThreatVerdict.Inconclusive };
 
-        var findings = new List<ThreatFinding>();
+        var findings = new ScanFindings();
         List<string> usable = TakeUsablePaths(options.ArchivePaths, findings);
         ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
             .ClassifyAsync(usable, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
@@ -243,6 +243,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                     archivePath, options.SelectedEntryPaths, scanner, new ZipReadSettings(passwordResolver, NameCodePages), findings,
                     (entry, done, total) => ReportProgress(archivePath, entry, done, total), cancellationToken)
                     .ConfigureAwait(false);
+                await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding); // T-F544: as below
                 archivesCompleted++;
                 // Explicit end-of-archive report (not just relying on the last per-entry
                 // callback) — locks each archive's slice to its exact boundary regardless of
@@ -258,6 +259,9 @@ public sealed class AntivirusScanService : IAntivirusScanService
                     archivePath, options.SelectedEntryPaths, scanner, findings,
                     (entry, done, total) => ReportProgress(archivePath, entry, done, total), (ForcedTarOutputEncoding, Helper, _gate), cancellationToken)
                     .ConfigureAwait(false);
+                // T-F544, as T-F537: the frames that read the archive (its reader, its names) unwind
+                // before the next archive, or a caller without a context, runs on them.
+                await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
                 archivesCompleted++;
                 progress?.Report(new ProgressReport { Percent = archivesCompleted * 100 / totalArchives, CurrentFile = archivePath });
             }
@@ -274,16 +278,33 @@ public sealed class AntivirusScanService : IAntivirusScanService
         _ => MessageCode.NoAntivirusRegistered,
     };
 
-    private static ThreatScanResult BuildResult(List<ThreatFinding> findings)
+    private static ThreatScanResult BuildResult(ScanFindings findings)
     {
-        ThreatVerdict overall = findings switch
+        List<ThreatFinding> kept = findings.Kept;
+        ThreatVerdict overall = kept switch
         {
-            _ when findings.Any(f => f.Verdict == ThreatVerdict.ThreatDetected) => ThreatVerdict.ThreatDetected,
-            _ when findings.Any(f => f.Verdict == ThreatVerdict.Inconclusive) => ThreatVerdict.Inconclusive,
+            _ when kept.Any(f => f.Verdict == ThreatVerdict.ThreatDetected) => ThreatVerdict.ThreatDetected,
+            _ when kept.Any(f => f.Verdict == ThreatVerdict.Inconclusive) => ThreatVerdict.Inconclusive,
             _ => ThreatVerdict.Clean,
         };
 
-        return new ThreatScanResult { OverallVerdict = overall, Findings = findings };
+        return new ThreatScanResult { OverallVerdict = overall, Findings = kept, CleanEntries = findings.CleanEntries };
+    }
+
+    // T-F544: a scan's findings as the result keeps them - every one that is not Clean, and a count of
+    // the clean entries (one each was 206 MiB of a 1,000,000-entry scan's 281).
+    private sealed class ScanFindings
+    {
+        public List<ThreatFinding> Kept { get; } = [];
+        public long CleanEntries { get; private set; }
+
+        public void Add(ThreatFinding finding)
+        {
+            if (finding.Verdict == ThreatVerdict.Clean)
+                CleanEntries++;
+            else
+                Kept.Add(finding);
+        }
     }
 
     // How a ZIP's names and passwords are read — one value for the whole scan call.
@@ -296,7 +317,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         IReadOnlyList<string>? selectedEntryPaths,
         IAmsiScanner scanner,
         ZipReadSettings settings,
-        List<ThreatFinding> findings,
+        ScanFindings findings,
         Action<string?, int, int> reportProgress,
         CancellationToken cancellationToken)
     {
@@ -537,7 +558,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         string archivePath,
         IReadOnlyList<string>? selectedEntryPaths,
         IAmsiScanner scanner,
-        List<ThreatFinding> findings,
+        ScanFindings findings,
         Action<string?, int, int> reportProgress,
         (System.Text.Encoding? Encoding, HelperSetup? Helper, ArchiveintGate? Gate) readWith,
         CancellationToken cancellationToken)
@@ -596,13 +617,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
     }
 
     private sealed record TarScanTarget(
-        string ArchivePath, IAmsiScanner Scanner, List<ThreatFinding> Findings, Action<string?, int, int> ReportProgress);
+        string ArchivePath, IAmsiScanner Scanner, ScanFindings Findings, Action<string?, int, int> ReportProgress);
 
     // Returns the running count of scanned files; startAt continues it across a second folder.
     private static async Task<int> ScanExtractedFilesAsync(
         IEnumerable<ScanFile> files, int startAt, int totalEntries, TarScanTarget target, CancellationToken cancellationToken)
     {
-        (string archivePath, IAmsiScanner scanner, List<ThreatFinding> findings, Action<string?, int, int> reportProgress) = target;
+        (string archivePath, IAmsiScanner scanner, ScanFindings findings, Action<string?, int, int> reportProgress) = target;
         int entriesDone = startAt;
         foreach ((string file, string relativePath) in files)
         {
@@ -615,12 +636,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
             try
             {
                 // T-F460: by its literal name - a folder "d " asked for without the prefix is "d".
-                // T-F536: opened once, its length read from the open file (200,000 empty files: 20 s
-                // less than asking the file system for it first).
-                using FileStream opened = QuarantineFiles.OpenRead(file);
+                long length = QuarantineFiles.Info(file).Length;
                 ThreatFinding finding = await ScanOneEntryAsync(
-                    archivePath, relativePath, opened.Length,
-                    () => opened,
+                    archivePath, relativePath, length,
+                    () => QuarantineFiles.OpenRead(file),
                     scanner, cancellationToken)
                     .ConfigureAwait(false);
                 findings.Add(finding);

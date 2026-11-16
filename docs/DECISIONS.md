@@ -15033,7 +15033,17 @@ entry at a path wins" is the lower archive index of the two. The old tree is the
 **The tar scan (T-F536), measured first.** 200,000 empty entries, by phase: tar.exe writing the
 quarantine 159 s, asking each file's length 20 s, opening each 24 s; AMSI is never called for an
 empty file (T-F247), so no AMSI change was made and nothing needs `SECURITY.md`. The quarantine is
-walked as the scan reads it, and each file is opened once, its length read from the handle.
+walked as the scan reads it. Opening each file once, its length read from the handle, was tried and
+dropped: its saving was never measured end to end, and it opened files over the size cap only to skip
+them.
+
+**A scan's result (T-F544, found measuring T-F536).** The result kept a `ThreatFinding` for every
+entry, clean ones included: 206 MiB live at the end of a 1,000,000-entry scan of its 281 MiB peak.
+The App, the Shell and the CLI read only the findings that are not Clean, so `Findings` now holds
+those and `ThreatScanResult.CleanEntries` counts the rest. The tests that proved an entry was scanned
+by its Clean finding now read the names the fake scanner was given. Measuring it also found the
+reader's catalog still alive after the scan returned: a caller without a synchronization context ran
+on the frames that read the archive (T-F537's shape), so the scan leaves them after each archive.
 
 **Live bytes an entry, halfway or once built (`CatalogMemoryBudgetTests`, `ArchiveTreeMemoryTests`;
 200,000 empty entries, 20,000 for the scan).**
@@ -15044,7 +15054,8 @@ walked as the scan reads it, and each file is opened once, its length read from 
 | helper extraction, halfway (T-F542) | 294 | 120 |
 | streamed list, ZIP / tar.exe / helper (T-F540) | 170-179 (the list) | 15 / 72 / 2 |
 | the App's tree, its listing gone (T-F535) | 318 | 116 |
-| tar scan, halfway (T-F536) | 660 | 287 |
+| tar scan, halfway (T-F536, T-F544) | 660 | 30 |
+| tar scan's result, once done (T-F544) | 216 (206 MiB at 1,000,000) | 0 |
 
 **Peak private bytes of the process (`pakko`'s path through Core; empty entries named
 `d00000/f00000000.txt`).**
@@ -15063,12 +15074,10 @@ walked as the scan reads it, and each file is opened once, its length read from 
 | test | tar.gz, 1,000,000 | about 360 MiB | 227 MiB |
 | scan | tar.gz, 1,000,000 | 700 MiB (1,255 s) | 281 MiB (1,307 s) |
 
-The scan's time is tar.exe writing the quarantine, as measured above. What it still holds at the end
-is its result: a `ThreatFinding` for every entry, clean ones included (206 MiB live at 1,000,000) -
-the public result's shape, left to T-F544.
+The scan's time is tar.exe writing the quarantine, as measured above.
 
-`pakko l` itself (the Debug build, stdout to a file): the first rows after 6 s of a 1,000,000-entry
-ZIP, 38 MiB peak (`CLI-066`).
+`pakko l` itself, stdout to a file, 1,000,000 ZIP entries: the first rows after 6 s; 38 MiB peak in
+the Debug build, 29 MiB in the package (1.10.0.30, `CLI-066`).
 
 ## T-F529 - reading a ZIP in batches (2026-11-15)
 

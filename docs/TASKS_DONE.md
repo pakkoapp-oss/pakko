@@ -15128,7 +15128,7 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 
 ### T-F536 - A scan of many small entries makes one AMSI call each and holds the listing (P2, from T-F529)
 
-- [x] **Status:** done 2026-11-16 (batch 5f). Measured by phase: tar.exe writing the quarantine is most of the time; AMSI is never called for an empty file, so no AMSI change. The quarantine walked as the scan reads it, each file opened once. Halfway: 660 -> 287 B an entry; a scan of 1,000,000 peaks at 281 MiB (700 before). The findings it still holds: T-F544. Measured 2026-11-15 (before 5e): scanning a tar of 1,000,000 empty
+- [x] **Status:** done 2026-11-16 (batch 5f). Measured by phase: tar.exe writing the quarantine is most of the time; AMSI is never called for an empty file, so no AMSI change. The quarantine walked as the scan reads it. Halfway: 660 -> 287 B an entry, 30 with T-F544; a scan of 1,000,000 peaks at 281 MiB before T-F544 (700 before the batch). Measured 2026-11-15 (before 5e): scanning a tar of 1,000,000 empty
   entries took 1,250 s and held 594 MiB live, through tar.exe and through the helper; 200,000 took
   240-300 s. Each file is a separate `AmsiScanBuffer` call after it is copied out of the quarantine.
   Next: measure where the time goes (the quarantine copy, the call, Defender's own work), then scan
@@ -15145,4 +15145,14 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   (names as one string pool, rows built only for the open folder, `ArchiveEntryInfo` not kept for
   every entry), with the App's sort, search and selection unchanged; budget test in
   `Archiver.App.Core.Tests`, device check of browsing a 1,000,000-entry archive.
+- **Graduated 2026-11-16:** with batch 5f.
+
+### T-F544 - A scan's result holds a finding for every clean entry (P2, from T-F536, 2026-11-16)
+
+- [x] **Status:** done 2026-11-16 (batch 5f: the user's "no bloated collections", so a P2 of the batch's area, the agent after the closing advisor). `Findings` keeps what is not Clean, `CleanEntries` counts the rest; the scan leaves the frames that read an archive before the next one (T-F537's shape). A tar scan's result once done: 216 -> 0 B an entry; halfway 287 -> 30 (`CatalogMemoryBudgetTests`). `ThreatScanResult.Findings` has a `ThreatFinding` for each entry
+  scanned, Clean ones included: at the end of a tar scan of 1,000,000 empty entries they are 206 MiB
+  live of its 281 MiB peak (batch 5f, `docs/DECISIONS.md`). The frontends show the threats and the
+  inconclusive entries, and a count. Next: keep the findings that are not Clean and count the clean
+  ones (a public contract change: App, Shell and CLI read `Findings`; rows in
+  `CoreNeverThrowsContractTests`); counter test of live bytes at a scan's end.
 - **Graduated 2026-11-16:** with batch 5f.

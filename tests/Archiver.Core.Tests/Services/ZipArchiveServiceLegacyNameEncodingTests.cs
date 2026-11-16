@@ -166,7 +166,9 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], SelectedEntryPaths = ["Б.txt"] });
 
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "Б.txt" && f.Verdict == ThreatVerdict.Clean);
+        result.Findings.Should().BeEmpty();
+        result.CleanEntries.Should().Be(1);
+        scanner.Calls.Should().ContainSingle(c => c.ContentName == "Б.txt");
         scanner.ScannedContent["Б.txt"].Should().Equal("B"u8.ToArray());
     }
 

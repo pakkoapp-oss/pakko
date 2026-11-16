@@ -144,8 +144,8 @@ public sealed class AntivirusScanServiceTests : IDisposable
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
-        result.Findings.Should().HaveCount(2);
-        result.Findings.Should().OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
+        result.Findings.Should().BeEmpty("T-F544: a clean entry is counted, not kept");
+        result.CleanEntries.Should().Be(2);
         scanner.Calls.Should().HaveCount(2);
         scanner.Disposed.Should().BeTrue();
     }
@@ -161,8 +161,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "clean.txt" && f.Verdict == ThreatVerdict.Clean);
+        result.Findings.Should().ContainSingle().Which.Should().Match<ThreatFinding>(f => f.EntryPath == "bad.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
+        result.CleanEntries.Should().Be(1);
+        scanner.Calls.Select(c => c.ContentName).Should().BeEquivalentTo(["clean.txt", "bad.txt"]);
     }
 
     [Fact]
@@ -178,8 +179,8 @@ public sealed class AntivirusScanServiceTests : IDisposable
             SelectedEntryPaths = ["b.txt"],
         });
 
-        result.Findings.Should().ContainSingle();
-        result.Findings[0].EntryPath.Should().Be("b.txt");
+        result.Findings.Should().BeEmpty();
+        result.CleanEntries.Should().Be(1);
         scanner.Calls.Should().ContainSingle(c => c.ContentName == "b.txt");
     }
 
@@ -193,7 +194,8 @@ public sealed class AntivirusScanServiceTests : IDisposable
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "empty.txt").Which.Verdict.Should().Be(ThreatVerdict.Clean);
+        result.Findings.Should().BeEmpty();
+        result.CleanEntries.Should().Be(2, "the empty entry is clean without a scan, a.txt is scanned");
         scanner.Calls.Should().ContainSingle().Which.ContentName.Should().Be("a.txt");
     }
 
@@ -220,8 +222,8 @@ public sealed class AntivirusScanServiceTests : IDisposable
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt").Which.Verdict.Should().Be(ThreatVerdict.Inconclusive);
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "ok.txt").Which.Verdict.Should().Be(ThreatVerdict.Clean);
+        result.Findings.Should().ContainSingle().Which.Should().Match<ThreatFinding>(f => f.EntryPath == "bad.txt" && f.Verdict == ThreatVerdict.Inconclusive);
+        result.CleanEntries.Should().Be(1, "ok.txt");
     }
 
     [Fact]
@@ -238,8 +240,7 @@ public sealed class AntivirusScanServiceTests : IDisposable
         ThreatFinding failed = result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt").Subject;
         failed.Verdict.Should().Be(ThreatVerdict.Inconclusive);
         failed.Reason.Should().Contain("0x80070057");
-        result.Findings.Where(f => f.EntryPath != "bad.txt").Should().HaveCount(2)
-            .And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
+        result.CleanEntries.Should().Be(2);
         scanner.Calls.Select(c => c.ContentName).Should().BeEquivalentTo(["a.txt", "c.txt"]);
     }
 
@@ -259,8 +260,8 @@ public sealed class AntivirusScanServiceTests : IDisposable
         blocked.Verdict.Should().Be(ThreatVerdict.Inconclusive);
         blocked.ReasonText!.Code.Should().Be(MessageCode.ScanEntryBlockedByPolicy);
         blocked.Reason.Should().NotBeNullOrWhiteSpace();
-        result.Findings.Where(f => f.EntryPath != "blocked.ps1").Should().HaveCount(2)
-            .And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
+        result.CleanEntries.Should().Be(2);
+        scanner.Calls.Select(c => c.ContentName).Should().BeEquivalentTo(["a.txt", "blocked.ps1", "c.txt"]);
     }
 
     [Fact]
@@ -361,7 +362,8 @@ public sealed class AntivirusScanServiceTests : IDisposable
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [atCapZip] });
 
-        result.Findings.Should().ContainSingle(f => f.EntryPath == "at-cap.bin" && f.Verdict == ThreatVerdict.Clean);
+        result.Findings.Should().BeEmpty();
+        result.CleanEntries.Should().Be(1);
         scanner.Calls.Should().ContainSingle(c => c.ContentName == "at-cap.bin"
             && c.Length == AntivirusScanService.MaxScannableEntryBytes,
             "an entry exactly at the cap must still be buffered and scanned, not skipped");
@@ -825,7 +827,8 @@ public sealed class AntivirusScanServiceEncryptedEicarTests
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
-        result.Findings.Should().HaveCount(2);
+        result.Findings.Should().BeEmpty();
+        result.CleanEntries.Should().Be(2);
     }
 
     [SkipIfAmsiScanUnavailable]

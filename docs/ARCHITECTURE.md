@@ -2436,7 +2436,8 @@ public sealed record ThreatFinding
 public sealed record ThreatScanResult
 {
     public required ThreatVerdict OverallVerdict { get; init; }
-    public IReadOnlyList<ThreatFinding> Findings { get; init; } = [];
+    public IReadOnlyList<ThreatFinding> Findings { get; init; } = []; // T-F544: threats and inconclusive only
+    public long CleanEntries { get; init; }                           // T-F544: the clean entries, counted
 }
 ```
 

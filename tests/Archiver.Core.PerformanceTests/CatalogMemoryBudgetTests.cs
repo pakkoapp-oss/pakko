@@ -162,9 +162,34 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         progress.Halfway.Should().BeGreaterThan(0, "the scan reported its middle");
         long perEntry = (progress.Halfway - progress.Before) / count;
         output.WriteLine($"{count} entries: {(progress.Halfway - progress.Before) >> 10} KiB live halfway, {perEntry} B an entry");
-        // Measured 287 B (660 with the quarantine's files listed whole): about 100 of them the scan's
-        // fixed buffers at this count, the rest the names, their catalog and each finding so far.
-        perEntry.Should().BeLessThanOrEqualTo(360, "no list of the quarantine's files beside the findings");
+        // Measured 30 B: the names and their catalog. 660 with the quarantine's files listed whole, 287
+        // with a finding kept for each clean entry (T-F544).
+        perEntry.Should().BeLessThanOrEqualTo(60, "no list of the quarantine's files, no finding per clean entry");
+    }
+
+    // T-F544: what a scan's result holds once it is done - its threats and inconclusive entries and a
+    // count of the clean ones, not a finding for every clean entry.
+    [Fact]
+    public async Task TarScan_ItsResult_HoldsNoFindingPerCleanEntry()
+    {
+        const int count = 20_000;
+        string tar = TarGzOfEmptyEntries(count);
+        var service = new Archiver.Core.Services.AntivirusScanService(
+            new TarCapabilities(), new GroupPolicyOptions(), () => new CleanScanner(), () => Archiver.Core.Services.Antivirus.AmsiProviderState.Usable);
+        // A first scan pays the process's one-time costs (pools, caches), which are not the result's.
+        _ = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [TarGzOfEmptyEntries(10)] });
+        long before = GC.GetTotalMemory(forceFullCollection: true);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [tar] });
+
+        long after = GC.GetTotalMemory(forceFullCollection: true);
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        result.CleanEntries.Should().Be(count);
+        result.Findings.Should().BeEmpty();
+        GC.KeepAlive(result);
+        long perEntry = (after - before) / count;
+        output.WriteLine($"{count} entries: {(after - before) >> 10} KiB live in the result, {perEntry} B an entry");
+        perEntry.Should().BeLessThanOrEqualTo(8, "a count of the clean entries, no finding each");
     }
 
     // Synchronous (T-F162): the live bytes when the scan reports the middle entry done.
