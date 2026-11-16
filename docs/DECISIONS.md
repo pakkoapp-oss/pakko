@@ -15072,9 +15072,19 @@ on the frames that read the archive (T-F537's shape), so the scan leaves them af
 | the App's tree | ZIP, 4,000,000 | 1,385 MiB | 858 MiB |
 | the App's tree | tar.gz, 4,000,000 | - | 880 MiB |
 | test | tar.gz, 1,000,000 | about 360 MiB | 227 MiB |
-| scan | tar.gz, 1,000,000 | 700 MiB (1,255 s) | 281 MiB (1,307 s) |
+| scan | tar.gz, 1,000,000 | 700 MiB (1,255 s) | 281 MiB (1,307 s); 275 MiB (1,067 s) with T-F544 |
+| extract | ZIP, 200,000 | 197 MiB (86 s) | 202 MiB (79 s) |
+| extract, tar.exe | tar.gz, 200,000 | 208 MiB (182 s) | 166 MiB (193 s) |
+| extract, helper | tar.gz, 200,000 | - | 177 MiB (177 s) |
+| list, streamed, helper | tar.gz, 1,000,000 | - | 16 MiB (5.6 s) |
+| list kept whole, helper | tar.gz, 1,000,000 | - | 192 MiB |
+| the App's tree, helper | tar.gz, 1,000,000 | - | 210 MiB |
+| test, helper | tar.gz, 1,000,000 | - | 359 MiB (10.9 s) |
 
-The scan's time is tar.exe writing the quarantine, as measured above.
+The scan's time is tar.exe writing the quarantine, as measured above; its two runs differ by the
+disk's load, not by T-F544. An extraction's peak is the writing of files, not the catalog: its live
+bytes fell (the first table), its peak barely. The helper's test peaks above tar.exe's (359 against
+227 MiB); why was not looked into in this batch.
 
 `pakko l` itself, stdout to a file, 1,000,000 ZIP entries: the first rows after 6 s; 38 MiB peak in
 the Debug build, 29 MiB in the package (1.10.0.30, `CLI-066`).

@@ -159,13 +159,15 @@ public sealed class ArchiveTree
                 : ImpliedFolder(_rows[firstBelow].Path, FirstSegmentStart(_rows[firstBelow].Path) + own.Length, segment));
             at = slash < 0 ? ownHigh : belowHigh;
         }
-        rows.Sort((a, b) =>
-        {
-            if (a.IsFolder != b.IsFolder)
-                return a.IsFolder ? -1 : 1;
-            return string.CompareOrdinal(a.Name, b.Name);
-        });
+        rows.Sort(FoldersFirst);
         return rows;
+    }
+
+    private static int FoldersFirst(ArchiveEntryViewModel a, ArchiveEntryViewModel b)
+    {
+        if (a.IsFolder != b.IsFolder)
+            return a.IsFolder ? -1 : 1;
+        return string.CompareOrdinal(a.Name, b.Name);
     }
 
     private int FirstInArchiveOrder(int low, int high)

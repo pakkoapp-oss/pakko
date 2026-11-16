@@ -1077,7 +1077,7 @@ sequenceDiagram
         end
 
         Service->>Amsi: Dispose() (CloseSession, Uninitialize)
-        Service-->>Dialog: ThreatScanResult — ThreatDetected if any, else Inconclusive if any, else Clean
+        Service-->>Dialog: ThreatScanResult — ThreatDetected if any, else Inconclusive if any, else Clean.<br/>Findings keeps the threats and inconclusive entries, CleanEntries counts the rest (T-F544)
     end
 
     Note over Shell: OperationCanceledException, or the session was cancelled → no message
