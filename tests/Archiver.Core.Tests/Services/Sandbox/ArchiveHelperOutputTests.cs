@@ -269,19 +269,41 @@ public sealed class ArchiveHelperOutputTests
     public void TheScan_RefusesANameWithALoneSurrogate(string before, int unit, string after)
     {
         string name = before + (char)unit + after;
-        HelperReader.FirstUnsafeName(["ok.txt", name]).Should().Be(name);
+        HelperReader.IsUnsafeName(name).Should().BeTrue();
+        HelperReader.IsUnsafeName("ok.txt").Should().BeFalse();
     }
 
     [Fact]
     public void TheScan_RefusesAPairInTheWrongOrder()
     {
         string name = "" + (char)0xDC00 + (char)0xD800;
-        HelperReader.FirstUnsafeName(["ok.txt", name]).Should().Be(name);
+        HelperReader.IsUnsafeName(name).Should().BeTrue();
+        HelperReader.IsUnsafeName("ok.txt").Should().BeFalse();
     }
 
     [Fact]
     public void TheScan_TakesASurrogatePair()
-        => HelperReader.FirstUnsafeName(["ok.txt", "\U0001F600.txt"]).Should().BeNull();
+        => HelperReader.IsUnsafeName("\U0001F600.txt").Should().BeFalse();
+
+    // T-F542: a run given onEntry passes each entry on and keeps none; its count and digest are the
+    // ones a run that keeps them has, and the digest follows the entries' order.
+    [Fact]
+    public void OnEntry_PassesEntriesOn_KeepsNone_SameCountAndDigest()
+    {
+        string[] lines = ["V 6C", "E 0 32768 1 - 0 0 0 0061 -", "E 1 32768 2 - 0 0 0 0062 -", "D"];
+        var passed = new List<ArchiveHelperEntry>();
+        var streamed = new ArchiveHelperOutput(ArchiveHelperMode.List, onEntry: passed.Add);
+        Feed(streamed, lines);
+        ArchiveHelperOutput kept = Parse(ArchiveHelperMode.List, lines);
+        ArchiveHelperOutput swapped = Parse(ArchiveHelperMode.List,
+            "V 6C", "E 0 32768 2 - 0 0 0 0062 -", "E 1 32768 1 - 0 0 0 0061 -", "D");
+
+        passed.Should().Equal(kept.Entries);
+        streamed.Entries.Should().BeEmpty();
+        streamed.EntryCount.Should().Be(2);
+        streamed.ListingDigest.ToArray().Should().Equal(kept.ListingDigest.ToArray());
+        swapped.ListingDigest.ToArray().Should().NotEqual(kept.ListingDigest.ToArray());
+    }
 
     private static ArchiveHelperOutput Parse(ArchiveHelperMode mode, params string[] lines)
     {

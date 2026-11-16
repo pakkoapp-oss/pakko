@@ -25,12 +25,16 @@ internal sealed class HelperReader : ISandboxedArchiveReader
     private readonly TarSandboxScope _scope;
     private readonly IReadOnlyList<string> _formatArguments;
     private string? _charset;
-    private IReadOnlyList<ArchiveHelperEntry>? _listed;
-    private List<Entry>? _entries;
-    private List<Entry>? _selected;
+    private Listing? _listing;
+    private int[]? _selected;
 
     // One listed entry: its index, its name without "./" (a folder ends in '/'), its declared size.
-    private sealed record Entry(long Index, string Name, bool IsFolder, long Size, bool Sparse, DateTime? ModifiedUtc);
+    private readonly record struct Entry(long Index, string Name, bool IsFolder, long Size, bool Sparse, bool Encrypted, DateTime? ModifiedUtc);
+
+    // T-F542: what the scan keeps of the helper's listing - one compact entry each, the archive's root
+    // left out - and the listing's digest and length, which every later run's own listing must match.
+    // Steps after the scan hold positions in Entries, never copies of them.
+    private sealed record Listing(Entry[] Entries, byte[] Digest, long Count);
 
     private HelperReader(TarSandboxScope scope, IReadOnlyList<string> formatArguments)
     {
@@ -60,24 +64,12 @@ internal sealed class HelperReader : ISandboxedArchiveReader
 
     public async Task<ArchiveListResult> ListAsync(CancellationToken cancellationToken)
     {
-        ArchiveHelperOutput? output;
-        try
-        {
-            output = await ListWithCharsetAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (CoreTextIOException failed)
-        {
-            return CoreMessages.ListFailure(failed.Text);
-        }
-        if (output is null)
-            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent));
-
-        var entries = new List<ArchiveEntryInfo>(output.Entries.Count);
-        foreach (ArchiveHelperEntry e in output.Entries)
+        var entries = new List<ArchiveEntryInfo>();
+        void Take(ArchiveHelperEntry e)
         {
             string path = EntryDiskName.StripLeadingDotSlash(e.Name!).TrimEnd('/');
             if (path.Length == 0)
-                continue;
+                return;
             entries.Add(new ArchiveEntryInfo
             {
                 Path = path,
@@ -86,77 +78,88 @@ internal sealed class HelperReader : ISandboxedArchiveReader
                 IsDirectory = e.FileType == FolderType && e.Link is null,
             });
         }
+
+        bool readable;
+        try
+        {
+            readable = await ListWithCharsetAsync(Take, entries.Clear, cancellationToken).ConfigureAwait(false) is not null;
+        }
+        catch (CoreTextIOException failed)
+        {
+            return CoreMessages.ListFailure(failed.Text);
+        }
+        if (!readable)
+            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent));
         return new ArchiveListResult { Success = true, Entries = entries };
     }
 
     public async Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken)
     {
-        List<Entry> entries = await ScanEntriesAsync(refuseEncrypted: true, cancellationToken).ConfigureAwait(false);
-        List<Entry> files = [.. entries.Where(e => !e.IsFolder)];
+        Entry[] entries = await ScanEntriesAsync(refuseEncrypted: true, cancellationToken).ConfigureAwait(false);
         return new ReaderCatalog(
-            files.Sum(e => e.Size),
-            [.. entries.Select(e => e.Name)],
-            [.. files.Select(e => e.Name)]);
+            entries.Where(e => !e.IsFolder).Sum(e => e.Size),
+            entries.Select(e => e.Name),
+            entries.Where(e => !e.IsFolder).Select(e => e.Name));
     }
 
     public Task<SelectionOutcome> SelectForExtractAsync(
         IReadOnlyList<string>? selectedEntryPaths, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken)
     {
-        List<Entry> entries = _entries ?? throw new InvalidOperationException(ScanFirst);
-        List<Entry> candidates = selectedEntryPaths is { Count: > 0 } ? Expand(entries, selectedEntryPaths) : entries;
-        if (selectedEntryPaths is { Count: > 0 } && candidates.Count == 0)
+        Entry[] entries = Listed();
+        int[] candidates = selectedEntryPaths is { Count: > 0 } ? Expand(entries, selectedEntryPaths) : All(entries);
+        if (selectedEntryPaths is { Count: > 0 } && candidates.Length == 0)
             return Task.FromResult(new SelectionOutcome(SelectionKind.EmptySelection, 0, 0));
         if (entryFilter is not null)
         {
-            candidates = [.. candidates.Where(e => entryFilter(e.Name, e.IsFolder))];
-            if (candidates.Count == 0)
+            candidates = [.. candidates.Where(i => entryFilter(entries[i].Name, entries[i].IsFolder))];
+            if (candidates.Length == 0)
                 return Task.FromResult(new SelectionOutcome(SelectionKind.NothingPassesFilter, 0, 0));
         }
         _selected = candidates;
-        List<Entry> files = [.. candidates.Where(e => !e.IsFolder)];
-        return Task.FromResult(new SelectionOutcome(SelectionKind.Entries, files.Sum(e => e.Size), files.Count));
+        int[] files = FilesAmong(entries, candidates);
+        return Task.FromResult(new SelectionOutcome(SelectionKind.Entries, SizeOf(entries, files), files.Length));
     }
 
     public async Task<IQuarantinedEntries> ExtractAsync(
         ExtractionPoll? poll, List<SkippedFile> skippedFiles, CancellationToken cancellationToken)
     {
-        List<Entry> selected = _selected ?? throw new InvalidOperationException("SelectForExtractAsync comes first.");
-        List<Entry> files = [.. selected.Where(e => !e.IsFolder)];
+        Entry[] entries = Listed();
+        int[] selected = _selected ?? throw new InvalidOperationException("SelectForExtractAsync comes first.");
+        int[] files = FilesAmong(entries, selected);
         string outDir = _scope.OutputDirectory!;
-        if (files.Count > 0)
+        if (files.Length > 0)
         {
-            Task<ArchiveHelperOutput> run = ExtractFilesAsync(files, cancellationToken);
+            Task<ArchiveHelperOutput> run = ExtractFilesAsync(entries, files, cancellationToken);
             if (poll is { } p)
             {
-                var names = files.ToDictionary(e => IndexName(e.Index), e => e.Name, StringComparer.Ordinal);
-                await PollExtractionProgressAsync(outDir, p.TotalBytes, new NamedProgress(p.Progress, names), run, cancellationToken, p.ExtractionEnd)
+                await PollExtractionProgressAsync(outDir, p.TotalBytes, new NamedProgress(p.Progress, entries, files), run, cancellationToken, p.ExtractionEnd)
                     .ConfigureAwait(false);
             }
             ArchiveHelperOutput output = await run.ConfigureAwait(false);
-            EnsureOutDirHoldsExactly(files, output);
+            EnsureOutDirHoldsExactly(entries, files, output);
         }
-        return new HelperQuarantine(outDir, files, [.. selected.Where(e => e.IsFolder)]);
+        return new HelperQuarantine(outDir, entries, files, [.. selected.Where(i => entries[i].IsFolder)]);
     }
 
     public async Task<ScanQuarantine> ExtractForScanAsync(IReadOnlyList<string>? selectedEntryPaths, CancellationToken cancellationToken)
     {
-        List<Entry> entries = _entries ?? throw new InvalidOperationException(ScanFirst);
-        List<Entry> files = [.. (selectedEntryPaths is { Count: > 0 } ? Expand(entries, selectedEntryPaths) : entries).Where(e => !e.IsFolder)];
-        if (files.Count == 0)
+        Entry[] entries = Listed();
+        int[] files = FilesAmong(entries, selectedEntryPaths is { Count: > 0 } ? Expand(entries, selectedEntryPaths) : All(entries));
+        if (files.Length == 0)
             return new ScanQuarantine(null, [], 0, 0, false);
         ArchiveHelperOutput output;
         try
         {
-            output = await ExtractFilesAsync(files, cancellationToken).ConfigureAwait(false);
+            output = await ExtractFilesAsync(entries, files, cancellationToken).ConfigureAwait(false);
         }
         catch (CoreTextIOException failed)
         {
-            return new ScanQuarantine(failed.Text, [], files.Count, files.Count, false);
+            return new ScanQuarantine(failed.Text, [], files.Length, files.Length, false);
         }
-        EnsureOutDirHoldsExactly(files, output);
+        EnsureOutDirHoldsExactly(entries, files, output);
         string outDir = _scope.OutputDirectory!;
-        return new ScanQuarantine(null, [.. files.Select(e => new ScanFile(Path.Combine(outDir, IndexName(e.Index)), e.Name))],
-            files.Count, files.Count, false);
+        return new ScanQuarantine(null, [.. files.Select(i => new ScanFile(Path.Combine(outDir, IndexName(entries[i].Index)), entries[i].Name))],
+            files.Length, files.Length, false);
     }
 
     public Task<FirstCopiesForScan> ExtractFirstCopiesForScanAsync(CancellationToken cancellationToken) =>
@@ -165,18 +168,18 @@ internal sealed class HelperReader : ISandboxedArchiveReader
     public async Task<TestOutcome> TestAsync(
         IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken)
     {
-        List<Entry> entries = await ScanEntriesAsync(refuseEncrypted: false, cancellationToken).ConfigureAwait(false);
-        List<Entry> files = [.. entries.Where(e => !e.IsFolder && (entryFilter is null || entryFilter(e.Name, false)))];
+        Entry[] entries = await ScanEntriesAsync(refuseEncrypted: false, cancellationToken).ConfigureAwait(false);
+        int[] files = [.. Enumerable.Range(0, entries.Length).Where(i => !entries[i].IsFolder && (entryFilter is null || entryFilter(entries[i].Name, false)))];
         if (entryFilter is not null)
         {
             // T-F410: every name is asked, folders too, as on extraction.
             foreach (Entry folder in entries.Where(e => e.IsFolder))
                 entryFilter(folder.Name, true);
         }
-        if (files.Count == 0)
+        if (files.Length == 0)
             return new TestOutcome(null, 0, NothingRead: true);
-        long declared = files.Sum(e => e.Size);
-        if (files.Any(e => _listed![(int)e.Index].Encrypted == true))
+        long declared = SizeOf(entries, files);
+        if (files.Any(i => entries[i].Encrypted))
             return new TestOutcome(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported), declared, false);
 
         Action<int> onBytes = ContentProgress(progress, declared);
@@ -189,17 +192,34 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         }
         var output = new ArchiveHelperOutput(ArchiveHelperMode.Test,
             onRead: (_, bytes) => { Grow(bytes); counted = 0; },
-            onReading: (_, bytes) => Grow(bytes));
+            onReading: (_, bytes) => Grow(bytes),
+            onEntry: Discard);
         try
         {
-            await RunAsync(ArchiveHelperMode.Test, _charset, [.. files.Select(e => e.Index)], output, cancellationToken).ConfigureAwait(false);
+            await RunAsync(ArchiveHelperMode.Test, _charset, IndicesOf(entries, files), output, cancellationToken).ConfigureAwait(false);
         }
         catch (CoreTextIOException failed)
         {
             return new TestOutcome(failed.Text, declared, false);
         }
-        EnsureListingAndReadsAgree(files, output);
+        EnsureListingAndReadsAgree(entries, files, output);
         return new TestOutcome(null, declared, false);
+    }
+
+    private Entry[] Listed() => _listing?.Entries ?? throw new InvalidOperationException(ScanFirst);
+
+    private static int[] All(Entry[] entries) => [.. Enumerable.Range(0, entries.Length)];
+
+    private static int[] FilesAmong(Entry[] entries, int[] positions) => [.. positions.Where(i => !entries[i].IsFolder)];
+
+    private static long SizeOf(Entry[] entries, int[] positions) => positions.Sum(i => entries[i].Size);
+
+    private static long[] IndicesOf(Entry[] entries, int[] positions) => [.. positions.Select(i => entries[i].Index)];
+
+    // A later run's entries: checked by the listing's digest, not kept.
+    private static void Discard(ArchiveHelperEntry entry)
+    {
+        // nothing kept: ArchiveHelperOutput.ListingDigest stands for the entries
     }
 
     // --- Listing ---
@@ -207,64 +227,112 @@ internal sealed class HelperReader : ISandboxedArchiveReader
     // T-F204's order: UTF-8 first; names stored in no charset that are not UTF-8 come back NULL
     // with a warning, and the archive is listed again in the page tar.exe reads raw names in.
     // Null: a name no charset reads, so the listing cannot name the entries.
-    private async Task<ArchiveHelperOutput?> ListWithCharsetAsync(CancellationToken cancellationToken)
+    // T-F542: each entry goes to onEntry as it is read; restart is called before a second listing.
+    private async Task<ArchiveHelperOutput?> ListWithCharsetAsync(
+        Action<ArchiveHelperEntry> onEntry, Action restart, CancellationToken cancellationToken)
     {
         bool charsetApplies = HelperFormats.TakesHeaderCharset(_formatArguments);
         string? charset = charsetApplies ? TextBoundaries.ArchiveHelperUtf8Names : null;
-        ArchiveHelperOutput output = await ListOnceAsync(charset, cancellationToken).ConfigureAwait(false);
-        if (charsetApplies && output.Entries.Any(e => e.Name is null))
+        (ArchiveHelperOutput output, bool anyNameless, _) = await ListOnceAsync(charset, onEntry, cancellationToken).ConfigureAwait(false);
+        if (charsetApplies && anyNameless)
         {
             if (TextBoundaries.ArchiveHelperRawNames(MachinePages.Current) is not { } raw)
                 return null;
             charset = raw.Charset;
-            output = await ListOnceAsync(charset, cancellationToken).ConfigureAwait(false);
+            restart();
+            bool anyReplacement;
+            (output, anyNameless, anyReplacement) = await ListOnceAsync(charset, onEntry, cancellationToken).ConfigureAwait(false);
             // libarchive 3.5.2 decodes a sequence a multi-byte page lacks as U+30FB without a
             // warning (3.8.9 warns): such a name cannot be told from a true one (docs/DECISIONS.md).
             bool silentReplacement = !raw.Boundary.Strict.IsSingleByte
                 && output.Version?.StartsWith("libarchive 3.5.", StringComparison.Ordinal) == true
-                && output.Entries.Any(e => e.Name?.Contains('\u30FB', StringComparison.Ordinal) == true);
+                && anyReplacement;
             if (silentReplacement)
                 return null;
         }
-        if (output.Entries.Any(e => e.Name is null))
+        if (anyNameless)
             return null;
         _charset = charset;
-        _listed = output.Entries;
         return output;
     }
 
-    private async Task<ArchiveHelperOutput> ListOnceAsync(string? charset, CancellationToken cancellationToken)
+    // One listing; once an entry comes without a name (no charset read it) the rest are not passed on.
+    private async Task<(ArchiveHelperOutput Output, bool AnyNameless, bool AnyReplacement)> ListOnceAsync(
+        string? charset, Action<ArchiveHelperEntry> onEntry, CancellationToken cancellationToken)
     {
-        var output = new ArchiveHelperOutput(ArchiveHelperMode.List);
+        bool anyNameless = false;
+        bool anyReplacement = false;
+        void Take(ArchiveHelperEntry e)
+        {
+            anyNameless |= e.Name is null;
+            if (anyNameless)
+                return;
+            anyReplacement |= e.Name!.Contains('\u30FB', StringComparison.Ordinal);
+            onEntry(e);
+        }
+        var output = new ArchiveHelperOutput(ArchiveHelperMode.List, onEntry: Take);
         await RunAsync(ArchiveHelperMode.List, charset, null, output, cancellationToken).ConfigureAwait(false);
-        return output;
+        return (output, anyNameless, anyReplacement);
     }
 
     // The whole archive, checked as tar.exe's scan checks it (T-F49, T-F420): a link or a special
     // entry, an unsafe name, an 8.3 alias of another name refuse it.
-    private async Task<List<Entry>> ScanEntriesAsync(bool refuseEncrypted, CancellationToken cancellationToken)
+    private async Task<Entry[]> ScanEntriesAsync(bool refuseEncrypted, CancellationToken cancellationToken)
     {
-        ArchiveHelperOutput output = await ListWithCharsetAsync(cancellationToken).ConfigureAwait(false)
+        var scan = new ScanChecks(refuseEncrypted);
+        ArchiveHelperOutput output = await ListWithCharsetAsync(scan.Take, scan.Restart, cancellationToken).ConfigureAwait(false)
             ?? throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
-
-        string? unsafeName = FirstUnsafeName([.. output.Entries.Select(e => e.Name!)]);
-        if (unsafeName != null)
-            throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarUnsafeEntryPath, unsafeName));
-
-        var entries = new List<Entry>(output.Entries.Count);
-        foreach (ArchiveHelperEntry e in output.Entries)
-        {
-            if (Checked(e, refuseEncrypted) is { } entry)
-                entries.Add(entry);
-        }
-        _entries = entries;
+        Entry[] entries = scan.Finish();
+        _listing = new Listing(entries, output.ListingDigest.ToArray(), output.EntryCount);
         return entries;
+    }
+
+    // T-F542: the scan's checks as the entries arrive, refused in the order a whole listing was: an
+    // unsafe name among all of them first, an alias of another name next, then the first entry the
+    // scan does not take. The listing's own names are held only until Finish, for the alias check.
+    private sealed class ScanChecks(bool refuseEncrypted)
+    {
+        private List<Entry> _entries = [];
+        private List<string> _rawNames = [];
+        private string? _firstUnsafe;
+        private Exception? _firstRefusal;
+
+        public void Take(ArchiveHelperEntry e)
+        {
+            string raw = e.Name!;
+            _rawNames.Add(raw);
+            if (_firstUnsafe is null && IsUnsafeName(raw))
+                _firstUnsafe = raw;
+            if (_firstRefusal is null && Checked(e, refuseEncrypted, out _firstRefusal) is { } entry)
+                _entries.Add(entry);
+        }
+
+        public void Restart()
+        {
+            _entries.Clear();
+            _rawNames.Clear();
+            _firstUnsafe = null;
+            _firstRefusal = null;
+        }
+
+        public Entry[] Finish()
+        {
+            string? unsafeName = _firstUnsafe ?? EntryDiskName.ShortNameAliasOfAnother(_rawNames);
+            if (unsafeName != null)
+                throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarUnsafeEntryPath, unsafeName));
+            if (_firstRefusal is { } refusal)
+                throw refusal;
+            Entry[] entries = [.. _entries];
+            // Let go of the growing lists at once, not when whatever still holds these checks does.
+            _entries = [];
+            _rawNames = [];
+            return entries;
+        }
     }
 
     // tar.exe's scan rules (T-F49, T-F420), and a name with an unpaired surrogate: no file name a
     // reader of it can rely on (tar.exe's listing could never carry one).
-    internal static string? FirstUnsafeName(string[] rawNames) =>
-        rawNames.FirstOrDefault(n => IsDangerousEntryName(n) || HasLoneSurrogate(n)) ?? EntryDiskName.ShortNameAliasOfAnother(rawNames);
+    internal static bool IsUnsafeName(string rawName) => IsDangerousEntryName(rawName) || HasLoneSurrogate(rawName);
 
     private static bool HasLoneSurrogate(string name)
     {
@@ -278,13 +346,21 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         return false;
     }
 
-    // One listed entry as the scan takes it; null for the archive's root itself.
-    private static Entry? Checked(ArchiveHelperEntry e, bool refuseEncrypted)
+    // One listed entry as the scan takes it; null for the archive's root itself, or with the refusal
+    // the entry earns (not thrown: the scan's other checks come first).
+    private static Entry? Checked(ArchiveHelperEntry e, bool refuseEncrypted, out Exception? refusal)
     {
+        refusal = null;
         if (e.Link is not null || e.FileType is not (RegularFile or FolderType))
-            throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
+        {
+            refusal = new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
+            return null;
+        }
         if (refuseEncrypted && e.Encrypted == true)
-            throw new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
+        {
+            refusal = new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
+            return null;
+        }
         bool isFolder = e.FileType == FolderType;
         string name = EntryDiskName.StripLeadingDotSlash(e.Name!);
         // T-F455: a folder stored without its '/' is still a folder.
@@ -293,30 +369,34 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         if (name.TrimEnd('/').Length == 0)
             return null;
         if (!isFolder && e.Size is null)
-            throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
-        return new Entry(e.Index, name, isFolder, isFolder ? 0 : e.Size!.Value, e.SparseCount > 0, ModifiedTimeOf(e));
+        {
+            refusal = new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
+            return null;
+        }
+        return new Entry(e.Index, name, isFolder, isFolder ? 0 : e.Size!.Value, e.SparseCount > 0, e.Encrypted == true, ModifiedTimeOf(e));
     }
 
     // ExpandSelection's rule (T-F05) by name: an entry named as requested, and everything below it.
-    private static List<Entry> Expand(List<Entry> entries, IReadOnlyList<string> requested)
+    private static int[] Expand(Entry[] entries, IReadOnlyList<string> requested)
     {
-        var picked = new HashSet<long>();
+        bool[] picked = new bool[entries.Length];
         foreach (string path in requested)
         {
-            string folder = path.TrimEnd('/') + "/";
-            foreach (Entry e in entries.Where(e => e.Name.TrimEnd('/') == path.TrimEnd('/') || e.Name.StartsWith(folder, StringComparison.Ordinal)))
-                picked.Add(e.Index);
+            string exact = path.TrimEnd('/');
+            string folder = exact + "/";
+            for (int i = 0; i < entries.Length; i++)
+                picked[i] |= entries[i].Name.TrimEnd('/') == exact || entries[i].Name.StartsWith(folder, StringComparison.Ordinal);
         }
-        return [.. entries.Where(e => picked.Contains(e.Index))];
+        return [.. Enumerable.Range(0, entries.Length).Where(i => picked[i])];
     }
 
     // --- Runs and their checks ---
 
-    private async Task<ArchiveHelperOutput> ExtractFilesAsync(List<Entry> files, CancellationToken cancellationToken)
+    private async Task<ArchiveHelperOutput> ExtractFilesAsync(Entry[] entries, int[] files, CancellationToken cancellationToken)
     {
-        var output = new ArchiveHelperOutput(ArchiveHelperMode.Extract);
-        long maxTotal = files.Sum(e => e.Size);
-        await RunAsync(ArchiveHelperMode.Extract, _charset, [.. files.Select(e => e.Index)], output, cancellationToken,
+        var output = new ArchiveHelperOutput(ArchiveHelperMode.Extract, onEntry: Discard);
+        long maxTotal = SizeOf(entries, files);
+        await RunAsync(ArchiveHelperMode.Extract, _charset, IndicesOf(entries, files), output, cancellationToken,
             ["--max-total", maxTotal.ToString(CultureInfo.InvariantCulture)]).ConfigureAwait(false);
         return output;
     }
@@ -342,24 +422,29 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             : CoreMessages.Text(MessageCode.CannotReadArchive, detail));
     }
 
-    private void EnsureListingAndReadsAgree(List<Entry> files, ArchiveHelperOutput output) =>
-        EnsureListingAndReadsAgree(_listed ?? throw new InvalidOperationException(ScanFirst),
-            [.. files.Select(e => (e.Index, e.Size, e.Sparse))], output);
-
-    private void EnsureOutDirHoldsExactly(List<Entry> files, ArchiveHelperOutput output)
+    private void EnsureListingAndReadsAgree(Entry[] entries, int[] files, ArchiveHelperOutput output)
     {
-        EnsureListingAndReadsAgree(files, output);
+        Listing listing = _listing ?? throw new InvalidOperationException(ScanFirst);
+        EnsureListingAndReadsAgree(listing.Digest, listing.Count,
+            [.. files.Select(i => (entries[i].Index, entries[i].Size, entries[i].Sparse))], output);
+    }
+
+    private void EnsureOutDirHoldsExactly(Entry[] entries, int[] files, ArchiveHelperOutput output)
+    {
+        EnsureListingAndReadsAgree(entries, files, output);
         EnsureOutDirHoldsExactly(_scope.OutputDirectory!, output);
     }
 
     /// <summary>
     /// A test or an extraction lists the archive again as it reads: the same entries as the scan,
-    /// field for field; then K lines for exactly the selection, each a non-sparse entry's declared size.
+    /// field for field (<paramref name="digest"/> and <paramref name="count"/> are the scan's
+    /// <see cref="ArchiveHelperOutput.ListingDigest"/> and <see cref="ArchiveHelperOutput.EntryCount"/>);
+    /// then K lines for exactly the selection, each a non-sparse entry's declared size.
     /// </summary>
     internal static void EnsureListingAndReadsAgree(
-        IReadOnlyList<ArchiveHelperEntry> listed, IReadOnlyList<(long Index, long Size, bool Sparse)> files, ArchiveHelperOutput output)
+        byte[] digest, long count, IReadOnlyList<(long Index, long Size, bool Sparse)> files, ArchiveHelperOutput output)
     {
-        if (!output.Entries.SequenceEqual(listed))
+        if (output.EntryCount != count || !output.ListingDigest.SequenceEqual(digest))
             throw new ArchiveHelperProtocolException("a second listing differs from the first");
         if (!output.Read.Select(r => r.Index).SequenceEqual(files.Select(e => e.Index)))
             throw new ArchiveHelperProtocolException("the entries read are not the selection");
@@ -373,18 +458,44 @@ internal sealed class HelperReader : ISandboxedArchiveReader
     /// <summary>out\ holds exactly the files the run read, each named by its index, a plain file of the bytes read.</summary>
     internal static void EnsureOutDirHoldsExactly(string outDir, ArchiveHelperOutput output)
     {
-        var expected = output.Read.ToDictionary(r => IndexName(r.Index), r => r.Bytes, StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<(long Index, long Bytes)> read = output.Read;
         int found = 0;
         foreach ((string path, bool isFolder) in QuarantineFiles.Walk(outDir))
         {
-            string name = QuarantineFiles.Relative(outDir, path);
+            int at = isFolder ? -1 : PositionOf(read, QuarantineFiles.Relative(outDir, path));
             FileInfo info = QuarantineFiles.Info(path);
-            if (isFolder || !expected.TryGetValue(name, out long bytes) || (info.Attributes & FileAttributes.ReparsePoint) != 0 || info.Length != bytes)
+            if (at < 0 || (info.Attributes & FileAttributes.ReparsePoint) != 0 || info.Length != read[at].Bytes)
                 throw new ArchiveHelperProtocolException("out\\ holds a file the run did not account for");
             found++;
         }
-        if (found != expected.Count)
+        if (found != read.Count)
             throw new ArchiveHelperProtocolException("a file the run read is missing from out\\");
+    }
+
+    // T-F542: where out\'s file of this name is among the reads (the parser keeps them in increasing
+    // index order), by its index - no table of every name; -1 for a name that is no index.
+    private static int PositionOf(IReadOnlyList<(long Index, long Bytes)> read, string name) =>
+        Find(read.Count, at => read[at].Index, name);
+
+    // The position among count increasing indices (indexAt) of the one an out\ file name spells; -1 if none.
+    private static int Find(int count, Func<int, long> indexAt, string indexName)
+    {
+        if (!long.TryParse(indexName, NumberStyles.None, CultureInfo.InvariantCulture, out long index) || IndexName(index) != indexName)
+            return -1;
+        int low = 0;
+        int high = count - 1;
+        while (low <= high)
+        {
+            int middle = low + ((high - low) / 2);
+            long found = indexAt(middle);
+            if (found == index)
+                return middle;
+            if (found < index)
+                low = middle + 1;
+            else
+                high = middle - 1;
+        }
+        return -1;
     }
 
     private static string IndexName(long index) => index.ToString(CultureInfo.InvariantCulture);
@@ -394,8 +505,9 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime.AddTicks(e.MtimeNanoseconds / 100)
             : null;
 
-    // The byte poll names the newest file in out\, an index; the user sees the entry's name.
-    private sealed class NamedProgress(IProgress<ProgressReport> inner, Dictionary<string, string> names) : IProgress<ProgressReport>
+    // The byte poll names the newest file in out\, an index; the user sees the entry's name, found
+    // among the files by that index (T-F542: no table of names).
+    private sealed class NamedProgress(IProgress<ProgressReport> inner, Entry[] entries, int[] files) : IProgress<ProgressReport>
     {
         public void Report(ProgressReport value) =>
             inner.Report(new ProgressReport
@@ -404,17 +516,20 @@ internal sealed class HelperReader : ISandboxedArchiveReader
                 BytesTransferred = value.BytesTransferred,
                 TotalBytes = value.TotalBytes,
                 Phase = value.Phase,
-                CurrentFile = value.CurrentFile is { } f && names.TryGetValue(f, out string? n) ? n : null,
+                CurrentFile = value.CurrentFile is { } f ? NameOf(f) : null,
             });
+
+        private string? NameOf(string indexName) =>
+            Find(files.Length, at => entries[files[at]].Index, indexName) is int at and >= 0 ? entries[files[at]].Name : null;
     }
 
     // What an extraction left in out\: the files by index, placed under their entries' names.
-    private sealed class HelperQuarantine(string outDir, List<Entry> files, List<Entry> folders) : IQuarantinedEntries
+    private sealed class HelperQuarantine(string outDir, Entry[] entries, int[] files, int[] folders) : IQuarantinedEntries
     {
-        public int ExpectedMoves => files.Count;
+        public int ExpectedMoves => files.Length;
 
         public IEnumerable<QuarantinedFile> Files() =>
-            files.Select(e => new QuarantinedFile(
+            files.Select(i => entries[i]).Select(e => new QuarantinedFile(
                 Path.Combine(outDir, IndexName(e.Index)),
                 EntryDiskName.AsPakkoWrites(e.Name).Replace('/', Path.DirectorySeparatorChar),
                 EntryDiskName.Renames(e.Name),
@@ -428,7 +543,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
 
         public void RecordFolderTimesInto(FolderPlacement placement)
         {
-            foreach (Entry folder in folders)
+            foreach (Entry folder in folders.Select(i => entries[i]))
             {
                 if (folder.ModifiedUtc is { } utc && Placed(folder.Name, placement.StripRootPrefix) is { } relative)
                     placement.Staging.RecordFolderTime(relative, utc);
@@ -437,7 +552,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
 
         public void CreateFolderEntriesIn(FolderPlacement placement)
         {
-            foreach (Entry folder in folders)
+            foreach (Entry folder in folders.Select(i => entries[i]))
             {
                 if (Placed(folder.Name, placement.StripRootPrefix) is { Length: > 0 } relative)
                     Directory.CreateDirectory(Path.Combine(placement.Staging.Path, relative));
