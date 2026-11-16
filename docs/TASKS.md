@@ -2045,12 +2045,15 @@ re-measured with T-F346's script before and after.
 
 ### T-F537 - The tar catalog budget test measures less than a list holds (P3, from T-F529)
 
-- [ ] **Status:** open, batch 5e. `CatalogMemoryBudgetTests.TarListing_HoldsAtMostItsBudgetPerEntry`
-  measured 210 B an entry (T-F513); a probe holding the same `ListEntriesAsync` result measured about
-  530 B (2026-11-15: 507 MiB live for 1,000,000 entries, through tar.exe and through the helper alike;
-  `docs/DECISIONS.md`, "T-F529"). Find what the test leaves out (the entry names' length, a cache
-  released early, `GetTotalMemory` before a background thread finishes) and make it measure what a
-  caller holds, before 5e lowers the budgets.
+- [x] **Status:** done 2026-11-16 (batch 5e, graduates with T-F529). The test was right about what a
+  list keeps (210 B an entry, heap dump: 41.8 MB for 200,000 entries); the probe's 530 B was what a
+  caller with no synchronization context held while it used the result. Its code ran on the thread
+  that finished the listing, on top of the async frames still holding tar.exe's `-tv` output and both
+  listings (`dotnet-dump gcroot`: `SandboxedProcessLauncher.RunCreatedProcessAsync`'s box on that
+  stack). `pakko l` is such a caller. `TarSandboxedService.ListEntriesAsync` now yields to the pool
+  before returning (`ConfigureAwaitOptions.ForceYielding` on a completed task: on an unfinished one
+  it does not yield); `CatalogMemoryBudgetTests.TarListing_ToACallerWithoutAContext_...` measures
+  that caller (540 B red, 211 B green).
 
 ### T-F536 - A scan of many small entries makes one AMSI call each and holds the listing (P2, from T-F529)
 

@@ -1059,7 +1059,12 @@ public sealed class TarSandboxedService : ITarService
         {
             using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: false, ForcedTarOutputEncoding, cancellationToken, Helper, _gate)
                 .ConfigureAwait(false);
-            return await reader.ListAsync(cancellationToken).ConfigureAwait(false);
+            ArchiveListResult listed = await reader.ListAsync(cancellationToken).ConfigureAwait(false);
+            // T-F537: the caller resumes on a fresh stack, not on the frames that finished the listing -
+            // those hold tar.exe's output until they unwind, and a caller without a context (the
+            // console) would run on them (measured 540 B an entry held, 210 without them).
+            await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
+            return listed;
         }
         catch (TarSignatureVerificationException ex)
         {
