@@ -141,10 +141,7 @@ internal static class RawZipEntryLocator
         foreach (CentralDirectoryRecord record in ReadCentralDirectory(zipStream, resolveZip64: false))
         {
             if (!LocalHeaderMatches(zipStream, record))
-            {
-                if (count++ == 0)
-                    first = index;
-            }
+                first = count++ == 0 ? index : first;
             index++;
         }
         return (count, first);
@@ -518,32 +515,9 @@ internal static class RawZipEntryLocator
         bool wantsZip64 = thisDisk == ushort.MaxValue || offset32 == Zip32Sentinel || count == ushort.MaxValue;
         if (eocdOffset >= Zip64LocatorLength)
         {
-            zipStream.Seek(eocdOffset - Zip64LocatorLength, SeekOrigin.Begin);
-            if (ReadUInt32(zipStream) == Zip64EndOfCentralDirectoryLocatorSignature)
-            {
-                ReadUInt32(zipStream); // disk with the Zip64 EOCD
-                long zip64EocdOffset = ReadInt64Checked(zipStream);
-                if (zip64EocdOffset > zipStream.Length - 56)
-                    throw new InvalidDataException("Zip64 end-of-central-directory offset is outside the archive.");
-
-                zipStream.Seek(zip64EocdOffset, SeekOrigin.Begin);
-                if (ReadUInt32(zipStream) != Zip64EndOfCentralDirectorySignature)
-                    throw new InvalidDataException("Malformed Zip64 end-of-central-directory record.");
-                zipStream.Seek(zip64EocdOffset + 16, SeekOrigin.Begin);
-                uint zip64ThisDisk = ReadUInt32(zipStream);
-                ReadUInt32(zipStream); // disk with the directory
-                ulong zip64CountOnThisDisk = ReadUInt64(zipStream);
-                ulong zip64Count = ReadUInt64(zipStream);
-                if (zip64Count > (ulong)maxEntries)
-                    throw ArchiveLimits.TooManyEntries(maxEntries);
-                long zip64Size = ReadInt64Checked(zipStream);
-                long zip64Offset = ReadInt64Checked(zipStream);
-                if (wantsZip64 && refusal is null)
-                {
-                    extent = new CentralDirectoryExtent(zip64Offset, zip64Size, (long)zip64Count, zip64ThisDisk,
-                        zip64Count != zip64CountOnThisDisk ? SplitSpannedText : null);
-                }
-            }
+            CentralDirectoryExtent? zip64 = ReadZip64Extent(zipStream, eocdOffset, maxEntries);
+            if (zip64 is { } found && wantsZip64 && refusal is null)
+                extent = found;
         }
         else if (wantsZip64 && refusal is null)
         {
@@ -553,6 +527,34 @@ internal static class RawZipEntryLocator
         if (extent.Offset > zipStream.Length || extent.Size > zipStream.Length - extent.Offset)
             throw new InvalidDataException("ZIP central directory extends outside the archive.");
         return extent;
+    }
+
+    // The Zip64 record a locator right before the end record points at, checked whether or not the
+    // classic record asks for it (as before); null when no locator stands there.
+    private static CentralDirectoryExtent? ReadZip64Extent(Stream zipStream, long eocdOffset, int maxEntries)
+    {
+        zipStream.Seek(eocdOffset - Zip64LocatorLength, SeekOrigin.Begin);
+        if (ReadUInt32(zipStream) != Zip64EndOfCentralDirectoryLocatorSignature)
+            return null;
+        ReadUInt32(zipStream); // disk with the Zip64 EOCD
+        long zip64EocdOffset = ReadInt64Checked(zipStream);
+        if (zip64EocdOffset > zipStream.Length - 56)
+            throw new InvalidDataException("Zip64 end-of-central-directory offset is outside the archive.");
+
+        zipStream.Seek(zip64EocdOffset, SeekOrigin.Begin);
+        if (ReadUInt32(zipStream) != Zip64EndOfCentralDirectorySignature)
+            throw new InvalidDataException("Malformed Zip64 end-of-central-directory record.");
+        zipStream.Seek(zip64EocdOffset + 16, SeekOrigin.Begin);
+        uint zip64ThisDisk = ReadUInt32(zipStream);
+        ReadUInt32(zipStream); // disk with the directory
+        ulong zip64CountOnThisDisk = ReadUInt64(zipStream);
+        ulong zip64Count = ReadUInt64(zipStream);
+        if (zip64Count > (ulong)maxEntries)
+            throw ArchiveLimits.TooManyEntries(maxEntries);
+        long zip64Size = ReadInt64Checked(zipStream);
+        long zip64Offset = ReadInt64Checked(zipStream);
+        return new CentralDirectoryExtent(zip64Offset, zip64Size, (long)zip64Count, zip64ThisDisk,
+            zip64Count != zip64CountOnThisDisk ? SplitSpannedText : null);
     }
 
     // System.IO.Compression's own texts (v11.0.0 Strings.resx: EOCDNotFound, SplitSpanned, Zip64EOCDNotWhereExpected).

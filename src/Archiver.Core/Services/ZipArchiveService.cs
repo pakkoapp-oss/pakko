@@ -1716,9 +1716,7 @@ public sealed class ZipArchiveService : IArchiveService
         {
             string name = entry.FullName;
             anyEntry = true;
-            // Saturates: a crafted Zip64 size must make the bomb gate refuse, not wrap the sum.
-            if (!name.EndsWith('/') && entry.Entry.Length > 0)
-                declaredFileBytes = entry.Entry.Length > long.MaxValue - declaredFileBytes ? long.MaxValue : declaredFileBytes + entry.Entry.Length;
+            declaredFileBytes = AddDeclaredFileBytes(declaredFileBytes, entry);
             if (namedRoot is not null && !ExtractionDestinationPlanner.IsUnderRoot(name, namedRoot))
                 allUnderNamedRoot = false;
             if (!passes(name))
@@ -1735,6 +1733,15 @@ public sealed class ZipArchiveService : IArchiveService
                 allUnderOneRoot = false;
         }
         return new ArchiveShape(passingCount, firstPassing, allUnderOneRoot, allUnderNamedRoot && anyEntry, declaredFileBytes);
+    }
+
+    // Saturates: a crafted Zip64 size must make the bomb gate refuse, not wrap the sum.
+    private static long AddDeclaredFileBytes(long sum, NamedZipEntry entry)
+    {
+        long length = entry.Entry.Length;
+        if (entry.FullName.EndsWith('/') || length <= 0)
+            return sum;
+        return length > long.MaxValue - sum ? long.MaxValue : sum + length;
     }
 
     // The plumbing every entry of an ExtractWithSmartFolderingAsync call shares, cut from that
