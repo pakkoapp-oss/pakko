@@ -951,12 +951,12 @@ public sealed class ZipArchiveService : IArchiveService
         Func<string, bool>? passes = ExtractionPasses(selectedEntryPaths, entryFilter);
         if (NeedsPassword(archivePath, NameCodePages, passes))
         {
-            ResolvedZipPassword? password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes).ConfigureAwait(false);
-            if (password is not null)
-                return (false, password);
+            ZipPasswordResolution resolution = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes).ConfigureAwait(false);
+            if (resolution.Password is not null)
+                return (false, resolution.Password);
 
-            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(passwordResolver.RememberedPasswordRejected
-                ? MessageCode.RememberedPasswordDoesNotFit : MessageCode.PasswordProtectedExtract)));
+            errors.Add(CoreMessages.Error(archivePath, resolution.Unreadable ?? CoreMessages.Text(passwordResolver.RememberedPasswordRejected
+                ? MessageCode.RememberedPasswordDoesNotFit : MessageCode.PasswordProtectedExtract), resolution.Cause));
             return (true, null);
         }
 
@@ -973,44 +973,57 @@ public sealed class ZipArchiveService : IArchiveService
     // this exact same verify-against-first-encrypted-entry path rather than a second copy.
     // T-F417: passes (a filter or selection, by decoded entry name) narrows the probe to the
     // encrypted entries that will be read; null means every entry is.
-    internal static async Task<ResolvedZipPassword?> ResolveArchivePasswordAsync(
+    // T-F521: the archive's structure is read before the password is asked for, outside the catch
+    // below - a structure that cannot be read is damaged, and no password opens it.
+    internal static async Task<ZipPasswordResolution> ResolveArchivePasswordAsync(
         string archivePath, PasswordResolver passwordResolver, ZipNameCodePages codePages, Func<string, bool>? passes = null)
     {
-        // T-F189 (advisor-caught): wraps the WHOLE method body, not just LocateAll — the verify
-        // callback below also calls EncryptedZipEntryReader.TryOpen, which can throw
-        // InvalidDataException for a structurally-odd entry (its own Zip64-sentinel guard,
-        // corrupted extra field, etc.). Without this, that throw would escape ExtractAsync/
-        // TestAsync entirely uncaught, violating "Archiver.Core services never throw to callers."
-        // Falls back to today's unchanged "password-protected" rejection at the call site either way.
+        LocatedZipEntry? probe;
+        try
+        {
+            // T-F243: the smallest encrypted entry, so the full check below stays cheap.
+            probe = SmallestEncryptedEntryThatPasses(archivePath, codePages, passes);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or EndOfStreamException)
+        {
+            return new ZipPasswordResolution(null, CoreMessages.Text(MessageCode.ZipCorrupted), ex);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new ZipPasswordResolution(null, CoreMessages.Wrap(MessageCode.CannotReadArchive, ex), ex);
+        }
+        if (probe is null)
+            return new ZipPasswordResolution(null, null, null); // nothing encrypted passes: the callers ask NeedsPassword first, so defensive
+
+        // T-F189 (advisor-caught): the verify callback below calls EncryptedZipEntryReader.TryOpen,
+        // which can throw InvalidDataException for a structurally-odd entry (its own Zip64-sentinel
+        // guard, corrupted extra field, etc.); caught here, never thrown to the callers, and
+        // reported at the call site as "password-protected", as before T-F521.
         try
         {
             using FileStream fs = File.OpenRead(archivePath);
-            // T-F243: the smallest encrypted entry, so the full check below stays cheap.
-            LocatedZipEntry? probe = SmallestEncryptedEntryThatPasses(archivePath, codePages, passes);
-            if (probe is null)
-                return null; // nothing encrypted passes: the callers ask NeedsPassword first, so defensive
-
             string? text = await passwordResolver.ResolveAsync(
                 Path.GetFileName(archivePath),
                 PasswordPurpose.Decrypt,
                 candidate => ChoosePasswordEncoding(fs, probe, candidate, codePages.Ansi) is not null).ConfigureAwait(false);
             if (text is null)
-                return null;
+                return new ZipPasswordResolution(null, null, null);
 
             // A sticky "apply to remaining" answer skips verify; if it fits no encoding here, the
             // entries fail one by one, as they did before T-F244.
             Encoding encoding = ChoosePasswordEncoding(fs, probe, text, codePages.Ansi)
                 ?? EncryptedZipEntryReader.PasswordEncodings(text, probe.CompressionMethod == 99, codePages.Ansi)[0];
-            return new ResolvedZipPassword(text, encoding);
+            return new ZipPasswordResolution(new ResolvedZipPassword(text, encoding), null, null);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or EndOfStreamException)
         {
-            // IsEncryptedZip's cheap first-local-header fast path can say "encrypted" for a file
-            // that has no real central directory/EOCD at all (e.g. a truncated or hand-crafted
-            // minimal ZIP) — LocateAll needs a real EOCD to run.
-            return null;
+            return new ZipPasswordResolution(null, null, null);
         }
     }
+
+    /// <summary>T-F521: the password, or why the archive could not be read before one was asked for
+    /// (<see cref="Unreadable"/>, with its <see cref="Cause"/>); all null when none was resolved.</summary>
+    internal sealed record ZipPasswordResolution(ResolvedZipPassword? Password, CoreText? Unreadable, Exception? Cause);
 
     /// <summary>T-F244: a resolved password plus the one encoding its bytes are taken in for every
     /// entry of the archive.</summary>
@@ -1222,11 +1235,12 @@ public sealed class ZipArchiveService : IArchiveService
         Func<string, bool>? passes = entryFilter is null ? null : name => entryFilter(name, name.EndsWith('/'));
         if (NeedsPassword(archivePath, NameCodePages, passes))
         {
-            password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes).ConfigureAwait(false);
+            ZipPasswordResolution resolution = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes).ConfigureAwait(false);
+            password = resolution.Password;
             if (password is null)
             {
-                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(passwordResolver.RememberedPasswordRejected
-                    ? MessageCode.RememberedPasswordDoesNotFit : MessageCode.PasswordProtectedTest)));
+                errors.Add(CoreMessages.Error(archivePath, resolution.Unreadable ?? CoreMessages.Text(passwordResolver.RememberedPasswordRejected
+                    ? MessageCode.RememberedPasswordDoesNotFit : MessageCode.PasswordProtectedTest), resolution.Cause));
                 return;
             }
         }
@@ -2454,8 +2468,9 @@ public sealed class ZipArchiveService : IArchiveService
     // T-F189: the original first-local-header-only check stays as a fast path — it's also the
     // ONLY thing that can detect encryption on a file whose local header is valid but has no real
     // end-of-central-directory record at all (RawZipEntryLocator.HasAnyEncryptedEntry requires a
-    // real EOCD to run at all; ExtractAsync_PasswordProtectedZip_ReturnsArchiveErrorWithClearMessage's
-    // fixture is exactly this — a bare 20-byte local header, nothing else). Falling through to the
+    // real EOCD to run at all; ExtractAsync_BareEncryptedLocalHeaderNoDirectory_ReportsDamaged's
+    // fixture is exactly this — a bare 20-byte local header, nothing else; T-F521: then reported as
+    // damaged, its structure read before any password is asked for). Falling through to the
     // full central-directory scan only when the cheap check says "no" additionally catches this
     // project's own mixed_encrypted_and_plain.zip fixture, whose plain entry comes first — a case
     // the cheap check alone would silently miss. See docs/DECISIONS.md's T-F189 entry.

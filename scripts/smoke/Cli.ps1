@@ -1112,6 +1112,28 @@ Add-SmokeStep 'CLI-060' {
     'the damaged plain 7z fails with its own error; encrypted.7z still reads as password-protected'
 }
 
+# T-F521: an encrypted ZIP whose local header lies past the end reads as damaged, not as password-protected.
+Add-SmokeStep 'CLI-067' {
+    $folder = Get-StepFolder 'cli067'
+    $zip = Join-Path $folder 'damaged_encrypted.zip'
+    $bytes = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot '..\..\tests\Archiver.Core.Tests\Fixtures\archives\encrypted_aes256.zip'))
+    $central = -1
+    for ($i = 0; $i -le $bytes.Length - 4; $i++) {
+        if ($bytes[$i] -eq 0x50 -and $bytes[$i + 1] -eq 0x4B -and $bytes[$i + 2] -eq 1 -and $bytes[$i + 3] -eq 2) { $central = $i; break }
+    }
+    Assert-Smoke ($central -ge 0) 'no central directory record in encrypted_aes256.zip'
+    [System.BitConverter]::GetBytes([uint32]0x7FFF0000).CopyTo($bytes, $central + 42)
+    [System.IO.File]::WriteAllBytes($zip, $bytes)
+    $extract = Invoke-Pakko @('x', $zip, '-ptestpassword', "-o$(Join-Path $folder 'out')")
+    $test = Invoke-Pakko @('t', $zip, '-ptestpassword')
+    foreach ($run in $extract, $test) {
+        Assert-Smoke ($run.ExitCode -eq 2) "damaged_encrypted.zip: exit $($run.ExitCode) $($run.Text)"
+        Assert-Smoke (-not $run.Text.Contains('password-protected')) "a damaged encrypted ZIP reads as password-protected: $($run.Text)"
+        Assert-Smoke ($run.Text.Contains('corrupted')) "a damaged encrypted ZIP is not reported as damaged: $($run.Text)"
+    }
+    'the damaged encrypted ZIP fails as damaged, never as password-protected'
+}
+
 # T-F513: an archive declaring a billion entries is refused before its catalog is read.
 Add-SmokeStep 'CLI-062' {
     $folder = Get-StepFolder 'cli062'
