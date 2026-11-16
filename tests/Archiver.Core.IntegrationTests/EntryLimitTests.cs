@@ -64,9 +64,11 @@ public sealed class EntryLimitTests : IDisposable
         string archivePath = Path.Combine(_temp.Path, "three.tar");
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "a"), ("b.txt", "b"), ("c.txt", "c")]);
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
+        if (verbose)
+            (await scope.ListAsync(CancellationToken.None)).ExitCode.Should().Be(0, "the plain listing first, under the limit");
         scope.EntryLimit = 2;
 
-        Func<Task> list = () => scope.ListAsync(verbose, CancellationToken.None);
+        Func<Task> list = () => List(scope, verbose);
 
         (await list.Should().ThrowAsync<CoreTextIOException>()).Which.Text.Code.Should().Be(MessageCode.TooManyEntries);
     }
@@ -79,7 +81,7 @@ public sealed class EntryLimitTests : IDisposable
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
         scope.EntryLimit = 2;
 
-        (int exit, string stdOut, string stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+        (int exit, string stdOut, string stdErr) = await scope.ListAsync(CancellationToken.None);
 
         exit.Should().Be(0, because: stdErr);
         stdOut.Should().Contain("a.txt").And.Contain("b.txt");
@@ -96,7 +98,7 @@ public sealed class EntryLimitTests : IDisposable
         scope.EntryLimit = 3;
         scope.NameCharLimit = 8;
 
-        Func<Task> list = () => scope.ListAsync(verbose: false, CancellationToken.None);
+        Func<Task> list = () => scope.ListAsync(CancellationToken.None);
 
         (await list.Should().ThrowAsync<CoreTextIOException>()).Which.Text.Code.Should().Be(MessageCode.CatalogTooLarge);
     }
@@ -112,10 +114,21 @@ public sealed class EntryLimitTests : IDisposable
         scope.EntryLimit = 3;
         scope.NameCharLimit = 15;
 
-        (int exit, string stdOut, string stdErr) = await scope.ListAsync(verbose, CancellationToken.None);
+        (int exit, string stdOut, string stdErr) = await List(scope, verbose);
 
         exit.Should().Be(0, because: stdErr);
         stdOut.Should().Contain("c.txt");
+    }
+
+    // The plain listing's text, or the "-tv" lines as the readers get them since T-F529, joined.
+    private static async Task<(int Exit, string Text, string StdErr)> List(TarSandboxScope scope, bool verbose)
+    {
+        if (!verbose)
+            return await scope.ListAsync(CancellationToken.None);
+        var lines = new StringBuilder();
+        (int exit, string stdErr) = await scope.ListVerboseAsync(
+            (ReadOnlySpan<byte> line) => lines.AppendLine(Encoding.UTF8.GetString(line)), CancellationToken.None);
+        return (exit, lines.ToString(), stdErr);
     }
 
     // --- The real limit, both tar backends: 4,000,001 empty entries (a 2 GB tar, about 45 MB gzipped) ---
@@ -157,6 +170,24 @@ public sealed class EntryLimitTests : IDisposable
 
         listed.Success.Should().BeTrue(listed.ErrorMessage);
         listed.Entries.Should().HaveCount(ArchiveLimits.MaxEntries);
+    }
+
+    // T-F529: the limit is the helper's protocol's own ceiling - its last index, and its output for
+    // that many entries within the stdout cap.
+    [NativeX64Fact]
+    [Trait("Category", "Slow")]
+    public async Task TarGz_AtTheRealLimit_IsListedAndTested_ThroughTheHelper()
+    {
+        string archive = TarGzOfEmptyEntries(ArchiveLimits.MaxEntries);
+        var gate = new ArchiveintGate(new GroupPolicyOptions(), ArchiveHelperBuild.ExePath);
+        (await gate.DecideAsync()).UsesHelper.Should().BeTrue();
+
+        ArchiveListResult listed = await new TarSandboxedService(new GroupPolicyOptions(), gate).ListEntriesAsync(archive);
+        ArchiveResult tested = await new TarSandboxedService(new GroupPolicyOptions(), gate).TestAsync([archive]);
+
+        listed.Success.Should().BeTrue(listed.ErrorMessage);
+        listed.Entries.Should().HaveCount(ArchiveLimits.MaxEntries);
+        tested.Errors.Should().BeEmpty();
     }
 
     private string TarGzOfEmptyEntries(int count)

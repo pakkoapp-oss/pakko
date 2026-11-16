@@ -29,7 +29,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
 
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
 
-        (int preScanExit, string? preScanStdOut, string? preScanStdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+        (int preScanExit, string? preScanStdOut, string? preScanStdErr) = await scope.ListAsync(CancellationToken.None);
         preScanExit.Should().Be(0, because: preScanStdErr);
         preScanStdOut.Should().Contain("a.txt");
 
@@ -103,7 +103,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         scope.OutputDirectory.Should().BeNull();
         Directory.Exists(Path.Combine(scope.QuarantineRoot, "out")).Should().BeFalse();
 
-        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(CancellationToken.None);
         exitCode.Should().Be(0, because: stdErr);
         stdOut.Should().Contain("a.txt");
     }
@@ -245,7 +245,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
 
         using (TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))
         {
-            (int listExit, _, string? listErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+            (int listExit, _, string? listErr) = await scope.ListAsync(CancellationToken.None);
             listExit.Should().Be(0, because: listErr);
             (int extractExit, _, string? extractErr) = await scope.ExtractAsync(null, CancellationToken.None);
             extractExit.Should().Be(0, because: extractErr);
@@ -271,7 +271,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         new FileInfo(archivePath).SetAccessControl(security);
 
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
-        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(CancellationToken.None);
 
         exitCode.Should().Be(0, because: stdErr);
         stdOut.Should().Contain("a.txt");
@@ -291,7 +291,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
             using (TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))
             {
                 quarantineRoot = scope.QuarantineRoot;
-                (int exitCode, _, string? stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+                (int exitCode, _, string? stdErr) = await scope.ListAsync(CancellationToken.None);
                 exitCode.Should().Be(0, because: stdErr);
             }
 

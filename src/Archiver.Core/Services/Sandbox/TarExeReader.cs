@@ -465,7 +465,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     internal static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName, List<(string Name, long Size)> FileEntries)> ScanForUnsafeEntriesAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
-        (int nameExitCode, string? nameStdOut, string? nameStdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+        (int nameExitCode, string? nameStdOut, string? nameStdErr) = await scope.ListAsync(cancellationToken).ConfigureAwait(false);
         if (nameExitCode != 0)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(nameStdErr)));
 
@@ -573,7 +573,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     private static async Task<(string[] Names, ArchiveListResult? Error)> RunNameListingAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
-        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
             return ([], ListFailure(stdErr));
 
