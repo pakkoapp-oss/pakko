@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Text;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -14,7 +15,7 @@ public sealed class TarDuplicateNamesTests
     public void FindDuplicateGroups_KeepsFirstNameAndSizeAndCountsCopies()
     {
         List<TarExeReader.DuplicateGroup> groups = TarExeReader.FindDuplicateGroups(
-            [("a.txt", 5), ("b.txt", 1), ("a.txt", 6), ("a.txt", 7)], ["a.txt", "b.txt", "a.txt", "a.txt"], null);
+            TarCatalogs.Of(("a.txt", 5), ("b.txt", 1), ("a.txt", 6), ("a.txt", 7)), null);
 
         groups.Should().Equal(new TarExeReader.DuplicateGroup("a.txt", 5, 3));
     }
@@ -23,7 +24,7 @@ public sealed class TarDuplicateNamesTests
     public void FindDuplicateGroups_NamesDifferingInCaseOrDotSlash_AreOneGroup()
     {
         List<TarExeReader.DuplicateGroup> groups = TarExeReader.FindDuplicateGroups(
-            [("./A.txt", 1), ("a.txt", 2)], ["./A.txt", "a.txt"], null);
+            TarCatalogs.Of(("./A.txt", 1), ("a.txt", 2)), null);
 
         groups.Should().Equal(new TarExeReader.DuplicateGroup("./A.txt", 1, 2));
     }
@@ -36,7 +37,7 @@ public sealed class TarDuplicateNamesTests
     public void FindDuplicateGroups_FolderWindowsTrims_IsOneGroup(string first, string second)
     {
         List<TarExeReader.DuplicateGroup> groups = TarExeReader.FindDuplicateGroups(
-            [(first, 1), (second, 2)], [first, second], null);
+            TarCatalogs.Of((first, 1), (second, 2)), null);
 
         groups.Should().Equal(new TarExeReader.DuplicateGroup(first, 1, 2));
     }
@@ -46,13 +47,13 @@ public sealed class TarDuplicateNamesTests
     [Fact]
     public void FindDuplicateGroups_FolderEndingInSpace_IsNoGroup()
     {
-        TarExeReader.FindDuplicateGroups([("d/x.txt", 1), ("d /x.txt", 2)], ["d/x.txt", "d /x.txt"], null).Should().BeEmpty();
+        TarExeReader.FindDuplicateGroups(TarCatalogs.Of(("d/x.txt", 1), ("d /x.txt", 2)), null).Should().BeEmpty();
     }
 
     [Fact]
     public void FindDuplicateGroups_FileNameWindowsTrims_IsNoGroup()
     {
-        TarExeReader.FindDuplicateGroups([("a.txt", 1), ("a.txt. ", 2)], ["a.txt", "a.txt. "], null).Should().BeEmpty();
+        TarExeReader.FindDuplicateGroups(TarCatalogs.Of(("a.txt", 1), ("a.txt. ", 2)), null).Should().BeEmpty();
     }
 
     [Theory]
@@ -77,7 +78,7 @@ public sealed class TarDuplicateNamesTests
     public void FindDuplicateGroups_OnlyAmongTheSelection()
     {
         List<TarExeReader.DuplicateGroup> groups = TarExeReader.FindDuplicateGroups(
-            [("a.txt", 1), ("b.txt", 1), ("a.txt", 2), ("b.txt", 2)], ["a.txt", "b.txt", "a.txt", "b.txt"], ["b.txt"]);
+            TarCatalogs.Of(("a.txt", 1), ("b.txt", 1), ("a.txt", 2), ("b.txt", 2)), ["b.txt"]);
 
         groups.Should().Equal(new TarExeReader.DuplicateGroup("b.txt", 1, 2));
     }
@@ -86,7 +87,7 @@ public sealed class TarDuplicateNamesTests
     public void FindDuplicateGroups_NameThatIsAlsoAFolder_IsLeftOut()
     {
         List<TarExeReader.DuplicateGroup> groups = TarExeReader.FindDuplicateGroups(
-            [("x", 1), ("x", 2)], ["x/", "x", "x"], null);
+            TarCatalogs.Of(("x/", 0), ("x", 1), ("x", 2)), null);
 
         groups.Should().BeEmpty();
     }
@@ -94,7 +95,7 @@ public sealed class TarDuplicateNamesTests
     [Fact]
     public void FindDuplicateGroups_NoDuplicates_Empty()
     {
-        TarExeReader.FindDuplicateGroups([("a", 1), ("b", 1)], ["a", "b"], null).Should().BeEmpty();
+        TarExeReader.FindDuplicateGroups(TarCatalogs.Of(("a", 1), ("b", 1)), null).Should().BeEmpty();
     }
 
     [Theory]
@@ -160,7 +161,7 @@ public sealed class TarDuplicateNamesTests
     [InlineData(new[] { "A.txt", "a.txt" }, 2)]
     [InlineData(new[] { "d/x.txt", "d./x.txt" }, 2)]
     public void FileEntriesInScope_CountsEveryEntry(string[] files, int expected) =>
-        TarExeReader.FileEntriesInScope([.. files.Select(f => (f, 1L))], null).Should().Be(expected);
+        TarExeReader.FileEntriesInScope(TarCatalogs.Of([.. files.Select(f => (f, 1L))]), null).Should().Be(expected);
 
     // T-F462 (closing review): only a file at the group's own path is its first copy; the member "y"
     // also takes "y/z.txt" (bsdtar 3.8.9), a file the main pass scanned.
@@ -191,5 +192,5 @@ public sealed class TarDuplicateNamesTests
 
     [Fact]
     public void FileEntriesInScope_Selection_CountsOnlyIt() =>
-        TarExeReader.FileEntriesInScope([("a.txt", 1), ("b.txt", 1), ("b.txt", 1)], ["b.txt"]).Should().Be(2);
+        TarExeReader.FileEntriesInScope(TarCatalogs.Of(("a.txt", 1), ("b.txt", 1), ("b.txt", 1)), ["b.txt"]).Should().Be(2);
 }

@@ -194,4 +194,25 @@ public sealed class TarNamesTests
         noExample.Should().Throw<TarArgumentEncodingException>()
             .Which.Text.Code.Should().Be(MessageCode.TarListedNameUntrusted);
     }
+    // T-F541: one walk of the quarantine gives both verdicts the three-argument form gives in two:
+    // the files alone, and files and folders together, a pre-created folder left out.
+    [Theory]
+    [InlineData(new[] { "a.txt" }, new string[0], true, true)]
+    [InlineData(new[] { "a.txt", "x.txt" }, new string[0], false, false)]
+    [InlineData(new[] { "a.txt" }, new[] { "stray" }, true, false)]
+    [InlineData(new[] { "a.txt" }, new[] { "made" }, true, true)]
+    [InlineData(new[] { "a.txt" }, new[] { "d" }, true, true)]
+    public void JudgeExtracted_OneWalk_AgreesWithTheTwoCalls(string[] files, string[] folders, bool filesFaithful, bool allFaithful)
+    {
+        string[] listed = ["a.txt", "d/"];
+        var preCreated = new HashSet<string>(["made"], StringComparer.OrdinalIgnoreCase);
+        (string, bool)[] walk = [.. folders.Select(f => (f, true)), .. files.Select(f => (f, false))];
+
+        (TarListingVerdict onlyFiles, TarListingVerdict all) = TarNames.JudgeExtracted(listed, walk, preCreated);
+
+        onlyFiles.Should().Be(TarNames.JudgeExtracted(listed, files, []));
+        all.Should().Be(TarNames.JudgeExtracted(listed, files, folders.Where(f => !preCreated.Contains(f))));
+        (onlyFiles.Trust == TarNameTrust.Faithful).Should().Be(filesFaithful);
+        (all.Trust == TarNameTrust.Faithful).Should().Be(allFaithful);
+    }
 }
