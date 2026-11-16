@@ -24,4 +24,13 @@
          (see CLAUDE.md) rather than making an implementation-detail class public. -->
     <InternalsVisibleTo Include="Archiver.Shell.Tests" />
   </ItemGroup>
+  <!-- T-F548: as Archiver.App.csproj's T-F492 target - ILCompiler 11 takes a ProjectReference's
+       satellites (Archiver.Messages) only through this; without it the Explorer commands' Core
+       messages are English in every language. -->
+  <Target Name="PakkoAotProjectSatellites" AfterTargets="_ComputeIlcCompileInputs" Condition="'$(PublishAot)' == 'true'">
+    <ItemGroup>
+      <IlcSatelliteAssembly Include="@(ResolvedFileToPublish)"
+                            Condition="'%(ResolvedFileToPublish.AssetType)' == '' and $([System.String]::Copy('%(Filename)%(Extension)').EndsWith('.resources.dll'))" />
+    </ItemGroup>
+  </Target>
 </Project>
