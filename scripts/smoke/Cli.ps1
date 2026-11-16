@@ -1132,7 +1132,7 @@ Add-SmokeStep 'CLI-062' {
     foreach ($arguments in @(@('l', $zip), @('t', $zip), @('x', $zip, "-o$out"))) {
         $run = Invoke-Pakko $arguments
         Assert-Smoke ($run.ExitCode -eq 2) "$($arguments[0]): exit $($run.ExitCode) $($run.Text)"
-        Assert-Smoke ($run.Text.Contains('too many entries') -and $run.Text -match '2.000.000') "$($arguments[0]): $($run.Text)"
+        Assert-Smoke ($run.Text.Contains('too many entries') -and $run.Text -match '4.000.000') "$($arguments[0]): $($run.Text)"
     }
     Assert-Smoke (-not (Test-Path -LiteralPath $out) -or @(Get-ChildItem -LiteralPath $out -Recurse -File).Count -eq 0) 'files were extracted'
     'l, t and x refuse the archive, naming the limit'

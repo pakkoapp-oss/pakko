@@ -133,6 +133,14 @@ public sealed class ArchiveLimitsTests : IDisposable
         refused.Text.Code.Should().Be(MessageCode.CatalogTooLarge);
     }
 
+    // T-F529: the entry past the limit must read as too many entries, so the helper's protocol must
+    // allow at least the limit (its index field, its MAX_SELECTED).
+    [Fact]
+    public void TheEntryLimit_IsWithinTheHelpersProtocol()
+    {
+        ArchiveLimits.MaxEntries.Should().BeLessThanOrEqualTo(ArchiveHelperOutput.MaxEntries);
+    }
+
     [Fact]
     public void TheNameMessage_NamesTheLimit()
     {

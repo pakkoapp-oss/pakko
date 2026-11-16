@@ -4,16 +4,18 @@ using Archiver.Core.Models;
 namespace Archiver.Core.Services;
 
 /// <summary>
-/// T-F513: how many entries Pakko reads from one archive. An archive's catalog is held whole while
-/// it is listed, tested or extracted (.NET's <c>ZipArchive</c> alone keeps about 455 bytes an entry),
-/// so an archive declaring millions of entries could take any amount of memory; past this limit it
-/// is refused with its own message, before its catalog is read. Measured 2026-11-14: about 1 KB an
-/// entry for a ZIP, 600 bytes for a tar (docs/DECISIONS.md, "T-F513").
+/// T-F513: how many entries Pakko reads from one archive. A list holds every entry and a test or an
+/// extraction every name, so an archive declaring millions of entries could take any amount of
+/// memory; past this limit it is refused with its own message, before its catalog is read.
+/// T-F529 (reading a ZIP in batches, tar.exe's "-tv" a line at a time) raised it from 2,000,000:
+/// measured 2026-11-16 at 4,000,000 empty entries, a ZIP list peaks at 1.04 GB, a test at 1.10, a
+/// tar list or test at 1.4 - what 2,000,000 took before (docs/DECISIONS.md, "T-F529"). The helper's
+/// protocol allows no more (its <c>MAX_SELECTED</c>; <c>ArchiveLimitsTests</c> holds the two together).
 /// </summary>
 internal static class ArchiveLimits
 {
     /// <summary>The most entries one archive may have.</summary>
-    public const int MaxEntries = 2_000_000;
+    public const int MaxEntries = 4_000_000;
 
     /// <summary>
     /// T-F529: the most characters one archive's names may have together. A list, a test, a scan

@@ -15074,6 +15074,29 @@ earlier, up to three times). Past it, `MessageCode.CatalogTooLarge`. `StdOutLimi
 refusals apart: too many lines is `TooManyEntries`, too many bytes `CatalogTooLarge` - before, the
 bytes cap (1 GiB) also said "too many entries".
 
+**Memory before and after (peak private bytes of the process, `pakko`'s own path through Core; empty
+entries named `d00000/f00000000.txt`; 2026-11-15 on main, 2026-11-16 on the branch).**
+
+| Mode | Archive | Before | After |
+|---|---|---|---|
+| list | ZIP, 1,000,000 | 1,035 MiB | 279 MiB |
+| test | ZIP, 1,000,000 | 1,031 MiB (8.3 s) | 275 MiB (13.0 s: two walks) |
+| scan | ZIP, 1,000,000 | 1,038 MiB | 256 MiB |
+| the App's tree (list + `ArchiveTreeIndex`) | ZIP, 1,000,000 | 1,150 MiB | 368 MiB (T-F535) |
+| extract | ZIP, 200,000 | 334 MiB (83 s) | 197 MiB (86 s) |
+| list | tar.gz, 1,000,000 | 716 MiB | about 375 MiB |
+| test | tar.gz, 1,000,000 | 677 MiB | about 360 MiB |
+| the App's tree | tar.gz, 1,000,000 | 721 MiB | 506 MiB (T-F535) |
+| extract | tar.gz, 200,000 | 223 MiB (195 s) | 208 MiB (182 s) |
+| scan | tar.gz, 1,000,000 | 700 MiB (1,255 s) | not measured again (T-F536) |
+
+**The entry limit: 2,000,000 -> 4,000,000.** At 4,000,000 entries a ZIP list peaks at 1,036 MiB, a test
+at 1,098, the App's tree at 1,385; a tar list at 1,358, a test at 1,389 - what 2,000,000 took before
+(about 2 GB for a ZIP, 1.4 for a tar). The helper's protocol allows no more (its index field and
+`MAX_SELECTED`, held together by `ArchiveLimitsTests`); its output now checks the limit before the
+index, so entry 4,000,001 reads as too many entries, not as a broken helper. `EntryLimitTests`
+(`Category=Slow`) lists and tests 4,000,000 and 4,000,001 entries through tar.exe and the helper.
+
 ## T-F528 - one owner of the folders Pakko works in, one root per operation (2026-11-14)
 
 **What changed.** `IO/WorkRoot` owns where an operation's work folders go and how they are made. An
