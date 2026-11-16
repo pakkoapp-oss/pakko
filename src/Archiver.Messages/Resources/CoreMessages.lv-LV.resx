@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Šajā arhīvā ir pārāk daudz vienumu, lai Pakko to atvērtu. Ierobežojums: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Šī arhīva nosaukumi kopā ir pārāk gari, lai Pakko to atvērtu. Ierobežojums: {0} rakstzīmes.</value>
+  </data>
 </root>

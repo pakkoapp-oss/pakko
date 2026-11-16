@@ -75,6 +75,8 @@ internal sealed class ArchiveHelperOutput
 
     private readonly ArchiveHelperMode _mode;
     private readonly int _entryLimit;
+    private readonly int _nameCharLimit;
+    private long _nameChars;
     private readonly List<ArchiveHelperEntry> _entries = [];
     private readonly HashSet<long> _warned = [];
     private readonly List<string> _missingExports = [];
@@ -94,10 +96,13 @@ internal sealed class ArchiveHelperOutput
     /// <param name="onReading">Test: called for each "P" line with the entry's index and how far its read got.</param>
     /// <param name="entryLimit">T-F513: the most entries Pakko takes; the next one fails the run with
     /// <see cref="ArchiveLimits.TooManyEntries"/>, never as a broken protocol. Lowered only by tests.</param>
+    /// <param name="nameCharLimit">T-F529: the most characters the entries' names and link targets may
+    /// have together; past it, <see cref="ArchiveLimits.CatalogTooLarge"/>. Lowered only by tests.</param>
     public ArchiveHelperOutput(ArchiveHelperMode mode, Action<long, long>? onRead = null, Action<long, long>? onReading = null,
-        int entryLimit = ArchiveLimits.MaxEntries)
+        int entryLimit = ArchiveLimits.MaxEntries, int nameCharLimit = ArchiveLimits.MaxCatalogNameChars)
     {
         _entryLimit = entryLimit;
+        _nameCharLimit = nameCharLimit;
         _onReading = onReading;
         _mode = mode;
         _onRead = onRead;
@@ -259,7 +264,10 @@ internal sealed class ArchiveHelperOutput
             _ => throw Broken("an encryption flag that is not 0, 1 or -"),
         };
         int sparse = (int)Unsigned(f[7], int.MaxValue);
-        _entries.Add(new ArchiveHelperEntry(index, fileType, size, mtime, nanoseconds, encrypted, sparse, Hex16(f[8]), Hex16(f[9])));
+        string? name = Hex16(f[8]);
+        string? link = Hex16(f[9]);
+        _nameChars = ArchiveLimits.CountName(_nameChars, (name?.Length ?? 0) + (link?.Length ?? 0), _nameCharLimit);
+        _entries.Add(new ArchiveHelperEntry(index, fileType, size, mtime, nanoseconds, encrypted, sparse, name, link));
     }
 
     private void TakeRead(string[] fields)

@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>此压缩包的条目过多，Pakko 无法打开。上限：{0}。</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>此压缩包中的名称总长度过长，Pakko 无法打开。上限：{0} 个字符。</value>
+  </data>
 </root>

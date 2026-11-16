@@ -70,12 +70,14 @@ internal sealed class ZipCatalog : IDisposable
     private readonly ZipNameCodePages _codePages;
     private readonly CentralDirectoryExtent _extent;
     private readonly int _maxEntries;
+    private readonly int _maxNameChars;
     private readonly int _batchEntries;
     private readonly bool _forceZip64Overlay;
 
     private ZipCatalog(FileStream directory, FileStream data, ZipNameCodePages codePages, CentralDirectoryExtent extent,
-        int maxEntries, int batchEntries, bool forceZip64Overlay)
+        int maxEntries, int maxNameChars, int batchEntries, bool forceZip64Overlay)
     {
+        _maxNameChars = maxNameChars;
         _directory = directory;
         _data = data;
         _codePages = codePages;
@@ -92,9 +94,10 @@ internal sealed class ZipCatalog : IDisposable
     /// reader (T-F189's password check). Throws what a local header that cannot be read throws.</summary>
     public IEnumerable<(string FullName, LocatedZipEntry Located)> Located()
     {
+        var names = new NameBudget(_maxNameChars);
         foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: true, _maxEntries))
         {
-            string name = ZipEntryNameDecoder.Decode(record.NameBytes, record.GeneralPurposeFlag, record.HostOs, record.Extra, _codePages);
+            string name = Decode(record, names);
             yield return (name, LocateAll(_data, [record])[0]);
         }
     }
@@ -107,8 +110,9 @@ internal sealed class ZipCatalog : IDisposable
     public static ZipCatalog Open(string path, ZipNameCodePages codePages) =>
         Open(path, codePages, ArchiveLimits.MaxEntries, DefaultBatchEntries, forceZip64Overlay: false);
 
-    // Test seams: the limit, the batch and the overlay's end records.
-    internal static ZipCatalog Open(string path, ZipNameCodePages codePages, int maxEntries, int batchEntries, bool forceZip64Overlay)
+    // Test seams: the limits, the batch and the overlay's end records.
+    internal static ZipCatalog Open(string path, ZipNameCodePages codePages, int maxEntries, int batchEntries, bool forceZip64Overlay,
+        int maxNameChars = ArchiveLimits.MaxCatalogNameChars)
     {
         FileStream directory = File.OpenRead(path);
         FileStream? data = null;
@@ -119,7 +123,7 @@ internal sealed class ZipCatalog : IDisposable
                 throw new InvalidDataException("A ZIP archive is read from a file, not a device.");
             CentralDirectoryExtent extent = FindCentralDirectory(directory, maxEntries);
             data = File.OpenRead(path);
-            return new ZipCatalog(directory, data, codePages, extent, maxEntries, batchEntries, forceZip64Overlay);
+            return new ZipCatalog(directory, data, codePages, extent, maxEntries, maxNameChars, batchEntries, forceZip64Overlay);
         }
         catch
         {
@@ -135,9 +139,10 @@ internal sealed class ZipCatalog : IDisposable
     public IEnumerable<ZipCatalogName> Names()
     {
         int index = 0;
+        var names = new NameBudget(_maxNameChars);
         foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: false, _maxEntries))
         {
-            string name = ZipEntryNameDecoder.Decode(record.NameBytes, record.GeneralPurposeFlag, record.HostOs, record.Extra, _codePages);
+            string name = Decode(record, names);
             yield return new ZipCatalogName(index++, name, DeclaredLength(record));
         }
     }
@@ -154,6 +159,7 @@ internal sealed class ZipCatalog : IDisposable
     public IEnumerable<NamedZipEntry> Entries(bool collisions = false, ZipLocate locate = ZipLocate.None)
     {
         Dictionary<string, byte[]>? firstRawByName = collisions ? new(StringComparer.Ordinal) : null;
+        var names = new NameBudget(_maxNameChars);
         var batch = new List<CentralDirectoryRecord>(_batchEntries);
         long batchBytes = 0;
         int firstIndex = 0;
@@ -163,7 +169,7 @@ internal sealed class ZipCatalog : IDisposable
             batchBytes += record.RecordEnd - record.RecordStart;
             if (batch.Count < _batchEntries && batchBytes < BatchBytes)
                 continue;
-            foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, firstRawByName, locate))
+            foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, names, firstRawByName, locate))
                 yield return entry;
             firstIndex += batch.Count;
             batch.Clear();
@@ -171,7 +177,7 @@ internal sealed class ZipCatalog : IDisposable
         }
         if (batch.Count > 0)
         {
-            foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, firstRawByName, locate))
+            foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, names, firstRawByName, locate))
                 yield return entry;
         }
     }
@@ -188,7 +194,7 @@ internal sealed class ZipCatalog : IDisposable
 
     // The batch's records are contiguous in the directory: one read copies them for the overlay.
     private IEnumerable<NamedZipEntry> ReadBatch(
-        List<CentralDirectoryRecord> records, int firstIndex, Dictionary<string, byte[]>? firstRawByName, ZipLocate locate)
+        List<CentralDirectoryRecord> records, int firstIndex, NameBudget names, Dictionary<string, byte[]>? firstRawByName, ZipLocate locate)
     {
         long start = records[0].RecordStart;
         byte[] raw = new byte[records[^1].RecordEnd - start];
@@ -212,10 +218,26 @@ internal sealed class ZipCatalog : IDisposable
         {
             CentralDirectoryRecord record = records[i];
             int index = firstIndex + i;
-            string name = ZipEntryNameDecoder.Decode(record.NameBytes, record.GeneralPurposeFlag, record.HostOs, record.Extra, _codePages);
+            string name = Decode(record, names);
             yield return new NamedZipEntry(entries[i], name, Collides(firstRawByName, name, record.NameBytes),
                 ZipExtendedTime.TryReadModifiedUtc(record.Extra), located?[i]) { Index = index };
         }
+    }
+
+    // T-F529: every walk counts the names it decodes - as decoded, since a 0x7075 extra field can
+    // carry a long name behind a one-byte raw one.
+    private string Decode(CentralDirectoryRecord record, NameBudget names)
+    {
+        string name = ZipEntryNameDecoder.Decode(record.NameBytes, record.GeneralPurposeFlag, record.HostOs, record.Extra, _codePages);
+        names.Take(name.Length);
+        return name;
+    }
+
+    private sealed class NameBudget(int limit)
+    {
+        private long _chars;
+
+        public void Take(int nameChars) => _chars = ArchiveLimits.CountName(_chars, nameChars, limit);
     }
 
     private static bool Collides(Dictionary<string, byte[]>? firstRawByName, string name, byte[] rawName)

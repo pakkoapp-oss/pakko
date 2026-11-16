@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Este archivo comprimido tiene demasiadas entradas para que Pakko lo abra. Límite: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Los nombres de este archivo comprimido son demasiado largos en total para que Pakko lo abra. Límite: {0} caracteres.</value>
+  </data>
 </root>

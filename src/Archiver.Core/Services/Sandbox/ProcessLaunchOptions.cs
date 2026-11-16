@@ -48,6 +48,7 @@ internal sealed record StdOutLines(StdOutLineHandler OnLine, int MaxLineBytes, l
 
 /// <summary>
 /// T-F513: the most '\n' bytes and bytes in all a child may write to stdout; past either the child
-/// is killed and the run fails with <paramref name="Exceeded"/>'s exception.
+/// is killed and the run fails with <paramref name="TooManyLines"/>'s or <paramref name="TooManyBytes"/>'s
+/// exception (T-F529: a listing's entries, or its names).
 /// </summary>
-internal sealed record StdOutLimit(long MaxLines, long MaxBytes, Func<Exception> Exceeded);
+internal sealed record StdOutLimit(long MaxLines, long MaxBytes, Func<Exception> TooManyLines, Func<Exception> TooManyBytes);

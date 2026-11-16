@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Selles arhiivis on liiga palju kirjeid, et Pakko seda avaks. Piirang: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Selle arhiivi nimed on kokku liiga pikad, et Pakko seda avaks. Piirang: {0} märki.</value>
+  </data>
 </root>

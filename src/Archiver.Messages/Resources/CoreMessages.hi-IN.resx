@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>इस संग्रह में इतनी अधिक प्रविष्टियाँ हैं कि Pakko इसे नहीं खोलता। सीमा: {0}।</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>इस संग्रह के नाम कुल मिलाकर इतने लंबे हैं कि Pakko इसे नहीं खोलता। सीमा: {0} वर्ण।</value>
+  </data>
 </root>

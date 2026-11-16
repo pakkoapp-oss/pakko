@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Bu arşivde Pakko'nun açamayacağı kadar çok öğe var. Sınır: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Bu arşivdeki adlar toplamda Pakko'nun açamayacağı kadar uzun. Sınır: {0} karakter.</value>
+  </data>
 </root>

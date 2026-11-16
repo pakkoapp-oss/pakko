@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>ไฟล์บีบอัดนี้มีรายการมากเกินกว่าที่ Pakko จะเปิดได้ ขีดจำกัด: {0}</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>ชื่อในไฟล์บีบอัดนี้ยาวรวมกันเกินกว่าที่ Pakko จะเปิดได้ ขีดจำกัด: {0} อักขระ</value>
+  </data>
 </root>

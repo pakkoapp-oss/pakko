@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Kumbukumbu hii ina vipengee vingi mno kwa Pakko kuifungua. Kikomo: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Majina katika kumbukumbu hii ni marefu mno kwa jumla kwa Pakko kuifungua. Kikomo: herufi {0}.</value>
+  </data>
 </root>

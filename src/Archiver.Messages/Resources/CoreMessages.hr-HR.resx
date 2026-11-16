@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Ova arhiva sadrži previše stavki da bi je Pakko otvorio. Ograničenje: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Nazivi u ovoj arhivi ukupno su predugi da bi je Pakko otvorio. Ograničenje: {0} znakova.</value>
+  </data>
 </root>

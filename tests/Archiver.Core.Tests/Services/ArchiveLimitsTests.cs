@@ -5,6 +5,7 @@ using Archiver.Core.Services;
 using Archiver.Core.Services.Sandbox;
 using Archiver.Core.Services.Zip;
 using Archiver.Core.Services.Zip.Decryption;
+using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -12,9 +13,12 @@ namespace Archiver.Core.Tests.Services;
 // T-F513: an archive with more entries than ArchiveLimits.MaxEntries is refused with its own message
 // before its catalog is held: by the count a ZIP declares, by the records its directory really holds,
 // and by the entries the archive helper reports.
-public sealed class ArchiveLimitsTests
+public sealed class ArchiveLimitsTests : IDisposable
 {
     private static readonly ZipNameCodePages Us = ZipNameCodePages.FromCodePages(437, 1252);
+    private readonly string _folder = Directory.CreateTempSubdirectory("pakko-limits-").FullName;
+
+    public void Dispose() => Directory.Delete(_folder, recursive: true);
 
     // --- Happy path ---
 
@@ -78,6 +82,63 @@ public sealed class ArchiveLimitsTests
         Refused(() => Feed(run, "V 6C696261726368697665", Entry(0), Entry(1), Entry(2)), 2);
     }
 
+    // --- T-F529: the names' characters together ---
+
+    [Fact]
+    public void ZipNames_AtTheNameLimit_AreRead_ByEveryWalk()
+    {
+        string zip = ZipFileOf(3); // f0.txt, f1.txt, f2.txt: 18 characters
+        using var catalog = ZipCatalog.Open(zip, Us, ArchiveLimits.MaxEntries, ZipCatalog.DefaultBatchEntries, false, maxNameChars: 18);
+
+        catalog.Names().Should().HaveCount(3);
+        catalog.Entries().Should().HaveCount(3);
+        catalog.Located().Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ZipNames_OneCharacterOverTheNameLimit_AreRefused_ByEveryWalk()
+    {
+        string zip = ZipFileOf(3);
+        using var catalog = ZipCatalog.Open(zip, Us, ArchiveLimits.MaxEntries, ZipCatalog.DefaultBatchEntries, false, maxNameChars: 17);
+
+        RefusedNames(() => _ = catalog.Names().ToList(), 17);
+        RefusedNames(() => catalog.Check(), 17);
+        RefusedNames(() => _ = catalog.Located().ToList(), 17);
+    }
+
+    // A one-byte raw name carrying a long Unicode Path extra (0x7075): what is held is the decoded name.
+    [Fact]
+    public void ZipName_LongOnlyInItsUnicodePathExtra_IsCountedAsDecoded()
+    {
+        byte[] raw = "a"u8.ToArray();
+        byte[] utf8 = Encoding.UTF8.GetBytes(new string('n', 100));
+        string zip = LegacyZipBuilder.Write(Path.Combine(_folder, "extra.zip"),
+            new LegacyZipBuilder.Entry(raw, [], CentralExtra: LegacyZipBuilder.UnicodePathExtra(raw, utf8)));
+        using var catalog = ZipCatalog.Open(zip, Us, ArchiveLimits.MaxEntries, ZipCatalog.DefaultBatchEntries, false, maxNameChars: 99);
+
+        RefusedNames(() => _ = catalog.Names().ToList(), 99);
+    }
+
+    [Fact]
+    public void HelperListing_NamesAndLinksOverTheNameLimit_AreRefused_NotABrokenProtocol()
+    {
+        var atLimit = new ArchiveHelperOutput(ArchiveHelperMode.List, nameCharLimit: 3);
+        Feed(atLimit, "V 6C696261726368697665", "E 0 40960 0 1700000000 0 0 0 0061 00620063", "D");
+        atLimit.Entries.Should().HaveCount(1, "the name 'a' and the link 'bc': 3 characters");
+
+        var over = new ArchiveHelperOutput(ArchiveHelperMode.List, nameCharLimit: 2);
+        CoreTextIOException refused = FluentActions.Invoking(() =>
+                Feed(over, "V 6C696261726368697665", "E 0 40960 0 1700000000 0 0 0 0061 00620063"))
+            .Should().Throw<CoreTextIOException>().Which;
+        refused.Text.Code.Should().Be(MessageCode.CatalogTooLarge);
+    }
+
+    [Fact]
+    public void TheNameMessage_NamesTheLimit()
+    {
+        ArchiveLimits.CatalogTooLarge(ArchiveLimits.MaxCatalogNameChars).Text.English.Should().Contain("too long").And.Contain("134");
+    }
+
     [Fact]
     public void TheMessage_NamesTheLimit()
     {
@@ -91,6 +152,21 @@ public sealed class ArchiveLimitsTests
         CoreTextIOException refused = FluentActions.Invoking(read).Should().Throw<CoreTextIOException>().Which;
         refused.Text.Code.Should().Be(MessageCode.TooManyEntries);
         refused.Text.English.Should().Be(ArchiveLimits.TooManyEntries(limit).Text.English);
+    }
+
+    private static void RefusedNames(Action read, int limit)
+    {
+        CoreTextIOException refused = FluentActions.Invoking(read).Should().Throw<CoreTextIOException>().Which;
+        refused.Text.Code.Should().Be(MessageCode.CatalogTooLarge);
+        refused.Text.English.Should().Be(ArchiveLimits.CatalogTooLarge(limit).Text.English);
+    }
+
+    private string ZipFileOf(int entries)
+    {
+        string path = Path.Combine(_folder, $"{entries}.zip");
+        using MemoryStream zip = ZipOf(entries);
+        File.WriteAllBytes(path, zip.ToArray());
+        return path;
     }
 
     private static string Entry(int index) => $"E {index} 32768 5 1700000000 0 0 0 0061 -";

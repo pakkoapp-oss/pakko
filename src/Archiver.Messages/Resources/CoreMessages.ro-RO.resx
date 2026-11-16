@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Această arhivă conține prea multe elemente pentru ca Pakko să o deschidă. Limită: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Numele din această arhivă sunt prea lungi în total pentru ca Pakko să o deschidă. Limită: {0} caractere.</value>
+  </data>
 </root>

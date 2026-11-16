@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Det här arkivet innehåller för många poster för att Pakko ska öppna det. Gräns: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Namnen i det här arkivet är sammanlagt för långa för att Pakko ska öppna det. Gräns: {0} tecken.</value>
+  </data>
 </root>

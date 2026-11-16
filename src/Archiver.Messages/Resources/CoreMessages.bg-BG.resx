@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Този архив съдържа твърде много елементи, за да го отвори Pakko. Ограничение: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Имената в този архив са твърде дълги общо, за да го отвори Pakko. Ограничение: {0} знака.</value>
+  </data>
 </root>

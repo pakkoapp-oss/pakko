@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Šiame archyve per daug elementų, kad Pakko jį atvertų. Riba: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Šio archyvo pavadinimai kartu per ilgi, kad Pakko jį atvertų. Riba: {0} simbolių.</value>
+  </data>
 </root>
