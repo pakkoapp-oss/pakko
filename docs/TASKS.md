@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, the archive search and the identity owner: done; archiving such names is T-F531, next wave), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`: done, batch 5d), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders: done, batch 5d), T-F532 (P3, a merge takes the staging's inheritable entries, next wave), T-F533 (P3, a root left under a `\\?\` name Windows trims, next wave), T-F534 (P3, the fast path's re-inheritance has no cancel, next wave), T-F529 (P2, reading in batches, batch 5e), T-F535 (P2, the App's browser holds a tree of every entry, batch 5f), T-F536 (P2, a scan of many small entries, batch 5f), T-F537 (P3, the tar budget test measures less than a list holds, batch 5e), T-F538 (P2, names and data from two directories, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, the archive search and the identity owner: done; archiving such names is T-F531, next wave), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`: done, batch 5d), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders: done, batch 5d), T-F532 (P3, a merge takes the staging's inheritable entries, next wave), T-F533 (P3, a root left under a `\\?\` name Windows trims, next wave), T-F534 (P3, the fast path's re-inheritance has no cancel, next wave), T-F529 (P2, reading in batches, batch 5e), T-F535 (P2, the App's browser holds a tree of every entry: done, batch 5f), T-F536 (P2, a scan of many small entries: done, batch 5f), T-F544 (P3, a scan's result holds every clean finding, next wave), T-F537 (P3, the tar budget test measures less than a list holds, batch 5e), T-F538 (P2, names and data from two directories, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -88,7 +88,7 @@ above stays as the record of what each stream holds.
 | 5c | Trimmed names | T-F510 | the source key (T-F511 PR 4) and the twin fixture | done on `fix/batch5c-trimmed-names`: the archive search stops at such a folder (`CLI-063`), `PathIdentity` answers for no twin; archiving them split off as T-F531 (next wave) |
 | 5d | Work folders | T-F528 | one owner for every folder Pakko writes before the result: where, how it is born, its sweep | plan mode and advisor first; the owner test; smoke of every extraction and archiving path |
 | 5e | Reading in batches | T-F529, T-F537, T-F538 | the ZIP central directory walked as a stream, .NET's reader given one batch at a time (`ZipCatalog`); only a compact name set kept | done on `perf/batch5e-batch-reading`: oracle of 1,476 archives against the old reader, counter tests red before, smoke CLI quick 41/41 on 1.10.0.29, tar.exe 33/33 on 3.8.9 and 3.5.2; memory table in `docs/DECISIONS.md`, "T-F529" |
-| 5f | Everything in batches | T-F540, T-F541, T-F542, T-F539, T-F535, T-F536 | the user, 2026-11-16: "as chunked as possible wherever possible, no bloated collections". No collection the size of the archive except the one set of names the global checks need (collisions, duplicates, 8.3 aliases, hard-link pairs), held once, as indices elsewhere: a list streamed to its caller, tar.exe's and the helper's readers on one copy of each name, the quarantine walked instead of listed, the App's browser and the scan on that | plan mode and advisor first; a counter test per holder (live bytes per entry, red before); memory and time of every mode at 1,000,000 and 4,000,000 entries before and after; PakkoW10 on both tar builds; the App browser on the device; an opus reviewer |
+| 5f | Everything in batches | T-F540, T-F541, T-F542, T-F539, T-F535, T-F536 | done on `perf/batch5f-everything-in-batches`: a list streamed to its caller, one copy of each name in tar.exe's and the helper's readers, the quarantine walked, the App's index compact; counter test per holder red before; before/after table in `docs/DECISIONS.md`, "Batch 5f"; smoke quick 66/66 and `CLI-066` on 1.10.0.30, tar.exe 36/36 on 3.8.9 and 3.5.2, the App browsing 1,000,000 entries; T-F544 split off (next wave) | plan mode and advisor first; an opus reviewer |
 | 5g | Pulled-in P3s | T-F521, T-F522, T-F533, T-F543 | three P3s of the same code the agent pulled into this wave (2026-11-16) | each its red test |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
@@ -2030,6 +2030,15 @@ re-measured with T-F346's script before and after.
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
 
+### T-F544 - A scan's result holds a finding for every clean entry (P3, from T-F536, 2026-11-16)
+
+- [ ] **Status:** open, next wave. `ThreatScanResult.Findings` has a `ThreatFinding` for each entry
+  scanned, Clean ones included: at the end of a tar scan of 1,000,000 empty entries they are 206 MiB
+  live of its 281 MiB peak (batch 5f, `docs/DECISIONS.md`). The frontends show the threats and the
+  inconclusive entries, and a count. Next: keep the findings that are not Clean and count the clean
+  ones (a public contract change: App, Shell and CLI read `Findings`; rows in
+  `CoreNeverThrowsContractTests`); counter test of live bytes at a scan's end.
+
 ### T-F543 - Batch 5e's reviewer's P3s: tar's -tv cap, the first walks' cancel, readers left without a budget (P3, 2026-11-16)
 
 - [ ] **Status:** open, batch 5g. The fresh reviewer of batch 5e (2026-11-16) found, beside what 5e
@@ -2052,63 +2061,6 @@ re-measured with T-F346's script before and after.
     `-tv`'s count must still match `-t`'s).
   - Scan's second walk now reports a batch that fails to read again as unreadable, without a test: no
     seam fails a read the first walk passed.
-
-### T-F542 - The helper's reader holds its entries twice and copies them at every step (P2, the user, 2026-11-16)
-
-- [ ] **Status:** open, batch 5f. `HelperReader` keeps the helper's output (`_listed`, an
-  `ArchiveHelperEntry` per entry) and its own `Entry` list beside it, and each step makes a whole
-  copy more (`[.. entries.Where(...)]` for files, candidates, the selection, the scan's files, the
-  read's indices). Next: one array of compact entries (a name, its facts, flags), steps that walk it
-  or keep indices; `ArchiveHelperEntry` only as one line's parse. Counter test per step.
-
-### T-F541 - tar.exe's reader keeps names in several collections, and lists the quarantine whole (P2, the user, 2026-11-16)
-
-- [ ] **Status:** open, batch 5f. After 5e, a scan before extraction keeps `names` and, keyed by the
-  same names again, `sizeByName` and `fileEntries`; a selection, the duplicates and the folders to
-  create build further sets of names (`ExpandSelection`, `DuplicateGroups`, `preCreated`), and the
-  quarantine is listed into arrays before it is moved or scanned. Next: one array of names (T-F539),
-  sizes and kinds by index; the sets the global checks need over indices; the quarantine walked a file
-  at a time into the move and the scan. Counter test: live bytes per entry of a tar extraction halfway,
-  as `ZipExtraction_WhileItWalks` measures a ZIP's.
-
-### T-F540 - A list hands every entry to its caller at once (P2, the user, 2026-11-16)
-
-- [ ] **Status:** open, batch 5f. `ListEntriesAsync` returns `ArchiveListResult` with a
-  `List<ArchiveEntryInfo>` of every entry (about 160 B a ZIP entry, 200 a tar one: 640 MiB live at
-  4,000,000), though `pakko l` prints them one by one and the App's browser shows one folder.
-  Next: a list that streams its entries to the caller (an `IAsyncEnumerable` or a callback, a batch at
-  a time; its errors still the result's), `pakko l` printing as it reads, the App building its compact
-  index from the stream (T-F535); `ArchiveListResult` kept for the callers that want every entry,
-  built on the stream. Contract change: rows in `CoreNeverThrowsContractTests`, Shell/CLI tests.
-
-### T-F539 - tar.exe's "-t" names are held three times while a listing reads them (P3, from T-F529)
-
-- [ ] **Status:** open, batch 5f (pulled in with the user's "as chunked as possible", 2026-11-16). Measured 2026-11-16 at 4,096 names of 32,000 characters (131
-  million, under T-F529's name limit): a tar list through tar.exe peaks at 1,140 MiB against 413 for
-  the same ZIP. The "-t" output is held as bytes (`_listingBytes`, for "-T"), the `MemoryStream` that
-  gathered them, a decoded text and the names split from it (`ReadBytesAsync`,
-  `TarNames.ReadListing`). Next: read "-t" a line at a time as "-tv" is since T-F529 (names and their
-  bytes kept once), with T-F418's whole-listing judgement unchanged; budget test in
-  `CatalogMemoryBudgetTests` at long names.
-
-### T-F536 - A scan of many small entries makes one AMSI call each and holds the listing (P2, from T-F529)
-
-- [ ] **Status:** open, batch 5f. Measured 2026-11-15 (before 5e): scanning a tar of 1,000,000 empty
-  entries took 1,250 s and held 594 MiB live, through tar.exe and through the helper; 200,000 took
-  240-300 s. Each file is a separate `AmsiScanBuffer` call after it is copied out of the quarantine.
-  Next: measure where the time goes (the quarantine copy, the call, Defender's own work), then scan
-  small files in fewer calls where AMSI allows it (one session, `AmsiScanBuffer` per file but no
-  per-file open/close around it, or a content-only call for empty files), and walk the quarantine
-  instead of holding the listing. A detection must still name its entry.
-
-### T-F535 - The App's archive browser holds a tree of every entry (P2, from T-F529)
-
-- [ ] **Status:** open, batch 5f. Measured 2026-11-15: listing a ZIP of 1,000,000 entries holds 160 MiB
-  of `ArchiveEntryInfo`, and `ArchiveTreeIndex` adds 150 MiB more (311 MiB live, peak 1.15 GB before 5e);
-  a tar of the same holds 658 MiB. The browser shows one folder at a time. Next: a compact index
-  (names as one string pool, rows built only for the open folder, `ArchiveEntryInfo` not kept for
-  every entry), with the App's sort, search and selection unchanged; budget test in
-  `Archiver.App.Core.Tests`, device check of browsing a 1,000,000-entry archive.
 
 ### T-F527 - A run can leave an entry its owner cannot delete, now next to the destination (P3, from T-F524's review)
 
