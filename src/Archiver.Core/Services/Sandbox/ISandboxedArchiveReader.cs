@@ -34,8 +34,11 @@ internal interface ISandboxedArchiveReader : IDisposable
             : await HelperReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, helper, cancellationToken, nearFolder).ConfigureAwait(false);
     }
 
-    /// <summary>The entries for browsing: an unsafe name or a link lists, as before; only extraction refuses it.</summary>
-    Task<ArchiveListResult> ListAsync(CancellationToken cancellationToken);
+    /// <summary>
+    /// The entries for browsing, each passed to <paramref name="onEntry"/> as it is read (T-F540): an
+    /// unsafe name or a link lists, as before; only extraction refuses it.
+    /// </summary>
+    Task<ArchiveListSummary> ListAsync(Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken);
 
     /// <summary>The whole archive, checked: throws <see cref="TarSandboxedService.TarArchiveRejectedException"/> on an unsafe entry.</summary>
     Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken);

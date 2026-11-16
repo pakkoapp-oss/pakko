@@ -161,6 +161,9 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     public Task ZipList_Archive(string kind) => NoThrow(() => _services.ArchiveService.ListEntriesAsync(Path(kind)));
 
     [Theory, MemberData(nameof(Hostile))]
+    public Task ZipListStreamed_Archive(string kind) => NoThrow(() => _services.ArchiveService.ListEntriesAsync(Path(kind), _ => { }));
+
+    [Theory, MemberData(nameof(Hostile))]
     public Task TarExtract_Archive(string kind) => NoThrow(() =>
         _services.TarService.ExtractAsync(new ExtractOptions { ArchivePaths = [Path(kind, ".tar.gz")], DestinationFolder = Destination() }));
 
@@ -169,6 +172,9 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
 
     [Theory, MemberData(nameof(Hostile))]
     public Task TarList_Archive(string kind) => NoThrow(() => _services.TarService.ListEntriesAsync(Path(kind, ".tar")));
+
+    [Theory, MemberData(nameof(Hostile))]
+    public Task TarListStreamed_Archive(string kind) => NoThrow(() => _services.TarService.ListEntriesAsync(Path(kind, ".tar"), _ => { }));
 
     [Theory, MemberData(nameof(Hostile))]
     public Task RouterExtract_Archive(string kind) => NoThrow(async () =>
@@ -182,6 +188,10 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     [Theory, MemberData(nameof(Hostile))]
     public Task RouterList_Archive(string kind) => NoThrow(async () =>
         await (await _services.CreateListingRouterAsync()).ListEntriesAsync(Path(kind, ".7z")));
+
+    [Theory, MemberData(nameof(Hostile))]
+    public Task RouterListStreamed_Archive(string kind) => NoThrow(async () =>
+        await (await _services.CreateListingRouterAsync()).ListEntriesAsync(Path(kind, ".7z"), _ => { }));
 
     [Theory, MemberData(nameof(Hostile))]
     public Task Scan_Archive(string kind) => NoThrow(async () =>
@@ -437,17 +447,17 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["IArchiveService.ArchiveAsync"] = [nameof(ZipEngineCreate_Destination), nameof(ZipEngineCreate_Source), nameof(ZipEngineCreate_DevicePath)],
         ["IArchiveService.ExtractAsync"] = [nameof(ZipExtract_Archive), nameof(ZipExtract_Destination)],
         ["IArchiveService.TestAsync"] = [nameof(ZipTest_Archive)],
-        ["IArchiveService.ListEntriesAsync"] = [nameof(ZipList_Archive)],
+        ["IArchiveService.ListEntriesAsync"] = [nameof(ZipList_Archive), nameof(ZipListStreamed_Archive)],
         ["ITarService.ExtractAsync"] = [nameof(TarExtract_Archive), nameof(TarExtract_Destination)],
         ["ITarService.TestAsync"] = [nameof(TarTest_Archive)],
-        ["ITarService.ListEntriesAsync"] = [nameof(TarList_Archive)],
+        ["ITarService.ListEntriesAsync"] = [nameof(TarList_Archive), nameof(TarListStreamed_Archive)],
         ["ITarService.CompressAsync"] = [nameof(TarEngineCompress_Destination), nameof(TarEngineCompress_Source), nameof(TarEngineCompress_DevicePath)],
         ["IExtractionRouter.ExtractAsync"] = [nameof(RouterExtract_Archive)],
         ["IExtractionRouter.TestAsync"] = [nameof(RouterTest_Archive)],
         ["IArchiveCreationRouter.ArchiveAsync"] =
             [nameof(ZipCreate_Destination), nameof(ZipCreateSeparate_Destination), nameof(TarCreate_Destination),
              nameof(ZipCreate_Source), nameof(TarCreate_Source), nameof(SevenZipCreate_Source)],
-        ["IArchiveListingRouter.ListEntriesAsync"] = [nameof(RouterList_Archive)],
+        ["IArchiveListingRouter.ListEntriesAsync"] = [nameof(RouterList_Archive), nameof(RouterListStreamed_Archive)],
         ["IRecoveryService.HasFilesFor"] = [nameof(FindArchive_Par2)],
         ["IRecoveryService.FindArchive"] = [nameof(FindArchive_Par2)],
         ["IRecoveryService.RepairAsync"] = [nameof(Repair_Par2), nameof(Repair_Output)],

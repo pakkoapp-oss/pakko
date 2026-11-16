@@ -203,6 +203,84 @@ public sealed class HelperReaderTests : IDisposable
         list.Entries.Select(e => e.Path).Should().Equal(expected);
     }
 
+    // T-F540: a streamed listing passes each entry once, in archive order, as the list has them.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task ListStreamed_PassesEachEntryOnce_AsTheListHasThem(string backend)
+    {
+        string archive = Tar(("d/", null), ("d/a.txt", "AAA"), ("b.txt", "B"));
+        var passed = new List<ArchiveEntryInfo>();
+
+        ArchiveListSummary summary = await Service(backend).ListEntriesAsync(archive, passed.Add);
+
+        summary.Success.Should().BeTrue(summary.ErrorMessage);
+        summary.Count.Should().Be(3);
+        passed.Should().Equal((await Service(backend).ListEntriesAsync(archive)).Entries);
+    }
+
+    // T-F540: the helper settles a raw name's page before it passes anything on - the entries its
+    // UTF-8 listing read before the name it could not are not passed twice.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task ListStreamed_ARawNameNotUtf8_PassesEachEntryOnce(string backend)
+    {
+        byte[] raw = [0xE0, 0xE1, 0xE2, 0xE3, (byte)'.', (byte)'t', (byte)'x', (byte)'t'];
+        string archive = Path.Combine(_temp.Path, "raw2.tar");
+        TarBuilder.WriteTar(archive,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = "A"u8.ToArray() },
+            new TarBuilder.Entry { Name = "x", NameBytes = raw, Content = "R"u8.ToArray() },
+        ]);
+        string expected = new Archiver.Core.Text.TextBoundary(TarCodePage.RawNameOem).Strict.GetString(raw);
+        if (backend == TarExe && !RoundTripsThroughAnsi(expected))
+            return;
+        var passed = new List<string>();
+
+        ArchiveListSummary summary = await Service(backend).ListEntriesAsync(archive, e => passed.Add(e.Path));
+
+        summary.Success.Should().BeTrue(summary.ErrorMessage);
+        passed.Should().Equal("a.txt", expected);
+    }
+
+    // T-F540: what the caller's callback throws reaches the caller as it was thrown, not as an
+    // archive that cannot be read; the reader stops.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task ListStreamed_ACallbackThatThrows_ItsExceptionReachesTheCaller(string backend)
+    {
+        string archive = Tar(("a.txt", "A"), ("b.txt", "B"));
+        var closed = new IOException("the pipe is being closed");
+        int calls = 0;
+
+        Func<Task> list = () => Service(backend).ListEntriesAsync(archive, _ =>
+        {
+            calls++;
+            throw closed;
+        });
+
+        (await list.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(closed);
+        calls.Should().Be(1);
+        (await Service(backend).ListEntriesAsync(archive)).Success.Should().BeTrue("the archive is still listed after");
+    }
+
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task ListStreamed_CancelledMidway_ThrowsCancellation(string backend)
+    {
+        string archive = Tar(("a.txt", "A"), ("b.txt", "B"), ("c.txt", "C"));
+        using var cancel = new CancellationTokenSource();
+        int calls = 0;
+
+        Func<Task> list = () => Service(backend).ListEntriesAsync(archive, _ =>
+        {
+            calls++;
+            cancel.Cancel();
+        }, cancel.Token);
+
+        await list.Should().ThrowAsync<OperationCanceledException>();
+        calls.Should().Be(1);
+    }
+
     // --- The helper only ---
 
     [Fact]

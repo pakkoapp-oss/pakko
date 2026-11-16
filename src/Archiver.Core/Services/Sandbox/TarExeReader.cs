@@ -37,21 +37,21 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
     public void Dispose() => _scope.Dispose();
 
-    public async Task<ArchiveListResult> ListAsync(CancellationToken cancellationToken)
+    public async Task<ArchiveListSummary> ListAsync(Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken)
     {
         (string[]? names, ArchiveListResult? nameError) = await RunNameListingAsync(_scope, cancellationToken).ConfigureAwait(false);
         if (nameError is not null)
-            return nameError;
+            return CoreMessages.Summary(nameError);
 
-        var listing = new VerboseListing(_scope.OutputEncoding, withDates: true);
+        var listing = new StreamedListing(names, _scope.OutputEncoding, onEntry);
         (int exitCode, string stdErr) = await _scope.ListVerboseAsync(listing.OnLine, cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
-            return ListFailure(stdErr);
+            return CoreMessages.Summary(ListFailure(stdErr));
 
         if (listing.Count != names.Length)
-            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent));
+            return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent)));
 
-        return new ArchiveListResult { Success = true, Entries = BuildEntryList(names, listing) };
+        return new ArchiveListSummary { Success = true, Count = listing.Passed };
     }
 
     public async Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken)
@@ -473,7 +473,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         if (unsafeName != null)
             throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarUnsafeEntryPath, unsafeName));
 
-        var listing = new VerboseListing(scope.OutputEncoding, withDates: false);
+        var listing = new VerboseListing(scope.OutputEncoding);
         (int typeExitCode, string typeStdErr) = await scope.ListVerboseAsync(listing.OnLine, cancellationToken).ConfigureAwait(false);
         if (typeExitCode != 0)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(typeStdErr)));
@@ -580,16 +580,13 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
             : DescribeFailure(stdErr));
 
-    // T-F529: the columns of each "-tv" line as it arrives - its type, its size and, for a list, its
-    // date - never the lines themselves. A line is the text between two '\n', its '\r' dropped; an
-    // empty one is no entry (T-F419: the name's own spaces stay).
-    private sealed class VerboseListing(Encoding encoding, bool withDates)
+    // T-F529: the columns of each "-tv" line as it arrives - its type and its size - never the lines
+    // themselves. A line is the text between two '\n', its '\r' dropped; an empty one is no entry
+    // (T-F419: the name's own spaces stay).
+    private sealed class VerboseListing(Encoding encoding)
     {
-        private readonly DateTime _now = DateTime.Now;
-        private readonly string[][] _months = TarListingDate.MonthFields(TarListingDate.UserMonthNames);
         public List<char> Types { get; } = [];
         public List<long> Sizes { get; } = [];
-        public List<TarListedDate?> Dates { get; } = [];
         public int Count => Types.Count;
 
         public void OnLine(ReadOnlySpan<byte> bytes)
@@ -600,35 +597,45 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             string[] fields = TarListingDate.Fields(line);
             Types.Add(line[0]);
             Sizes.Add(line[0] == '-' ? ParseTarListingSize(fields) : 0);
-            if (withDates)
-                Dates.Add(TarListingDate.Parse(fields, _months, _now));
         }
     }
 
-    private static List<ArchiveEntryInfo> BuildEntryList(string[] names, VerboseListing listing)
+    // T-F540: each "-tv" line, as it arrives, made the entry it lists - "-t"'s name at its position
+    // (T-F418: "-tv" is read by column only), its type, size and date - and passed on. A line past
+    // the names is counted, not passed on: the counts then disagree and the listing fails.
+    private sealed class StreamedListing(string[] names, Encoding encoding, Action<ArchiveEntryInfo> onEntry)
     {
-        var entries = new List<ArchiveEntryInfo>(names.Length);
-        for (int i = 0; i < names.Length; i++)
-        {
-            // T-F196: `tar -C dir .` archives prefix every member "./" and start with a bare "./"
-            // — shown verbatim, the Archive Browser's root was a lone folder named ".". List the
-            // same paths the plain archive would; ExpandSelection maps them back for extraction.
-            string path = EntryDiskName.StripLeadingDotSlash(names[i]).TrimEnd('/');
-            if (path.Length == 0)
-                continue;
+        private readonly DateTime _now = DateTime.Now;
+        private readonly string[][] _months = TarListingDate.MonthFields(TarListingDate.UserMonthNames);
+        public int Count { get; private set; }
+        public long Passed { get; private set; }
 
-            char typeChar = listing.Types[i];
-            TarListedDate? modified = listing.Dates[i];
-            entries.Add(new ArchiveEntryInfo
+        public void OnLine(ReadOnlySpan<byte> bytes)
+        {
+            string line = encoding.GetString(bytes.TrimEnd((byte)'\r'));
+            if (line.Length == 0)
+                return;
+            int at = Count++;
+            if (at >= names.Length)
+                return;
+            // T-F196: `tar -C dir .` archives prefix every member "./" and start with a bare "./"
+            // - shown verbatim, the Archive Browser's root was a lone folder named ".". List the
+            // same paths the plain archive would; ExpandSelection maps them back for extraction.
+            string path = EntryDiskName.StripLeadingDotSlash(names[at]).TrimEnd('/');
+            if (path.Length == 0)
+                return;
+            string[] fields = TarListingDate.Fields(line);
+            TarListedDate? modified = TarListingDate.Parse(fields, _months, _now);
+            onEntry(new ArchiveEntryInfo
             {
                 Path = path,
-                Size = listing.Sizes[i],
+                Size = line[0] == '-' ? ParseTarListingSize(fields) : 0,
                 Modified = modified?.Value,
                 ModifiedHasTime = modified?.HasTime ?? true,
-                IsDirectory = typeChar == 'd',
+                IsDirectory = line[0] == 'd',
             });
+            Passed++;
         }
-        return entries;
     }
 
     // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test, a filter or

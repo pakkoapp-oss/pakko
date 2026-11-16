@@ -575,6 +575,9 @@ file sealed class SourcesTarService(ArchiveResult? result) : ITarService
     public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
         => result is null ? throw new OperationCanceledException() : Task.FromResult(result);
 
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
+
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 

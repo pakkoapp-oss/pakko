@@ -17,4 +17,16 @@ public interface IArchiveListingRouter
     Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// T-F540: lists an archive's entries as they are read: each goes to <paramref name="onEntry"/>
+    /// in archive order and is not kept; the summary says how the listing ended. When it failed, the
+    /// caller discards every entry it was given. Never throws, except what <paramref name="onEntry"/>
+    /// throws - it reaches the caller as it was thrown, and the listing stops - and
+    /// <see cref="OperationCanceledException"/> on cancellation.
+    /// </summary>
+    Task<ArchiveListSummary> ListEntriesAsync(
+        string archivePath,
+        Action<ArchiveEntryInfo> onEntry,
+        CancellationToken cancellationToken = default);
 }

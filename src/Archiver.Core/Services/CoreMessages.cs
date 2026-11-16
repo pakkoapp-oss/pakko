@@ -29,6 +29,13 @@ internal static class CoreMessages
     internal static ArchiveListResult ListFailure(CoreText text) =>
         new() { Success = false, ErrorMessage = text.English, ErrorText = text };
 
+    // T-F540: a failed listing in the streamed form, and back.
+    internal static ArchiveListSummary Summary(ArchiveListResult failure) =>
+        new() { Success = false, ErrorMessage = failure.ErrorMessage, ErrorText = failure.ErrorText };
+
+    internal static ArchiveListResult ListFailure(ArchiveListSummary failure) =>
+        new() { Success = false, ErrorMessage = failure.ErrorMessage, ErrorText = failure.ErrorText };
+
     internal static HashEntry HashError(string sourcePath, CoreText text) =>
         new(sourcePath, null, text.English) { ErrorText = text };
 

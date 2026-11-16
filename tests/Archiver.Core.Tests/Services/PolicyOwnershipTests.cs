@@ -31,6 +31,9 @@ file sealed class RecordingZipService : IArchiveService
         return Task.FromResult(new ArchiveResult());
     }
 
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
+
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
     {
         Calls++;
@@ -66,6 +69,9 @@ file sealed class TarMustNotRunService : ITarService
         TarCalls++;
         throw new InvalidOperationException("tar.exe must not be started for extraction here.");
     }
+
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
 
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
     {

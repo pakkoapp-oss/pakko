@@ -19,6 +19,9 @@ file sealed class QuietZipService : IArchiveService
     public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
         => Task.FromResult(new ArchiveResult());
 
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
+
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => Task.FromResult(new ArchiveListResult { Success = true });
 }
@@ -42,6 +45,9 @@ file sealed class CountingTarService : ITarService
 
     public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
         => Task.FromResult(new ArchiveResult());
+
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
 
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => Task.FromResult(new ArchiveListResult { Success = true });

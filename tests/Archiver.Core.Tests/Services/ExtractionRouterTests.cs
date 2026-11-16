@@ -48,6 +48,9 @@ file sealed class FakeArchiveService : IArchiveService
         return Task.FromResult(TestResult);
     }
 
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
+
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 }
@@ -92,6 +95,9 @@ file sealed class FakeTarService : ITarService
             Sources = [.. archivePaths.Select(p => new SourceResult { Path = p, Outcome = SourceOutcome.Completed })],
         });
     }
+
+    public async Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default) =>
+        ArchiveListSummary.Replay(await ListEntriesAsync(archivePath, cancellationToken), onEntry);
 
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();

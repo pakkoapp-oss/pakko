@@ -898,47 +898,45 @@ static async Task<bool> PrintArchiveListingAsync(
     if (layout.Multiple)
         await Console.Out.WriteLineAsync($"# archive: {archivePath}", cancellationToken).ConfigureAwait(false);
 
-    ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
-    if (!listResult.Success)
-    {
-        string name = report.StdinPath is not null ? "(stdin)" : archivePath;
-        await Console.Error.WriteLineAsync($"pakko: error: {name}: {listResult.ErrorMessage}", CancellationToken.None).ConfigureAwait(false);
-        return false;
-    }
-
     // T-F418: a name holds what the archive stores; 7-Zip's rule keeps it on one line.
     bool terminal = !Console.IsOutputRedirected;
     ArchiveFormat format = ArchiveFormatDetector.Detect(archivePath);
-    if (layout.Header && !await PrintListingHeaderAsync(archivePath, format, layout.Technical, report, terminal).ConfigureAwait(false))
+    string shownName = report.StdinPath is not null ? "(stdin)" : archivePath;
+    IReadOnlyList<string>? header = layout.Header
+        ? await ListingHeaderAsync(archivePath, shownName, format, layout.Technical, terminal).ConfigureAwait(false)
+        : null;
+    if (layout.Header && header is null)
         return false;
-    // T-F410: the names after the archive, -i and -x pick the rows, as 7-Zip's l.
-    List<ArchiveEntryInfo> entries = [.. listResult.Entries.Where(e => filter?.Includes(e.Path, e.IsDirectory) ?? true)];
-    await PrintListingEntriesAsync(entries, format, layout.Technical, terminal).ConfigureAwait(false);
+
+    // T-F540: each row printed as the listing reads it, the header before the first; T-F410: the
+    // names after the archive, -i and -x pick the rows, as 7-Zip's l.
+    (ArchiveListSummary listed, long printed) = await CliListingPrinter.PrintAsync(
+        onEntry => router.ListEntriesAsync(archivePath, onEntry, cancellationToken),
+        header,
+        entry => filter?.Includes(entry.Path, entry.IsDirectory) ?? true,
+        entry => layout.Technical
+            ? CliTechListing.EntryBlock(entry, format, terminal)
+            : [CliEntryFormatter.FormatRow(entry with { Path = CliTechListing.ForConsole(entry.Path, terminal) })],
+        Console.Out).ConfigureAwait(false);
+    if (!listed.Success)
+    {
+        // The rows already printed stay; the error follows them, as 7-Zip's.
+        await Console.Error.WriteLineAsync($"pakko: error: {shownName}: {listed.ErrorMessage}", CancellationToken.None).ConfigureAwait(false);
+        return false;
+    }
 
     if (layout.Multiple)
-        await Console.Out.WriteLineAsync($"# total: {entries.Count} entries", cancellationToken).ConfigureAwait(false);
+        await Console.Out.WriteLineAsync($"# total: {printed} entries", cancellationToken).ConfigureAwait(false);
 
     return true;
 }
 
-static async Task PrintListingEntriesAsync(List<ArchiveEntryInfo> entries, ArchiveFormat format, bool technical, bool terminal)
+// The column header, or -slt's archive block, made before the listing (T-F540: printed with its
+// first row). Null when the archive's size cannot be read (T-F440: split out of
+// PrintArchiveListingAsync, S3776).
+static async Task<IReadOnlyList<string>?> ListingHeaderAsync(
+    string archivePath, string shownName, ArchiveFormat format, bool technical, bool terminal)
 {
-    foreach (ArchiveEntryInfo entry in entries)
-    {
-        IReadOnlyList<string> lines = technical
-            ? CliTechListing.EntryBlock(entry, format, terminal)
-            : [CliEntryFormatter.FormatRow(entry with { Path = CliTechListing.ForConsole(entry.Path, terminal) })];
-        foreach (string line in lines)
-            await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
-    }
-}
-
-// The column header, or -slt's archive block. False when the archive's size cannot be read (T-F440:
-// split out of PrintArchiveListingAsync, S3776).
-static async Task<bool> PrintListingHeaderAsync(
-    string archivePath, ArchiveFormat format, bool technical, CliReportContext report, bool terminal)
-{
-    string shownName = report.StdinPath is not null ? "(stdin)" : archivePath;
     long physicalSize = 0;
     if (technical)
     {
@@ -948,17 +946,14 @@ static async Task<bool> PrintListingHeaderAsync(
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // The archive was listed a moment ago; gone or locked now, it is this run's error.
+            // Gone or locked since it was named: this run's error.
             await Console.Error.WriteLineAsync($"pakko: error: {shownName}: {ex.Message}").ConfigureAwait(false);
-            return false;
+            return null;
         }
     }
-    IReadOnlyList<string> headerLines = technical
+    return technical
         ? CliTechListing.ArchiveHeader(shownName, format, physicalSize, terminal)
         : [CliEntryFormatter.Header];
-    foreach (string line in headerLines)
-        await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
-    return true;
 }
 
 // -------------------------------------------------------------------------

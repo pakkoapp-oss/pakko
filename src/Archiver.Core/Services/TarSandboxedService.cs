@@ -1039,14 +1039,22 @@ public sealed class TarSandboxedService : ITarService
     }
 
     /// <inheritdoc/>
-    public async Task<ArchiveListResult> ListEntriesAsync(
+    public Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
+        CancellationToken cancellationToken = default) =>
+        ListingCallback.CollectAsync(onEntry => ListEntriesAsync(archivePath, onEntry, cancellationToken));
+
+    /// <inheritdoc/>
+    public async Task<ArchiveListSummary> ListEntriesAsync(
+        string archivePath,
+        Action<ArchiveEntryInfo> onEntry,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(onEntry);
         if (_policy.DisableTarExtraction)
-            return CoreMessages.ListFailure(TarDisabled);
+            return CoreMessages.Summary(CoreMessages.ListFailure(TarDisabled));
         if (InputPaths.Problem(archivePath) is { } pathProblem)
-            return CoreMessages.ListFailure(pathProblem);
+            return CoreMessages.Summary(CoreMessages.ListFailure(pathProblem));
 
         // T-F113: cheap proactive check for the header-encrypted case only (unlike ExtractAsync's
         // IsEncryptedRar check) — a data-only-encrypted RAR's filenames are still readable, so
@@ -1054,31 +1062,37 @@ public sealed class TarSandboxedService : ITarService
         // 7z's own parity (only extraction refuses for data-only encryption, not browsing).
         if (IsHeaderEncryptedRar(archivePath))
         {
-            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
+            return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)));
         }
 
+        return await ListingCallback.RunAsync(onEntry, guarded => ListWithReaderAsync(archivePath, guarded, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<ArchiveListSummary> ListWithReaderAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken)
+    {
         try
         {
             using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: false, ForcedTarOutputEncoding, cancellationToken, Helper, _gate)
                 .ConfigureAwait(false);
-            ArchiveListResult listed = await reader.ListAsync(cancellationToken).ConfigureAwait(false);
+            ArchiveListSummary listed = await reader.ListAsync(onEntry, cancellationToken).ConfigureAwait(false);
             // T-F537: the caller resumes on a fresh stack, not on the frames that finished the listing -
-            // those hold tar.exe's output until they unwind, and a caller without a context (the
-            // console) would run on them (measured 540 B an entry held, 210 without them).
+            // those hold the names "-t" gave until they unwind, and a caller without a context (the
+            // console) would run on them.
             await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
             return listed;
         }
         catch (TarSignatureVerificationException ex)
         {
-            return CoreMessages.ListFailure(ex.Text);
+            return CoreMessages.Summary(CoreMessages.ListFailure(ex.Text));
         }
         catch (SandboxSetupException ex)
         {
-            return CoreMessages.ListFailure(ex.Text);
+            return CoreMessages.Summary(CoreMessages.ListFailure(ex.Text));
         }
         catch (IOException ex)
         {
-            return CoreMessages.ListFailure(CoreMessages.FromException(ex));
+            return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.FromException(ex)));
         }
     }
 
