@@ -1083,7 +1083,7 @@ public sealed class HelperReaderTests : IDisposable
             root = Path.GetDirectoryName(Path.GetDirectoryName(file))!;
         }
 
-        Directory.Exists(root).Should().BeFalse("the quarantine holds the archive's plaintext");
+        Directory.Exists(root).Should().BeFalse($"the quarantine holds the archive's plaintext (left: {Leftovers(root)})");
     }
 
     // T-F546: archiveint.dll on ARM64 leaves a 0444 entry read-only (the canary, 2026-11-14 on), so
@@ -1105,7 +1105,36 @@ public sealed class HelperReaderTests : IDisposable
             root = Path.GetDirectoryName(Path.GetDirectoryName(file))!;
         }
 
-        Directory.Exists(root).Should().BeFalse("the quarantine holds the archive's plaintext");
+        Directory.Exists(root).Should().BeFalse($"the quarantine holds the archive's plaintext (left: {Leftovers(root)})");
+    }
+
+    // What a quarantine left behind holds and why a second delete fails: the ARM64 canary is the only
+    // place T-F546 shows, so the failure itself has to say.
+    private static string Leftovers(string root)
+    {
+        if (!Directory.Exists(root))
+            return "nothing";
+        var lines = new List<string>();
+        try
+        {
+            var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0, IgnoreInaccessible = false };
+            foreach (FileSystemInfo item in new DirectoryInfo(@"\?\" + root).EnumerateFileSystemInfos("*", options))
+                lines.Add($"{item.FullName[(4 + root.Length)..]} [{item.Attributes}]");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            lines.Add($"listing: {ex.GetType().Name}: {ex.Message}");
+        }
+        try
+        {
+            Directory.Delete(root, recursive: true);
+            lines.Add("a second delete succeeded");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            lines.Add($"a second delete: {ex.GetType().Name}: {ex.Message}");
+        }
+        return string.Join("; ", lines);
     }
 
     private static async Task ShouldResistTheSandboxAsync(string file)
