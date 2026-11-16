@@ -10,7 +10,7 @@ namespace Archiver.Core.Services.Sandbox;
 
 /// <summary>
 /// Disposable orchestration tying the AppContainer profile, quarantine ACLs and a Job Object
-/// into one scope per archive operation. <see cref="ListAsync"/> and <see cref="ExtractAsync"/>
+/// into one scope per archive operation. <see cref="ListNamesAsync"/> and <see cref="ExtractAsync"/>
 /// are the only ways a sandboxed tar.exe runs — T-F49's whole-archive pre-scan and, only if that
 /// passes, the extraction itself, within the same scope, and ListEntriesAsync with
 /// <c>needsOutputDir: false</c> (no "out\" folder or ACE at all, since listing never writes).
@@ -91,8 +91,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <summary>T-F470: the signature check archiveint.dll passes before the first helper run; a test may replace it.</summary>
     internal Func<string, bool> VerifyArchiveint { get; set; } = TarSignatureVerifier.Verify;
 
-    // T-F465: the last plain listing's stdout as tar.exe wrote it, and the bytes it printed for each name.
-    private byte[]? _listingBytes;
+    // T-F465: the bytes tar.exe printed for each name, read when a name is first sent back (T-F539).
     private Dictionary<string, byte[]?>? _listedNameBytes;
     private Dictionary<string, byte[]?>? _listedByText;
 
@@ -310,12 +309,15 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// </summary>
     internal int NameCharLimit { get; set; } = ArchiveLimits.MaxCatalogNameChars;
 
-    /// <summary>Lists the archive's names ("-t"); its "-tv" lines come through <see cref="ListVerboseAsync"/>.</summary>
-    public async Task<(int ExitCode, string StdOut, string StdErr)> ListAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Lists the archive's names ("-t", T-F418's <see cref="TarNames.ReadListing"/>: null when a line
+    /// cannot be read back); its "-tv" lines come through <see cref="ListVerboseAsync"/>. T-F539: read
+    /// a line at a time, only the names kept.
+    /// </summary>
+    public async Task<(int ExitCode, string[]? Names, string StdErr)> ListNamesAsync(CancellationToken cancellationToken)
     {
-        const string mode = "-t";
         if (_utf8Headers is not null)
-            return await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
+            return await RunNameListingAsync(cancellationToken).ConfigureAwait(false);
 
         // T-F204: tar headers carry no charset; libarchive reads them as the OEM code page, so a
         // GNU tar or 7-Zip archive with UTF-8 names was extracted under mojibake names. 7-Zip's
@@ -324,7 +326,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         // merely cannot show gives only "unreadable filename" — confirmed 2026-09-25). Decided
         // once, on the first listing, and used for every later run of this scope.
         _utf8Headers = true;
-        (int ExitCode, string StdOut, string StdErr) result = await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
+        (int ExitCode, string[]? Names, string StdErr) result = await RunNameListingAsync(cancellationToken).ConfigureAwait(false);
         if (result.ExitCode == 0)
             return result;
 
@@ -341,8 +343,20 @@ internal sealed partial class TarSandboxScope : IDisposable
             return result;
 
         _utf8Headers = false;
-        return await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
+        return await RunNameListingAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    private async Task<(int ExitCode, string[]? Names, string StdErr)> RunNameListingAsync(CancellationToken cancellationToken)
+    {
+        var names = new TarNames.ListingNames(OutputEncoding);
+        (int exitCode, _, string stdErr) = await RunAsync("-t", [], cancellationToken, stdOutLines: ListingLines(names.OnLine))
+            .ConfigureAwait(false);
+        return (exitCode, exitCode == 0 ? names.ToNames() : [], stdErr);
+    }
+
+    // The run's StdOutLimit counts every byte first; this reader's own total never comes into play.
+    private static StdOutLines ListingLines(StdOutLineHandler onLine) =>
+        new StdOutLines(onLine, MaxVerboseLineBytes, long.MaxValue, LastLineMayBeOpen: true);
 
     /// <summary>
     /// T-F529: "-tv" handed over a line at a time (without its '\n'), never held as one text: at
@@ -352,10 +366,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     public async Task<(int ExitCode, string StdErr)> ListVerboseAsync(StdOutLineHandler onLine, CancellationToken cancellationToken)
     {
         if (_utf8Headers is null)
-            await ListAsync(cancellationToken).ConfigureAwait(false);
-        // The run's StdOutLimit counts every byte first; this reader's own total never comes into play.
-        var lines = new StdOutLines(onLine, MaxVerboseLineBytes, long.MaxValue, LastLineMayBeOpen: true);
-        (int exitCode, _, string stdErr) = await RunAsync("-tv", [], cancellationToken, stdOutLines: lines).ConfigureAwait(false);
+            await ListNamesAsync(cancellationToken).ConfigureAwait(false);
+        (int exitCode, _, string stdErr) = await RunAsync("-tv", [], cancellationToken, stdOutLines: ListingLines(onLine)).ConfigureAwait(false);
         return (exitCode, stdErr);
     }
 
@@ -366,7 +378,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         if (OutputDirectory is null)
             throw new InvalidOperationException("This scope was created without an output folder.");
         if (_utf8Headers is null)
-            await ListAsync(cancellationToken).ConfigureAwait(false);
+            await ListNamesAsync(cancellationToken).ConfigureAwait(false);
         // T-F410: the names go in a file. Thousands of them would overflow the command line, and
         // "-T -" cannot carry them: stdin is the archive. No "-n": bsdtar 3.3.2 (Windows 10) takes it
         // only in c/r/u mode, and ExpandSelection lists every descendant of a folder anyway.
@@ -393,7 +405,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         Action<int> onContentBytes, IReadOnlyList<string>? members, IReadOnlyList<string>? excludedFiles, CancellationToken cancellationToken)
     {
         if (_utf8Headers is null)
-            await ListAsync(cancellationToken).ConfigureAwait(false);
+            await ListNamesAsync(cancellationToken).ConfigureAwait(false);
         string[] subsetArguments = [];
         if (members is { Count: > 0 })
         {
@@ -473,9 +485,16 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <exception cref="TarArgumentEncodingException">A name tar.exe did not print in those bytes.</exception>
     private async Task EnsureSentAsListedAsync(IEnumerable<string> names, CancellationToken cancellationToken)
     {
-        if (_listingBytes is null)
-            await ListAsync(cancellationToken).ConfigureAwait(false);
-        Dictionary<string, byte[]?> listed = _listedNameBytes ??= TarNames.ReadListedNameBytes(_listingBytes ?? [], OutputEncoding);
+        if (_utf8Headers is null)
+            await ListNamesAsync(cancellationToken).ConfigureAwait(false);
+        if (_listedNameBytes is null)
+        {
+            // A listing that fails gives no printed bytes: every name is then refused below.
+            var printed = new TarNames.ListedNameBytes(OutputEncoding);
+            (int exitCode, _, _) = await RunAsync("-t", [], cancellationToken, stdOutLines: ListingLines(printed.OnLine)).ConfigureAwait(false);
+            _listedNameBytes = exitCode == 0 ? printed.ToDictionary() : [];
+        }
+        Dictionary<string, byte[]?> listed = _listedNameBytes;
         Dictionary<string, byte[]?> byText = _listedByText ??= TarNames.IndexByText(listed, CommandLinePage);
         foreach (string name in names)
         {
@@ -552,7 +571,6 @@ internal sealed partial class TarSandboxScope : IDisposable
             ? new StdOutLimit(entryLimit, listingBytes,
                 () => ArchiveLimits.TooManyEntries(entryLimit), () => ArchiveLimits.CatalogTooLarge(nameCharLimit))
             : null;
-        byte[]? listing = null;
         SandboxJobObject job;
         try
         {
@@ -571,18 +589,10 @@ internal sealed partial class TarSandboxScope : IDisposable
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
                     OutputEncoding: OutputEncoding, OnStdOutDiscarded: onStdOutDiscarded,
-                    OnStdOutBytes: plainListing ? bytes => listing = bytes : null, StdOutLimit: listingLimit,
+                    StdOutLimit: listingLimit,
                     StdOutLines: stdOutLines),
                 cancellationToken)
                 .ConfigureAwait(false);
-            if (plainListing)
-            {
-                // The last plain listing is the one the scope's header choice settled on (ListAsync).
-                _listingBytes = listing;
-                _listedNameBytes = null;
-                _listedByText = null;
-            }
-
             // T-F239: say which sandbox limit stopped tar.exe — its own words ("Cannot allocate
             // memory", or nothing at all for a CPU-time kill) blame the machine, not the sandbox.
             if (exitCode != 0)

@@ -42,16 +42,37 @@ internal static class TarNames
     /// </summary>
     public static string[]? ReadListing(string stdOut, Encoding encoding)
     {
-        // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".
-        string[] lines = [.. stdOut.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0)];
-        string[] names = new string[lines.Length];
-        for (int i = 0; i < lines.Length; i++)
+        var names = new ListingNames(encoding);
+        foreach (string line in stdOut.Split('\n'))
+            names.OnText(line);
+        return names.ToNames();
+    }
+
+    /// <summary>
+    /// T-F539: <see cref="ReadListing"/> a line at a time, as tar.exe writes them: only the names are
+    /// kept, never the listing's text or its lines.
+    /// </summary>
+    internal sealed class ListingNames(Encoding encoding)
+    {
+        private readonly List<string> _names = [];
+        private bool _unreadable;
+
+        public void OnLine(ReadOnlySpan<byte> line) => OnText(encoding.GetString(line));
+
+        public void OnText(string line)
         {
-            if (TarListingName.Unescape(lines[i], encoding) is not { } name)
-                return null;
-            names[i] = name;
+            // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".
+            line = line.TrimEnd('\r');
+            if (line.Length == 0 || _unreadable)
+                return;
+            if (TarListingName.Unescape(line, encoding) is { } name)
+                _names.Add(name);
+            else
+                _unreadable = true;
         }
-        return names;
+
+        /// <summary>The names, or null when a line holds an escape bsdtar never writes.</summary>
+        public string[]? ToNames() => _unreadable ? null : [.. _names];
     }
 
     // T-F465: each listed name (a folder's '/' dropped) and the bytes tar.exe printed for it; null where one
@@ -64,32 +85,54 @@ internal static class TarNames
     // name sendable: what tar.exe would match it with is unknown.
     public static Dictionary<string, byte[]?> ReadListedNameBytes(byte[] listing, System.Text.Encoding encoding)
     {
-        var listed = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
-        bool unknownText = false;
+        var listed = new ListedNameBytes(encoding);
         foreach (byte[] line in ListingLines(listing))
+            listed.OnLine(line);
+        return listed.ToDictionary();
+    }
+
+    /// <summary>
+    /// T-F539: <see cref="ReadListedNameBytes"/> a line at a time, from a "-t" run of its own: the
+    /// bytes are read only where a name is sent back, never kept beside every listing.
+    /// </summary>
+    internal sealed class ListedNameBytes(System.Text.Encoding encoding)
+    {
+        private readonly Dictionary<string, byte[]?> _listed = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
+        private bool _unknownText;
+
+        public void OnLine(ReadOnlySpan<byte> printedLine)
         {
+            if (printedLine.EndsWith((byte)'\r'))
+                printedLine = printedLine[..^1];
+            if (printedLine.IsEmpty)
+                return;
+            byte[] line = printedLine.ToArray();
             string text = encoding.GetString(line);
             if (TarListingName.Unescape(text, encoding) is not { } name)
-                continue; // not a name: the service refuses such a listing before anything is sent
+                return; // not a name: the service refuses such a listing before anything is sent
             string key = name.TrimEnd('/');
             byte[]? bytes = PrintedBytes(line, text, name, encoding) is { } printed ? printed[..^(name.Length - key.Length)] : null;
-            Add(listed, key, bytes);
+            Add(_listed, key, bytes);
             if (UnescapePrinted(line, encoding) is not { } raw
                 || TarCommandLineEncoding.Decode(raw, (uint)encoding.CodePage) is not { } rawText)
             {
-                unknownText = true;
-                continue;
+                _unknownText = true;
+                return;
             }
             string rawKey = rawText.TrimEnd('/');
             if (!string.Equals(rawKey, key, StringComparison.Ordinal))
-                Add(listed, rawKey, raw[..^(rawText.Length - rawKey.Length)]);
+                Add(_listed, rawKey, raw[..^(rawText.Length - rawKey.Length)]);
         }
-        if (unknownText)
+
+        public Dictionary<string, byte[]?> ToDictionary()
         {
-            foreach (string key in listed.Keys.ToList())
-                listed[key] = null;
+            if (_unknownText)
+            {
+                foreach (string key in _listed.Keys.ToList())
+                    _listed[key] = null;
+            }
+            return _listed;
         }
-        return listed;
     }
 
     private static void Add(Dictionary<string, byte[]?> listed, string key, byte[]? bytes)

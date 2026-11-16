@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Sandbox;
 using Archiver.Core.Services.Zip;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
@@ -167,6 +168,58 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         long perEntry = allocated / Entries;
         output.WriteLine($"{Entries} entries: {allocated >> 20} MiB allocated, {perEntry} B an entry");
         perEntry.Should().BeLessThanOrEqualTo(2_400, "measured 1,950 B; 3,202 with -tv read as one text and its lines");
+    }
+
+    // T-F539: what a tar.exe scan keeps of "-t" once it has its names - the names, not the bytes
+    // tar.exe printed beside them (held for T-F465 until a selection needs them). 2,000 names of
+    // 30,000 characters: about 2 bytes a character are the names themselves.
+    [Fact]
+    public async Task TarScan_LongNames_KeepsTheNamesOnly()
+    {
+        const int count = 2_000, length = 30_000;
+        string tar = TarGzOfLongNames(count, length);
+        long before = GC.GetTotalMemory(forceFullCollection: true);
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(tar, needsOutputDir: true, CancellationToken.None);
+        object scanned = await TarExeReader.ScanForUnsafeEntriesAsync(scope, CancellationToken.None);
+        long after = GC.GetTotalMemory(forceFullCollection: true);
+        GC.KeepAlive(scanned);
+
+        double perChar = (after - before) / (double)(count * (long)length);
+        output.WriteLine($"{count} names of {length} characters: {(after - before) >> 20} MiB live, {perChar:F2} B a character");
+        perChar.Should().BeLessThanOrEqualTo(2.4, "the names are 2 B a character; tar.exe's printed bytes were 1 more");
+    }
+
+    private string TarGzOfLongNames(int count, int length)
+    {
+        string path = Path.Combine(_folder, "long.tar.gz");
+        using var gz = new GZipStream(File.Create(path), CompressionLevel.Fastest);
+        for (int i = 0; i < count; i++)
+        {
+            byte[] name = Encoding.ASCII.GetBytes($"{i:D6}".PadRight(length, 'n'));
+            gz.Write(TarHeader("././@LongLink", name.Length + 1, (byte)'L'));
+            byte[] data = new byte[(name.Length + 1 + 511) / 512 * 512];
+            name.CopyTo(data, 0);
+            gz.Write(data);
+            gz.Write(TarHeader(Encoding.ASCII.GetString(name, 0, 99), 0, (byte)'0'));
+        }
+        gz.Write(new byte[1024]);
+        return path;
+    }
+
+    // A GNU header (magic "ustar  "), as GNU tar writes one for a long name's 'L' record.
+    private static byte[] TarHeader(string name, long size, byte type)
+    {
+        byte[] header = new byte[512];
+        Encoding.ASCII.GetBytes(name).CopyTo(header, 0);
+        Encoding.ASCII.GetBytes("0000644\0" + "0000000\0" + "0000000\0" + Convert.ToString(size, 8).PadLeft(11, '0') + "\0" + "14000000000\0").CopyTo(header, 100);
+        header[156] = type;
+        Encoding.ASCII.GetBytes("ustar  \0").CopyTo(header, 257);
+        "        "u8.CopyTo(header.AsSpan(148));
+        int sum = 0;
+        foreach (byte b in header)
+            sum += b;
+        Encoding.ASCII.GetBytes(Convert.ToString(sum, 8).PadLeft(6, '0') + "\0 ").CopyTo(header, 148);
+        return header;
     }
 
     private long LivePerEntry<T>(Func<T> hold, Action<T> release)

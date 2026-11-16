@@ -9,7 +9,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// <summary>
 /// T-F305: reads an uncompressed tar's header blocks to tell whether every name is valid UTF-8
 /// (7-Zip's rule for a header with no charset). Only chooses between two sandboxed tar.exe readings
-/// in <see cref="TarSandboxScope.ListAsync"/>; nothing is extracted here, and the security pre-scan
+/// in <see cref="TarSandboxScope.ListNamesAsync"/>; nothing is extracted here, and the security pre-scan
 /// still runs on tar.exe's own listing.
 /// </summary>
 internal static class TarHeaderNames
