@@ -1086,26 +1086,40 @@ public sealed class HelperReaderTests : IDisposable
         Directory.Exists(root).Should().BeFalse($"the quarantine holds the archive's plaintext (left: {Leftovers(root)})");
     }
 
-    // T-F546: archiveint.dll on ARM64 leaves a 0444 entry read-only (the canary, 2026-11-14 on), so
-    // the scope's delete must not depend on what a reader does with the mode.
-    [Theory]
-    [MemberData(nameof(Backends))]
-    public async Task ExtractForScan_AFileMadeReadOnly_TheQuarantineIsStillDeleted(string backend)
+    // T-F546: on ARM64 the x64 helper runs emulated, and Windows keeps its image open for a while
+    // after it exits (the canary, 2026-11-14 on): the copy cannot be deleted yet. Held here as that
+    // does, it must not keep the archive's plaintext with it.
+    [Fact]
+    public async Task ExtractForScan_TheHelperCopyStillOpen_TheQuarantineIsStillDeleted()
     {
         string archive = Path.Combine(_temp.Path, "plain.tar");
         TarBuilder.WriteTar(archive, [new TarBuilder.Entry { Name = "a.txt", Content = "a"u8.ToArray() }]);
+        DateTime started = DateTime.UtcNow.AddSeconds(-1);
         string root;
-        using (ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(
-            archive, true, null, CancellationToken.None, backend == Helper ? Setup.Value : null))
+        var held = new List<FileStream>();
+        try
         {
-            await reader.ScanAsync(CancellationToken.None);
-            ScanQuarantine main = await reader.ExtractForScanAsync(null, CancellationToken.None);
-            string file = main.Files.Single().Path;
-            File.SetAttributes(file, File.GetAttributes(file) | FileAttributes.ReadOnly);
-            root = Path.GetDirectoryName(Path.GetDirectoryName(file))!;
-        }
+            using (ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(
+                archive, true, null, CancellationToken.None, Setup.Value))
+            {
+                await reader.ScanAsync(CancellationToken.None);
+                ScanQuarantine main = await reader.ExtractForScanAsync(null, CancellationToken.None);
+                root = Path.GetDirectoryName(Path.GetDirectoryName(main.Files.Single().Path))!;
+                foreach (string copy in Directory.EnumerateFiles(Path.GetDirectoryName(root)!, TarSandboxScope.HelperProgram, SearchOption.AllDirectories))
+                {
+                    if (File.GetCreationTimeUtc(copy) >= started)
+                        held.Add(new FileStream(copy, FileMode.Open, FileAccess.Read, FileShare.Read));
+                }
+            }
+            held.Should().NotBeEmpty("the helper ran from a copy of this scope's");
 
-        Directory.Exists(root).Should().BeFalse($"the quarantine holds the archive's plaintext (left: {Leftovers(root)})");
+            Directory.Exists(root).Should().BeFalse($"the quarantine holds the archive's plaintext (left: {Leftovers(root)})");
+        }
+        finally
+        {
+            foreach (FileStream stream in held)
+                await stream.DisposeAsync();
+        }
     }
 
     // What a quarantine left behind holds and why a second delete fails: the ARM64 canary is the only
@@ -1118,7 +1132,7 @@ public sealed class HelperReaderTests : IDisposable
         try
         {
             var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0, IgnoreInaccessible = false };
-            foreach (FileSystemInfo item in new DirectoryInfo(@"\?\" + root).EnumerateFileSystemInfos("*", options))
+            foreach (FileSystemInfo item in new DirectoryInfo(@"\\?\" + root).EnumerateFileSystemInfos("*", options))
                 lines.Add($"{item.FullName[(4 + root.Length)..]} [{item.Attributes}]");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

@@ -14983,18 +14983,18 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
-## T-F546 - the quarantine removed by its owner, read-only files included (2026-11-16)
+## T-F546 - the helper's copy out of the quarantine (2026-11-16)
 
-T-F474's closing review found that `Directory.Delete` leaves a read-only file behind and added a test
-for a 0444 entry, on the measurement that no reader keeps the mode. archiveint.dll on ARM64 does,
-and the ARM64 canary failed from that day. Not fixed per reader: the delete clears the flag itself.
-`TempOwner.TryRemove` (links on their own, read-only cleared, T-F511 PR 2) was tried first and is
-wrong here: `DirectoryWalker` does not enter a folder named "d " and clears the flag through a
-normalized path, so a read-only "a.txt." stops it, where the plain delete did not (T-F547).
-`QuarantineFiles`, the owner of tar.exe's names, walks with its own spelling and never through a link;
-`Remove` clears each file's flag so, then `Directory.Delete` (which removes such names, measured). A
-failure stays best-effort; the sweep takes it. The helper's folder holds only Pakko's copy of the
-helper and keeps its plain delete.
+T-F474's closing review added a test that a quarantine is deleted with a 0444 entry in it. On the
+ARM64 canary it failed with the helper from its first day. A read-only file was guessed first and a
+fix written for it; the canary on the branch still failed, so the test was made to report what was
+left and why a second delete failed: `Archiver.ArchiveHelper.exe`, access denied. The integration
+tests run the x64 helper, emulated on ARM64, and Windows keeps the image open after the process ends.
+With the copy in the quarantine's `bin\`, before `out\` in the delete's order, the extracted files
+stayed with it until the next sweep. Fixed by layout, not by retrying: the copy always lives in a
+folder of the scope's own beside the quarantine (as T-F524 did next to the destination), so nothing
+that holds Pakko's own executable can keep the archive's contents; that folder stays best-effort and
+swept. The read-only fix was taken back out (no reader leaves a read-only file, as T-F474 measured).
 
 ## Batch 5f - everything in batches (T-F539, T-F541, T-F542, T-F540, T-F535, T-F536; 2026-11-16)
 

@@ -98,11 +98,12 @@ internal sealed partial class TarSandboxScope : IDisposable
     // T-F523: this scope's own AppContainer, deleted with it.
     private readonly AppContainerProfile _profile;
 
-    // T-F524: a quarantine next to the destination keeps the helper's copy under %TEMP% all the
-    // same, in a folder of this scope's own there: it runs from where it ran before, never from a
-    // folder of the user's.
-    private readonly bool _nearDestination;
-    private string? _helperRoot;
+    // T-F524: the helper's copy stays under %TEMP% when the quarantine is next to the destination,
+    // never in a folder of the user's. T-F546: and never in the quarantine at all - Windows can keep
+    // the image open after the helper ends (an emulated x64 helper on ARM64 does, measured on the
+    // canary), and a delete stopped at it kept the extracted files with it.
+    /// <summary>The folder of the helper's copy, once a run made it (tests look at the copy).</summary>
+    internal string? HelperRoot { get; private set; }
 
     internal const string SandboxNamePrefix = "Pakko.Tar.";
 
@@ -145,9 +146,8 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     private TarSandboxScope( // NOSONAR: S107 — private, called once from CreateAsync with what it built; a parameter object would only rename the list
         SafeSidHandle sid, AppContainerProfile profile, string quarantineRoot, FileStream archive, string? outputDirectory,
-        System.Text.Encoding? outputEncoding, string? helperSource, bool nearDestination)
+        System.Text.Encoding? outputEncoding, string? helperSource)
     {
-        _nearDestination = nearDestination;
         _profile = profile;
         _helperSource = helperSource;
         OutputEncoding = outputEncoding ?? TextBoundaries.TarExeOutput(_machine).Lenient;
@@ -253,7 +253,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 QuarantineAcl.GrantModify(outDir, sid);
             }
 
-            return Task.FromResult(new TarSandboxScope(sid, profile, quarantineRoot, archive, outDir, outputEncoding, helperSource, nearFolder is not null));
+            return Task.FromResult(new TarSandboxScope(sid, profile, quarantineRoot, archive, outDir, outputEncoding, helperSource));
         }
         catch (Exception ex)
         {
@@ -261,7 +261,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             archive.Dispose();
             sid?.Dispose();
             if (quarantineRoot is not null)
-                QuarantineFiles.Remove(quarantineRoot);
+                try { Directory.Delete(quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
             _ = profile?.TryDelete(); // only one this method created; the sweep takes it otherwise
 
             // AppContainer/ACL/attribute-list setup can fail at runtime (e.g. group policy
@@ -702,9 +702,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     private string EnsureHelperCopy()
     {
         string helperSource = _helperSource ?? throw new InvalidOperationException("This scope was created without the archive helper.");
-        if (_nearDestination)
-            _helperRoot ??= Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
-        string folder = Path.Combine(_helperRoot ?? QuarantineRoot, HelperFolderName);
+        HelperRoot ??= Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
+        string folder = Path.Combine(HelperRoot, HelperFolderName);
         string copy = Path.Combine(folder, HelperFileName);
         if (_helperHash is not null)
             return copy;
@@ -805,9 +804,9 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         _archive.Dispose();
         _sid.Dispose();
-        QuarantineFiles.Remove(QuarantineRoot);
-        if (_helperRoot is not null)
-            try { if (Directory.Exists(_helperRoot)) Directory.Delete(_helperRoot, recursive: true); } catch { /* best-effort: swept with %TEMP%'s quarantines */ }
+        try { if (Directory.Exists(QuarantineRoot)) Directory.Delete(QuarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+        if (HelperRoot is not null)
+            try { if (Directory.Exists(HelperRoot)) Directory.Delete(HelperRoot, recursive: true); } catch { /* best-effort: swept with %TEMP%'s quarantines */ }
         // T-F523: every run of this scope has ended (each waits for its process, and its job kills
         // what is left when it closes), so nothing holds the profile's SID.
         _ = _profile.TryDelete(); // best-effort: the next process's sweep removes one Windows kept

@@ -62,7 +62,7 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
         string archive = Tar(("a.txt", "A"));
         using TarSandboxScope scope = await Scope(archive, needsOutputDir: false);
         await scope.RunHelperAsync(ArchiveHelperMode.List, ["--format", "tar"], null, new ArchiveHelperOutput(ArchiveHelperMode.List), CancellationToken.None);
-        string copy = Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe");
+        string copy = Path.Combine(scope.HelperRoot!, "bin", "Archiver.ArchiveHelper.exe");
         File.AppendAllText(copy, "x");
 
         Func<Task> run = () => scope.RunHelperAsync(ArchiveHelperMode.List, ["--format", "tar"], null, new ArchiveHelperOutput(ArchiveHelperMode.List), CancellationToken.None);
@@ -80,7 +80,7 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
 
         foreach (string folder in new[] { "bin", "list" })
         {
-            string rights = string.Join(" ", new DirectoryInfo(Path.Combine(scope.QuarantineRoot, folder)).GetAccessControl()
+            string rights = string.Join(" ", new DirectoryInfo(Path.Combine(folder == "bin" ? scope.HelperRoot! : scope.QuarantineRoot, folder)).GetAccessControl()
                 .GetAccessRules(true, false, typeof(System.Security.Principal.SecurityIdentifier))
                 .Cast<System.Security.AccessControl.FileSystemAccessRule>()
                 .Where(r => r.IdentityReference.Value.StartsWith("S-1-15-2-", StringComparison.Ordinal))
@@ -152,7 +152,7 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
         Func<Task> run = () => scope.RunHelperAsync(ArchiveHelperMode.List, ["--format", "tar"], null, new ArchiveHelperOutput(ArchiveHelperMode.List), CancellationToken.None);
 
         (await run.Should().ThrowAsync<TarSignatureVerificationException>()).WithMessage("*archiveint.dll*");
-        Directory.Exists(Path.Combine(scope.QuarantineRoot, "bin")).Should().BeFalse();
+        Directory.Exists(Path.Combine(scope.HelperRoot ?? scope.QuarantineRoot, "bin")).Should().BeFalse();
     }
 
     // Cancelled while the helper runs, seen running: Pakko holds its first "K" line, so the helper
@@ -189,7 +189,7 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
         seenRunning.Should().BeTrue("the helper waits on its full stdout pipe");
         Func<Task> ended = () => run;
         await ended.Should().ThrowAsync<OperationCanceledException>();
-        File.Delete(Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe"));
+        File.Delete(Path.Combine(scope.HelperRoot!, "bin", "Archiver.ArchiveHelper.exe"));
     }
 
     // The copy is held from its hash until the helper ends: a running exe can be renamed, and a name
@@ -199,11 +199,11 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
     {
         string archive = Tar(("a.txt", "A"));
         using TarSandboxScope scope = await Scope(archive, needsOutputDir: false);
-        string copy = Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe");
         Exception? renameFailure = null;
         bool renamed = false;
         var output = new ArchiveHelperOutput(ArchiveHelperMode.Test, (_, _) =>
         {
+            string copy = Path.Combine(scope.HelperRoot!, "bin", "Archiver.ArchiveHelper.exe");
             try
             {
                 File.Move(copy, copy + ".old");

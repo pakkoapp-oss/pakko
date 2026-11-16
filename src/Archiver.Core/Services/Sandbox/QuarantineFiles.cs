@@ -93,39 +93,6 @@ internal static partial class QuarantineFiles
 
     public static FileInfo Info(string file) => new(Literal(file));
 
-    /// <summary>
-    /// T-F546: removes the quarantine, best-effort (the sweep takes what is left). A read-only file
-    /// stops <see cref="Directory.Delete(string, bool)"/>, and archiveint.dll on ARM64 leaves a 0444
-    /// entry so: each file's flag is cleared through its own spelling first, the walk never entering a
-    /// link. .NET's delete then removes "a.txt." and "d " below the root as they are (measured).
-    /// </summary>
-    public static void Remove(string root)
-    {
-        try
-        {
-            foreach (string file in EnumerateFiles(root))
-            {
-                string literal = Literal(file);
-                FileAttributes attributes = File.GetAttributes(literal);
-                if (attributes.HasFlag(FileAttributes.ReadOnly))
-                    File.SetAttributes(literal, attributes & ~FileAttributes.ReadOnly);
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // best-effort: a file left read-only only keeps the delete below from finishing
-        }
-        try
-        {
-            if (Directory.Exists(root))
-                Directory.Delete(root, recursive: true);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // best-effort: the sweep removes what is left
-        }
-    }
-
     /// <summary>T-F474: opened as itself, never through a link, and shared for reading only: no other
     /// handle can be writing it. Throws <see cref="IOException"/> when it cannot be opened so, or is a link.</summary>
     public static FileStream OpenRead(string file)
