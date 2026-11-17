@@ -163,6 +163,94 @@ public sealed class DirectoryWalkerTests : IDisposable
         }
     }
 
+    // T-F531: ZIP's walk enters a name Windows trims by its literal path, and only that name and what is
+    // below it are literal; RelativePath names each one as spelled ("a.txt ", not the twin "a.txt").
+    [Fact]
+    public void Walk_SpelledBelow_NamesWindowsTrims_EnteredByTheirLiteralPaths()
+    {
+        string root = _temp.Path;
+        File.WriteAllText(@"\\?\" + Path.Combine(root, "a.txt "), "spaced");
+        File.WriteAllText(Path.Combine(root, "a.txt"), "twin");
+        Directory.CreateDirectory(@"\\?\" + Path.Combine(root, "d."));
+        File.WriteAllText(@"\\?\" + Path.Combine(root, "d.", "in.txt"), "in dotted");
+        Directory.CreateDirectory(Path.Combine(root, "d"));
+        File.WriteAllText(Path.Combine(root, "d", "twin.txt"), "twin");
+        try
+        {
+            List<WalkEntry> walked = [.. DirectoryWalker.Walk(root, spelledBelow: true)];
+
+            walked.Select(e => $"{e.Kind}:{DirectoryWalker.RelativePath(root, e.Info.FullName).Replace('\\', '/')}").Should().Equal(
+                "Directory:.", "File:a.txt", "File:a.txt ",
+                "Directory:d", "File:d/twin.txt",
+                "Directory:d.", "File:d./in.txt");
+            walked.Where(e => e.Info.FullName.StartsWith(@"\\?\", StringComparison.Ordinal)).Select(e => e.Info.Name)
+                .Should().Equal("a.txt ", "d.", "in.txt");
+            File.ReadAllText(walked.Single(e => e.Info.Name == "a.txt ").Info.FullName).Should().Be("spaced");
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(root, "a.txt "));
+            Directory.Delete(@"\\?\" + Path.Combine(root, "d."), recursive: true);
+        }
+    }
+
+    // T-F531: the filter judges the name as spelled; by its plain path "a.txt " is "a.txt".
+    [Fact]
+    public void Walk_SpelledBelow_TheFilterSeesTheNameAsSpelled()
+    {
+        string root = _temp.Path;
+        File.WriteAllText(@"\\?\" + Path.Combine(root, "a.txt "), "spaced");
+        File.WriteAllText(Path.Combine(root, "a.txt"), "twin");
+        try
+        {
+            var seen = new List<string>();
+            List<WalkEntry> walked = [.. DirectoryWalker.Walk(root, info => { seen.Add(DirectoryWalker.RelativePath(root, info.FullName)); return info.Name == "a.txt"; }, spelledBelow: true)];
+
+            seen.Should().BeEquivalentTo("a.txt", "a.txt ");
+            walked.Single(e => e.Kind == WalkEntryKind.File).Info.Name.Should().Be("a.txt ");
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(root, "a.txt "));
+        }
+    }
+
+    // T-F531: a root written as \\?\ with a name Windows trims is walked; its plain spelling, which
+    // lists the twin, walks nothing in either mode.
+    [Fact]
+    public void Walk_SpelledBelow_LiteralTrimmedRootIsWalked_PlainOneIsNot()
+    {
+        string plain = Path.Combine(_temp.Path, "d.");
+        string literal = @"\\?\" + plain;
+        Directory.CreateDirectory(literal);
+        File.WriteAllText(Path.Combine(literal, "in.txt"), "in dotted");
+        Directory.CreateDirectory(Path.Combine(_temp.Path, "d"));
+        File.WriteAllText(Path.Combine(_temp.Path, "d", "twin.txt"), "twin");
+        try
+        {
+            DirectoryWalker.Walk(literal, spelledBelow: true).Select(e => $"{e.Kind}:{DirectoryWalker.RelativePath(literal, e.Info.FullName)}")
+                .Should().Equal("Directory:.", "File:in.txt");
+            DirectoryWalker.Walk(plain, spelledBelow: true).Should().BeEmpty();
+            DirectoryWalker.Walk(literal).Should().BeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(literal, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(@"C:\w\tw", @"\\?\C:\w\tw\a.txt ", "a.txt ")]
+    [InlineData(@"C:\w\tw\", @"\\?\C:\w\tw\d.\x.txt", @"d.\x.txt")]
+    [InlineData(@"C:\w\tw", @"C:\w\tw\sub\x.txt", @"sub\x.txt")]
+    [InlineData(@"\\?\C:\w\d.", @"\\?\C:\w\d.\e \x.txt", @"e \x.txt")]
+    [InlineData(@"\\server\share\tw", @"\\?\UNC\server\share\tw\a.txt.", "a.txt.")]
+    [InlineData(@"C:\", @"\\?\C:\a.txt ", "a.txt ")]
+    public void RelativePath_LiteralEntryUnderAPlainRoot_IsAsSpelled(string root, string fullName, string expected)
+    {
+        DirectoryWalker.RelativePath(root, fullName).Should().Be(expected);
+    }
+
     // T-F547: only a literal root; a plain one goes through Walk's checks.
     [Fact]
     public void WalkAsSpelled_PlainRoot_WalksNothing()
