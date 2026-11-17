@@ -60,6 +60,29 @@ public sealed class TarStreamedListingTests : IDisposable
         rows.Select(r => r.Path).Should().Equal("plain.txt", "a -> b.txt", "x link to y.txt", "sym", "hard", Escaped, Spelled);
     }
 
+    // Batch 5h's reviewer: an entry with an ACL prints its mode with a "+" after it ("-rw-r--r--+",
+    // measured on 3.8.9 and 3.5.2); a name tar.exe escapes there is paired by that mode alone.
+    [Integration]
+    public async Task ListEntriesAsync_EscapedNamesWithAnAcl_AllPassed()
+    {
+        string archive = Path.Combine(_temp.Path, "acl.tar");
+        using (FileStream file = File.Create(archive))
+        using (var writer = new TarWriter(file, TarEntryFormat.Pax))
+        {
+            foreach (string name in new[] { "plain.txt", Escaped, Spelled })
+            {
+                var acl = new Dictionary<string, string> { ["SCHILY.acl.access"] = "user::rw-,user:1000:r--,group::r--,mask::r--,other::r--" };
+                writer.WriteEntry(new PaxTarEntry(TarEntryType.RegularFile, name, acl) { DataStream = new MemoryStream(new byte[1]), UserName = "u" });
+            }
+        }
+        var rows = new List<ArchiveEntryInfo>();
+
+        ArchiveListSummary summary = await _sut.ListEntriesAsync(archive, rows.Add);
+
+        summary.Success.Should().BeTrue(summary.ErrorMessage);
+        rows.Select(r => r.Path).Should().Equal("plain.txt", Escaped, Spelled);
+    }
+
     // Names tar.exe prints escaped ("ctl\001x.txt", "back\\slash.txt"), which "-t" read back unescaped.
     private static readonly string Escaped = "ctl" + (char)1 + "x.txt";
     private static readonly string Spelled = "back" + (char)92 + "slash.txt";
