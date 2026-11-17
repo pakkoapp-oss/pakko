@@ -510,11 +510,20 @@ bool HasSupportedNonZipArchiveExtension(const std::wstring& path)
     return false;
 }
 
-static bool IsSupportedArchive(const std::wstring& path, const MenuPolicy& policy)
+static bool IsFormatUsable(const std::wstring& name, const MenuPolicy& policy)
 {
     // T-F403: a format this tar.exe cannot read is hidden the same way as a blocked one.
+    return !policy.IsFormatBlocked(name) && !policy.IsTarFormatUnreadable(name);
+}
+
+static bool IsSupportedArchive(const std::wstring& path, const MenuPolicy& policy)
+{
     const std::wstring name = GetFormatRegistryName(path);
-    if (policy.IsFormatBlocked(name) || policy.IsTarFormatUnreadable(name)) return false;
+    // T-F457: a .tlz is Slackware's tar.lzma or an lzip tar; Core decides by its bytes.
+    const bool usable = name == L"lzip" && _wcsicmp(PathFindExtensionW(path.c_str()), L".tlz") == 0
+        ? IsFormatUsable(L"lzma", policy) || IsFormatUsable(L"lzip", policy)
+        : IsFormatUsable(name, policy);
+    if (!usable) return false;
     if (HasZipExtension(path)) return true;
     return !policy.disableTar && TarExeExists() && HasSupportedNonZipArchiveExtension(path);
 }

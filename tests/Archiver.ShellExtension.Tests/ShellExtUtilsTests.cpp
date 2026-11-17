@@ -1245,6 +1245,29 @@ TEST(TarCapabilitySnapshot, SnapshotOfTar352HidesLzipOnly)
     EXPECT_FALSE(AnyPathIsSupportedArchive({ L"C:\\a.tar.lz", L"C:\\b.tlz" }, policy));
 }
 
+// T-F457: a .tlz is Slackware's tar.lzma or an lzip tar, and Core decides by its bytes, so the menu
+// shows it while either format is allowed and read; it named only lzip, which hid a tar.lzma .tlz.
+TEST(MenuPolicy, TlzIsShownWhileLzmaOrLzipIsUsable)
+{
+    MenuPolicy lzipBlocked;
+    lzipBlocked.blockedFormats = { L"lzip" };
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.tlz" }, lzipBlocked));
+
+    MenuPolicy bothBlocked;
+    bothBlocked.blockedFormats = { L"lzip", L"lzma" };
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.tlz" }, bothBlocked));
+
+    MenuPolicy lzmaReadOnly;
+    lzmaReadOnly.tarReadabilityKnown = true;
+    lzmaReadOnly.tarReadable = { L"tar", L"lzma" };
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.tlz" }, lzmaReadOnly));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.tar.lz" }, lzmaReadOnly));
+
+    MenuPolicy lzmaBlockedLzipUnread = lzmaReadOnly;
+    lzmaBlockedLzipUnread.blockedFormats = { L"lzma" };
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.tlz" }, lzmaBlockedLzipUnread));
+}
+
 TEST(MenuPolicy, BlockedReadOnlyFormatIsHidden)
 {
     MenuPolicy policy;
