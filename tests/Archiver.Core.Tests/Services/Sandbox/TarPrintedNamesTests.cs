@@ -19,7 +19,7 @@ public sealed class TarPrintedNamesTests
         var back = new List<string>();
         printed.ForEach(line => back.Add(Encoding.ASCII.GetString(line)));
 
-        back.Should().Equal("a.txt", "a much longer line than a block", "b", "c", "0123456789a");
+        back.Should().Equal("a.txt", "a much longer line than a block", "b", "c\r", "0123456789a");
         printed.BlockCount.Should().Be(4, "a line that does not fit the rest of a block starts a new one");
     }
 
@@ -27,7 +27,7 @@ public sealed class TarPrintedNamesTests
     public void Empty_NoLines()
     {
         var printed = new TarPrintedNames();
-        printed.Add("\r"u8);
+        printed.Add([]);
         int count = 0;
 
         printed.ForEach(_ => count++);
@@ -37,7 +37,7 @@ public sealed class TarPrintedNamesTests
     }
 
     // The check over the kept lines gives every name the verdict T-F465's whole-listing dictionaries give
-    // (ReadListedNameBytes + IndexByText): random listings of lines that print one text in several bytes,
+    // (ListedNameBytes over every line + IndexByText): random listings of lines that print one text in several bytes,
     // escapes, lossy and unreadable lines, read in tar.exe's page and in another one (T-F465's swap).
     [Theory]
     [InlineData(932, 932u)]
@@ -53,7 +53,7 @@ public sealed class TarPrintedNamesTests
             [(byte)'a', 0x80], [(byte)'a', 0x88], [0x87, 0x90], [0x81, 0xE0], [0x87, 0x9C], [0x81, 0xBE], [0x5C, 0x5C, 0xBE],
             [0xED, 0x40], [0xFA, 0x5C], [(byte)'a', 0xFF], "bad\\q"u8.ToArray(), [0xD0, 0x96], [0xE2, 0x88, 0xAA],
         ];
-        byte[] alphabet = [(byte)'a', 0x5C, 0x80, 0x81, 0x87, 0x88, 0x90, 0x9C, 0xBE, 0xE0, 0xED, 0x40, 0xFA, 0xFF, (byte)'/', (byte)'2', (byte)'1', (byte)'0'];
+        byte[] alphabet = [(byte)'\r', (byte)'a', 0x5C, 0x80, 0x81, 0x87, 0x88, 0x90, 0x9C, 0xBE, 0xE0, 0xED, 0x40, 0xFA, 0xFF, (byte)'/', (byte)'2', (byte)'1', (byte)'0'];
         var random = new Random(550);
 
         for (int round = 0; round < 1500; round++)
@@ -63,13 +63,17 @@ public sealed class TarPrintedNamesTests
             {
                 lines.Add(random.Next(3) > 0
                     ? pool[random.Next(pool.Length)]
-                    : [.. Enumerable.Range(0, random.Next(1, 5)).Select(_ => alphabet[random.Next(alphabet.Length)])]);
+                    : [.. Enumerable.Range(0, random.Next(1, 5)).Select(_ => alphabet[random.Next(alphabet.Length)]), .. random.Next(4) == 0 ? "\r\r"u8.ToArray() : []]);
             }
-            byte[] listing = [.. lines.SelectMany(line => (byte[])[.. line, (byte)'\n'])];
+            // Each line as the run hands it over: without its '\n', with any '\r'.
             var printed = new TarPrintedNames(blockSize: 8);
+            var whole = new TarNames.ListedNameBytes(encoding);
             foreach (byte[] line in lines)
+            {
                 printed.Add(line);
-            Dictionary<string, byte[]?> listed = TarNames.ReadListedNameBytes(listing, encoding);
+                whole.OnLine(line);
+            }
+            var listed = whole.ToDictionary();
             Dictionary<string, byte[]?> byText = TarNames.IndexByText(listed, commandLinePage);
             string[] keys = [.. listed.Keys, "a", "missing.txt"];
 
@@ -86,7 +90,7 @@ public sealed class TarPrintedNamesTests
     }
 
     // T-F465's check as it was: dictionaries of every listed name.
-    private static int WholeListing(
+    private static int? WholeListing(
         Dictionary<string, byte[]?> listed, Dictionary<string, byte[]?> byText, uint commandLinePage, (string Key, byte[]? Sent)[] selection)
     {
         for (int i = 0; i < selection.Length; i++)
@@ -94,6 +98,6 @@ public sealed class TarPrintedNamesTests
             if (selection[i].Sent is not { } sent || !TarNames.ReachesTheListedEntry(selection[i].Key, listed, byText, commandLinePage, sent))
                 return i;
         }
-        return -1;
+        return null;
     }
 }

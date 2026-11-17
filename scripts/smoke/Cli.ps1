@@ -1187,7 +1187,8 @@ Add-SmokeStep 'CLI-069' {
     $out = Join-Path $folder 'out'
     $run = Invoke-Pakko @('x', $archive, "-o$out")
     Assert-Smoke ($run.ExitCode -ne 0) "the bomb was extracted: exit $($run.ExitCode) $($run.Text)"
-    Assert-Smoke (-not (Test-Path (Join-Path $out 'bomb.txt'))) "bomb.txt was written"
+    $written = @(if (Test-Path $out) { Get-ChildItem -LiteralPath $out -Recurse -File })
+    Assert-Smoke ($written.Count -eq 0) "the bomb wrote files: $($written.FullName -join ', ')"
     "exit $($run.ExitCode); the bomb is declined"
 }
 

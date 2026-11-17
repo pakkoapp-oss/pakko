@@ -15447,8 +15447,9 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 
 - [x] **Status:** done 2026-11-17 (batch 5j). The first `-t`'s lines are kept in 1 MiB blocks
   (`TarPrintedNames`) where names go back to tar.exe - an App selection's extraction or scan, a filtered
-  test - and T-F465's check reads them (`TarNames.FirstUnreached`, the same verdicts as the
-  whole-listing dictionaries by an oracle test). The task's premise was half wrong: `pakko x` with names
+  test - and T-F465's check reads them (`TarNames.FirstUnreached`, built to give the whole-listing
+  dictionaries' verdicts; an oracle test agrees on four page pairs, though it cannot show its second
+  pass's effect there, `docs/DECISIONS.md`, "Batch 5j"). The task's premise was half wrong: `pakko x` with names
   passes a filter, which sends tar.exe no names, so it had no second `-t`; a filtered `pakko t` did:
   16.2 s to 12.2 s on the host (3.8.9, `.tar.xz`), 7.7 s to 6.1 s on PakkoW10 (3.5.2, `.tar.gz`).
 - **Graduated 2026-11-17:** batch 5j.

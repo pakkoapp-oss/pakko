@@ -4,7 +4,7 @@ using FluentAssertions;
 namespace Archiver.Core.IntegrationTests;
 
 // T-F550: T-F465's check reads the lines the scope's first "-t" printed; a second "-t" decompressed the
-// whole archive again (3.9 s of a 24.6 s selective extraction of a .tar.xz, measured 2026-11-17).
+// whole archive again (a filtered pakko t of a 300 MB .tar.xz: 16.2 s, 12.2 s without it; 2026-11-17).
 [Collection("TarSandbox")]
 public sealed class TarNameListingRunsTests : IDisposable
 {
@@ -32,9 +32,10 @@ public sealed class TarNameListingRunsTests : IDisposable
         scope.NameListingRuns.Should().Be(1);
     }
 
-    // An extraction without a selection sends tar.exe no names, a filter's included: nothing kept.
+    // A scan whose reader sends no names back (an extraction without a selection, a filter's included,
+    // or a list) keeps nothing; what each service passes is TarSandboxedService's and the scan's call.
     [Integration]
-    public async Task ExtractionWithoutASelection_KeepsNoLines()
+    public async Task ScanThatSendsNoNamesBack_KeepsNoLines()
     {
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(Archive(), needsOutputDir: true, CancellationToken.None);
         ISandboxedArchiveReader reader = TarExeReader.On(scope);

@@ -113,6 +113,21 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(100, "the names (about 64 B each), their array and their sizes");
     }
 
+    // T-F550: a filtered test sends its names back to tar.exe, so its listing keeps the lines "-t" printed
+    // (TarPrintedNames) beside the names while the filter decides: what an App selection also holds.
+    [Fact]
+    public async Task TarFilteredTest_WhileItSelects_HoldsAtMostItsBudgetPerEntry()
+    {
+        string tar = TarGzOfEmptyEntries();
+        var service = new TarSandboxedService(new GroupPolicyOptions());
+        var probe = new HalfwayProbe(Entries, pass: false);
+
+        await service.TestAsync([tar], null, probe.Filter, CancellationToken.None);
+
+        probe.Halfway.Should().BeGreaterThan(0, "the filter saw the names' middle");
+        Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(140, "measured 117 B: the names and sizes (92 B in an extraction) and each name's printed line");
+    }
+
     // T-F542: the archive helper's extraction, measured as tar.exe's: one compact entry each, not the
     // helper's own listing beside it and a copy at every step.
     [NativeX64Fact]

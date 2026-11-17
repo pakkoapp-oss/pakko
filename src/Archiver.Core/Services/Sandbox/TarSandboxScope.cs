@@ -62,8 +62,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     // compromised helper can make Pakko read.
     private const long MaxHelperStdOutBytes = 1L << 30;
     // T-F529: what a "-t" line holds besides its name ("\r\n"), and a "-tv" line besides its name
-    // (type and mode, links, owner, group, size, date: about 45 bytes measured; an archive's own
-    // owner names count here, so 256 are allowed).
+    // (type and mode, links, owner, group, size, date: about 45 bytes measured; 256 are allowed, from
+    // when the owner and group were printed as names, before batch 5j's --numeric-owner).
     private const int PlainLineExtraBytes = 2;
     private const int VerboseLineExtraBytes = 256;
     // T-F529: one "-tv" line - a name Windows can write is at most 32,767 UTF-16 units: 3 UTF-8 bytes
@@ -528,8 +528,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         string[] shown = [.. names];
         (string Key, byte[]? Sent)[] selection = [.. shown.Select(name => name.TrimEnd('/'))
             .Select(key => (key, TarCommandLineEncoding.Encode(key, CommandLinePage)))];
-        int unreached = TarNames.FirstUnreached(_printedNames, OutputEncoding, CommandLinePage, selection);
-        if (unreached >= 0)
+        if (TarNames.FirstUnreached(_printedNames, OutputEncoding, CommandLinePage, selection) is { } unreached)
             throw TarArgumentEncodingException.ListedNameUntrusted(EntryDiskName.StripLeadingDotSlash(shown[unreached]), CommandLinePage);
     }
 

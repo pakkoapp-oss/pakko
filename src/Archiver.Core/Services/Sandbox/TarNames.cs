@@ -225,12 +225,12 @@ internal static class TarNames
     /// T-F550: <see cref="ReachesTheListedEntry"/> for each of <paramref name="selection"/> (a listed name
     /// without a folder's '/', and the bytes Pakko would send for it, null when it has none), over the
     /// lines of the scope's own "-t" (<paramref name="printed"/>): the index of the first that does not
-    /// reach its entry, or -1. The same verdicts as <see cref="ReadListedNameBytes"/> and
+    /// reach its entry, or null when all do. The same verdicts as <see cref="ReadListedNameBytes"/> and
     /// <see cref="IndexByText"/> over the whole listing, with only the names that can decide them
     /// counted: the selection's own, then those printed in bytes that read as one of the selection's
     /// texts in <paramref name="commandLinePage"/> - every name a text's <c>byText</c> entry is made of.
     /// </summary>
-    public static int FirstUnreached(
+    public static int? FirstUnreached(
         TarPrintedNames printed, System.Text.Encoding encoding, uint commandLinePage, IReadOnlyList<(string Key, byte[]? Sent)> selection)
     {
         var selected = new HashSet<string>(selection.Select(item => item.Key), StringComparer.Ordinal);
@@ -257,7 +257,7 @@ internal static class TarNames
             if (selection[i].Sent is not { } sent || !ReachesTheListedEntry(selection[i].Key, listed, byText, commandLinePage, sent))
                 return i;
         }
-        return -1;
+        return null;
     }
 
     // The listing's non-empty lines, a trailing '\r' dropped.
