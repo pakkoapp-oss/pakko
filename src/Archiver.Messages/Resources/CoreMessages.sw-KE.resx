@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Majina katika kumbukumbu hii ni marefu mno kwa jumla kwa Pakko kuifungua. Kikomo: herufi {0}.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Kipengee katika kumbukumbu hii kina jina au maelezo marefu mno kwa Pakko kuifungua. Kikomo: baiti {0}.</value>
+  </data>
 </root>

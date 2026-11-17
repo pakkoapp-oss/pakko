@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>اس آرکائیو کے نام مجموعی طور پر اتنے لمبے ہیں کہ Pakko اسے نہیں کھولتا۔ حد: {0} حروف۔</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>اس آرکائیو کے ایک اندراج کا نام یا تفصیلات اتنی لمبی ہیں کہ Pakko اسے نہیں کھولتا۔ حد: {0} بائٹس۔</value>
+  </data>
 </root>

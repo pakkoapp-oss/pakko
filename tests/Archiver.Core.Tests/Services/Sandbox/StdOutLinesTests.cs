@@ -1,4 +1,5 @@
 using System.Text;
+using Archiver.Core.Models;
 using Archiver.Core.Services.Sandbox;
 using FluentAssertions;
 
@@ -114,6 +115,18 @@ public sealed class StdOutLinesTests
             new StdOutLines(_ => { }, 4, 100, LineTooLong: () => refusal), CancellationToken.None);
 
         (await read.Should().ThrowAsync<InvalidDataException>()).Which.Should().BeSameAs(refusal);
+    }
+
+    // T-F549: the helper's line over its protocol's limit was the launcher's English IOException; it is
+    // a protocol breach, shown as the other breaches are.
+    [Fact]
+    public async Task AHelperLineTooLong_IsAProtocolBreach()
+    {
+        using var stream = new MemoryStream(new byte[ArchiveHelperOutput.MaxLineBytes + 1]);
+
+        Func<Task> read = () => SandboxedProcessLauncher.ReadLinesWithinAsync(stream, TarSandboxScope.HelperLines(_ => { }), CancellationToken.None);
+
+        (await read.Should().ThrowAsync<ArchiveHelperProtocolException>()).Which.Text.Code.Should().Be(MessageCode.CannotReadArchive);
     }
 
     private static async Task Read(string text, int maxLine, long maxTotal)

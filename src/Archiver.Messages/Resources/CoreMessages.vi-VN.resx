@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Tổng độ dài các tên trong tệp nén này quá lớn để Pakko mở. Giới hạn: {0} ký tự.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Một mục trong tệp nén này có tên hoặc thông tin quá dài để Pakko mở. Giới hạn: {0} byte.</value>
+  </data>
 </root>

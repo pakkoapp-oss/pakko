@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Šio archyvo pavadinimai kartu per ilgi, kad Pakko jį atvertų. Riba: {0} simbolių.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Šio archyvo elemento pavadinimas ar duomenys per ilgi, kad Pakko jį atvertų. Riba: {0} baitų.</value>
+  </data>
 </root>

@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Имената в този архив са твърде дълги общо, за да го отвори Pakko. Ограничение: {0} знака.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Елемент в този архив има име или данни, твърде дълги, за да го отвори Pakko. Ограничение: {0} байта.</value>
+  </data>
 </root>

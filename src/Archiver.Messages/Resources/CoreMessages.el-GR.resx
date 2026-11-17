@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Τα ονόματα σε αυτό το αρχείο συμπίεσης είναι συνολικά πολύ μεγάλα για να το ανοίξει το Pakko. Όριο: {0} χαρακτήρες.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Μια καταχώρηση σε αυτό το αρχείο συμπίεσης έχει όνομα ή στοιχεία πολύ μεγάλα για να το ανοίξει το Pakko. Όριο: {0} byte.</value>
+  </data>
 </root>

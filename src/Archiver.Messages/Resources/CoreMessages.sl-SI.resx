@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Imena v tem arhivu so skupaj predolga, da bi ga Pakko odprl. Omejitev: {0} znakov.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Vnos v tem arhivu ima predolgo ime ali podatke, da bi ga Pakko odprl. Omejitev: {0} bajtov.</value>
+  </data>
 </root>

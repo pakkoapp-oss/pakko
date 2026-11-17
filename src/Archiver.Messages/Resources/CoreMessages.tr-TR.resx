@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Bu arşivdeki adlar toplamda Pakko'nun açamayacağı kadar uzun. Sınır: {0} karakter.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Bu arşivdeki bir öğenin adı veya ayrıntıları Pakko'nun açamayacağı kadar uzun. Sınır: {0} bayt.</value>
+  </data>
 </root>

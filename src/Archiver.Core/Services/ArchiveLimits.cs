@@ -35,6 +35,10 @@ internal static class ArchiveLimits
     public static CoreTextIOException CatalogTooLarge(long limit) =>
         new(CoreMessages.Text(MessageCode.CatalogTooLarge, limit.ToString("N0", CultureInfo.CurrentCulture)));
 
+    /// <summary>T-F549: one line of a listing longer than <paramref name="limitBytes"/>, handled as <see cref="TooManyEntries"/> is.</summary>
+    public static CoreTextIOException ListingLineTooLong(int limitBytes) =>
+        new(CoreMessages.Text(MessageCode.ListingLineTooLong, limitBytes.ToString("N0", CultureInfo.CurrentCulture)));
+
     /// <summary>T-F529: one name's characters counted against <paramref name="limit"/>; past it, the refusal.</summary>
     public static long CountName(long counted, int nameChars, long limit) =>
         counted + nameChars <= limit ? counted + nameChars : throw CatalogTooLarge(limit);

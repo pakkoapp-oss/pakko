@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Tämän arkiston nimet ovat yhteensä liian pitkiä, jotta Pakko avaisi sen. Raja: {0} merkkiä.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Tämän arkiston kohteella on liian pitkä nimi tai tiedot, jotta Pakko avaisi sen. Raja: {0} tavua.</value>
+  </data>
 </root>

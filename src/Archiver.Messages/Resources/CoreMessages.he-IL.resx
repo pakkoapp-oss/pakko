@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>השמות בארכיון זה ארוכים מדי בסך הכול כדי ש-Pakko יפתח אותו. מגבלה: {0} תווים.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>לפריט בארכיון זה יש שם או פרטים ארוכים מדי כדי ש-Pakko יפתח אותו. מגבלה: {0} בתים.</value>
+  </data>
 </root>

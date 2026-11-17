@@ -423,4 +423,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Імена в цьому архіві разом задовгі, щоб Pakko його відкрив. Ліміт: {0} символів.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Елемент у цьому архіві має задовге ім'я чи відомості, щоб Pakko його відкрив. Ліміт: {0} байтів.</value>
+  </data>
 </root>
