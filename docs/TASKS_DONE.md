@@ -15283,3 +15283,84 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   `AotSatelliteTests.EveryAotExeThatRendersMessages_CompilesTheirSatellitesIn` (red without the
   target). On device: 1.10.0.31 English, 1.10.0.32 Ukrainian; smoke row SHL-021.
 - **Graduated 2026-11-16:** batch 5g.
+
+### T-F547 - TempOwner.TryRemove stops at a read-only file under a name Windows trims (P3, 2026-11-16)
+
+- [x] **Status:** done 2026-11-17 (batch 5h). `InputPaths.Literal` is the one owner of the `\\?\`
+  form (`WorkRoot.LongForm` and `QuarantineFiles.Literal` were two copies; a guard test finds a third).
+  `TempOwner.Remove` walks with `DirectoryWalker.WalkAsSpelled` (a literal root only, TempOwner its only
+  caller, both guarded): every child's `FullName` keeps the `\\?\` prefix, so a folder named "d " is
+  entered as any other, and the read-only flag is cleared and each file deleted by its literal path.
+  Traced: neither tar build sets read-only from mode 0444 and Pakko sets it nowhere in staging, so no
+  device path reaches it today; the fix is defensive (`docs/DECISIONS.md`, "Batch 5h"). Tests:
+  `TempOwnerTests` (trimmed names, a literal root Windows would trim, a NUL), `DirectoryWalkerTests`.
+- **Graduated 2026-11-17:** batch 5h.
+- **As filed:**
+  - [ ] **Status:** open, next wave. Found by T-F546: `TempOwner.Remove` clears a read-only file's flag
+    through `FileSystemInfo.Attributes` (a normalized path) and walks with `DirectoryWalker`, which does
+    not enter a folder named "d "; a read-only "a.txt." or one under "d " then stops the recursive delete
+    and `TryRemove` returns false (measured with a unit test, not kept). Its callers stage Pakko's
+    extraction and creation, where such names arrive from a ZIP. Clear the flag through the literal path
+    and enter trimmed-name folders for this walk; the test: `TempOwnerTests` with `\?\`-made "a.txt.",
+    "b.txt " and "d \x.txt", all read-only.
+
+### T-F549 - Batch 5g's reviewer's P3s: a literal root's walk, a NUL, the line limit's text, tar's left-out folders (P3, 2026-11-16)
+
+- [x] **Status:** done 2026-11-17 (batch 5h). (1, 2) With T-F547: `TempOwner.Remove` walks a
+  literal root with `DirectoryWalker.WalkAsSpelled`; a literal path holding a NUL is refused (false)
+  before any `FileInfo`; `CoreNeverThrowsContractTests.TempOwner_LiteralPath`. (3) A tar listing line
+  over the line limit fails as `ListingLineTooLong`, a text of its own in every locale; the helper's
+  over-long line is an `ArchiveHelperProtocolException`, the localized `CannotReadArchive` of every
+  other protocol breach. (4) `TarSandboxedServiceExtractedItemReportTests.
+  ExtractAsync_FolderWhoseAttributesCannotBeRead_SkipsWhatGoesThroughIt`, red with the report mutated.
+- **Graduated 2026-11-17:** batch 5h.
+- **As filed:**
+  - [ ] **Status:** open, next wave. The fresh reviewer of batch 5g (2026-11-16) found one P2, fixed in
+    the batch (the scan stopped at a damaged encrypted record and left the plain entries unscanned),
+    and these:
+    - `TempOwner.TryRemove` takes a `\\?\` path as spelled (T-F533), but `Remove` walks it with
+      `DirectoryWalker.Walk`, which returns nothing for a root `InputPaths.Problem` flags ("out." mid-path):
+      the links-first step and the read-only clearing are skipped for such a root. Same fix as T-F547.
+    - A literal path holding a NUL reaches `new FileInfo` in `TryRemove` and throws `ArgumentException`
+      out of a Core method (callers pass generated names only today); refuse it before, and add a literal
+      hostile kind to `CoreNeverThrowsContractTests.TempOwner_Path`.
+    - A tar listing line over the 1 MiB line limit is refused as `CatalogTooLarge`, whose text names the
+      total-name limit (T-F543); give it a text of its own. The ArchiveHelper listing's over-long line
+      (`TarSandboxScope`, `ArchiveHelperOutput.MaxLineBytes`) still throws an unlocalized `IOException`.
+    - `TarSandboxedService`'s report of `ExtractionStaging.LeftOutUnreadable` (T-F522) has no test: the
+      ZIP engine's has one.
+
+### T-F545 - Batch 5f's reviewer's P3s: rows before the check, the pre-walk's cancel, a second -t (P3, 2026-11-16)
+
+- [x] **Status:** done 2026-11-17 (batch 5h), item by item. (1) A streamed tar row passes only on
+  its own `-tv` line's evidence (it ends with the `-t` name, a link's target after it, or starts with a
+  mode for a name tar.exe may have escaped); from the first line that has none, no row: an owner's
+  newline, printed as it is by 3.8.9 and 3.5.2, no longer shifts every later row
+  (`TarStreamedListingTests`, smoke `CLI-068`). The helper is unchanged: each row there is its own
+  entry's. (2) Done with T-F543. (3) `pakko l -slt` makes its header with the first row, after Core
+  opened the archive: a missing archive shows the listing's own error; a size still unreadable is left
+  out. (4) Measured: the second `-t` is about 16 % of a one-file extraction, over the line, so it is
+  T-F550 (the plan's stop rule). (5) Declared totals saturate at `long.MaxValue` (`AddDeclared`); a
+  listed size with a sign is none; `DeclaredSizeOf` counts each copy, as tar.exe writes each; the
+  three listing interfaces document `ArgumentNullException` for a null `onEntry`.
+- **Graduated 2026-11-17:** batch 5h.
+- **As filed:**
+  - [ ] **Status:** open, next wave. The fresh reviewer of batch 5f (2026-11-16) found no P1 or P2; beside
+    that:
+    - A streamed list passes rows on before T-F418's `-t`/`-tv` count check (`TarExeReader`'s streamed
+      listing) and before the helper's charset check for a format with none: shifted `-tv` lines would
+      print names with another entry's type, size or date in `pakko l`, then the error and exit 2. The
+      App drops its index on failure. Pair each row by its own line's evidence, or check the counts first.
+    - `ZipCatalog.Check` before a streamed ZIP list does not look at the token (`ZipArchiveService`'s
+      `ListEntriesAsync`): a cancel waits out the whole directory walk. Same class as T-F543's first walks.
+      Done with T-F543 (batch 5g): `Check` takes the list's token.
+    - `pakko l -slt` reads the archive's length before listing: a missing or locked archive now shows
+      .NET's message, not Core's localized listing error; the comment "Gone or locked since it was named"
+      no longer describes it.
+    - A selection, a filter or first copies sent back to tar.exe run `-t` a second time
+      (`TarSandboxScope`'s `EnsureSentAsListedAsync`, T-F539's choice): on a large `.tar.zst` a second
+      full decompression. Measure; keep the printed bytes in chunks if it matters.
+    - `TestSubset.Of` sums sizes with unchecked `+=` (was checked LINQ `Sum`); `DeclaredSizeOf` counts
+      every copy of a duplicate name, the old dictionary the last copy's size: progress and test totals
+      only. `ThrowIfNull(onEntry)` beside interface docs saying a listing throws nothing but the callback's
+      exception and cancellation.

@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, the archive search and the identity owner: done; archiving such names is T-F531, next wave), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected: done, batch 5g), T-F522 (P3, the commit's link check fails open: done, batch 5g), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`: done, batch 5d), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders: done, batch 5d), T-F532 (P3, a merge takes the staging's inheritable entries, next wave), T-F533 (P3, a root left under a `\\?\` name Windows trims: done, batch 5g), T-F534 (P3, the fast path's re-inheritance has no cancel, next wave), T-F529 (P2, reading in batches, batch 5e), T-F535 (P2, the App's browser holds a tree of every entry: done, batch 5f), T-F536 (P2, a scan of many small entries: done, batch 5f), T-F544 (P2, a scan's result held every clean finding: done, batch 5f), T-F545 (P3, batch 5f's reviewer's findings, next wave), T-F546 (P2, a held helper copy kept the quarantine: done, the ARM64 canary), T-F547 (P3, `TempOwner.TryRemove` and a read-only name Windows trims, next wave), T-F537 (P3, the tar budget test measures less than a list holds, batch 5e), T-F538 (P2, names and data from two directories, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, the archive search and the identity owner: done; archiving such names is T-F531, next wave), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected: done, batch 5g), T-F522 (P3, the commit's link check fails open: done, batch 5g), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`: done, batch 5d), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders: done, batch 5d), T-F532 (P3, a merge takes the staging's inheritable entries, next wave), T-F533 (P3, a root left under a `\\?\` name Windows trims: done, batch 5g), T-F534 (P3, the fast path's re-inheritance has no cancel, next wave), T-F529 (P2, reading in batches, batch 5e), T-F535 (P2, the App's browser holds a tree of every entry: done, batch 5f), T-F536 (P2, a scan of many small entries: done, batch 5f), T-F544 (P2, a scan's result held every clean finding: done, batch 5f), T-F545 (P3, batch 5f's reviewer's findings: done, batch 5h; the second `-t` is T-F550, next wave), T-F546 (P2, a held helper copy kept the quarantine: done, the ARM64 canary), T-F547 (P3, `TempOwner.TryRemove` and a read-only name Windows trims: done, batch 5h), T-F549 (P3, batch 5g's reviewer's findings: done, batch 5h), T-F537 (P3, the tar budget test measures less than a list holds, batch 5e), T-F538 (P2, names and data from two directories, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -2011,54 +2011,15 @@ re-measured with T-F346's script before and after.
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
 
-### T-F549 - Batch 5g's reviewer's P3s: a literal root's walk, a NUL, the line limit's text, tar's left-out folders (P3, 2026-11-16)
+### T-F550 - A tar selection decompresses the whole archive again for its second -t (P3, from T-F545)
 
-- [ ] **Status:** open, next wave. The fresh reviewer of batch 5g (2026-11-16) found one P2, fixed in
-  the batch (the scan stopped at a damaged encrypted record and left the plain entries unscanned),
-  and these:
-  - `TempOwner.TryRemove` takes a `\\?\` path as spelled (T-F533), but `Remove` walks it with
-    `DirectoryWalker.Walk`, which returns nothing for a root `InputPaths.Problem` flags ("out." mid-path):
-    the links-first step and the read-only clearing are skipped for such a root. Same fix as T-F547.
-  - A literal path holding a NUL reaches `new FileInfo` in `TryRemove` and throws `ArgumentException`
-    out of a Core method (callers pass generated names only today); refuse it before, and add a literal
-    hostile kind to `CoreNeverThrowsContractTests.TempOwner_Path`.
-  - A tar listing line over the 1 MiB line limit is refused as `CatalogTooLarge`, whose text names the
-    total-name limit (T-F543); give it a text of its own. The ArchiveHelper listing's over-long line
-    (`TarSandboxScope`, `ArchiveHelperOutput.MaxLineBytes`) still throws an unlocalized `IOException`.
-  - `TarSandboxedService`'s report of `ExtractionStaging.LeftOutUnreadable` (T-F522) has no test: the
-    ZIP engine's has one.
-
-### T-F547 - TempOwner.TryRemove stops at a read-only file under a name Windows trims (P3, 2026-11-16)
-
-- [ ] **Status:** open, next wave. Found by T-F546: `TempOwner.Remove` clears a read-only file's flag
-  through `FileSystemInfo.Attributes` (a normalized path) and walks with `DirectoryWalker`, which does
-  not enter a folder named "d "; a read-only "a.txt." or one under "d " then stops the recursive delete
-  and `TryRemove` returns false (measured with a unit test, not kept). Its callers stage Pakko's
-  extraction and creation, where such names arrive from a ZIP. Clear the flag through the literal path
-  and enter trimmed-name folders for this walk; the test: `TempOwnerTests` with `\?\`-made "a.txt.",
-  "b.txt " and "d \x.txt", all read-only.
-
-### T-F545 - Batch 5f's reviewer's P3s: rows before the check, the pre-walk's cancel, a second -t (P3, 2026-11-16)
-
-- [ ] **Status:** open, next wave. The fresh reviewer of batch 5f (2026-11-16) found no P1 or P2; beside
-  that:
-  - A streamed list passes rows on before T-F418's `-t`/`-tv` count check (`TarExeReader`'s streamed
-    listing) and before the helper's charset check for a format with none: shifted `-tv` lines would
-    print names with another entry's type, size or date in `pakko l`, then the error and exit 2. The
-    App drops its index on failure. Pair each row by its own line's evidence, or check the counts first.
-  - `ZipCatalog.Check` before a streamed ZIP list does not look at the token (`ZipArchiveService`'s
-    `ListEntriesAsync`): a cancel waits out the whole directory walk. Same class as T-F543's first walks.
-    Done with T-F543 (batch 5g): `Check` takes the list's token.
-  - `pakko l -slt` reads the archive's length before listing: a missing or locked archive now shows
-    .NET's message, not Core's localized listing error; the comment "Gone or locked since it was named"
-    no longer describes it.
-  - A selection, a filter or first copies sent back to tar.exe run `-t` a second time
-    (`TarSandboxScope`'s `EnsureSentAsListedAsync`, T-F539's choice): on a large `.tar.zst` a second
-    full decompression. Measure; keep the printed bytes in chunks if it matters.
-  - `TestSubset.Of` sums sizes with unchecked `+=` (was checked LINQ `Sum`); `DeclaredSizeOf` counts
-    every copy of a duplicate name, the old dictionary the last copy's size: progress and test totals
-    only. `ThrowIfNull(onEntry)` beside interface docs saying a listing throws nothing but the callback's
-    exception and cancellation.
+- [ ] **Status:** open, next wave. Measured in batch 5h (`docs/DECISIONS.md`, "Batch 5h"): `pakko x`
+  of one file from a 300 MB `.tar.xz` of 30,000 text entries takes 24.6 s; one `-t` of it takes
+  3.9 s, so `EnsureSentAsListedAsync`'s second `-t` (T-F539) is about 16 % of the run, over the plan's
+  10 % / 2 s line. Keep the first `-t`'s printed bytes in chunks (byte blocks and offsets, no string
+  per name) and compare against them instead of a second run. It changes T-F465's check that a
+  selection takes the entries listed, a security boundary: a plan of its own, advisor at both ends,
+  tests on 3.8.9 and 3.5.2, and the same measurement on PakkoW10 first.
 
 ### T-F527 - A run can leave an entry its owner cannot delete, now next to the destination (P3, from T-F524's review)
 
