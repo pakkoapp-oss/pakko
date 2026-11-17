@@ -837,7 +837,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         _archive.Dispose();
         _sid.Dispose();
-        try { if (Directory.Exists(QuarantineRoot)) Directory.Delete(QuarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+        // T-F511's owner: links on their own; T-F527: what a run took from the user is taken back first.
+        _ = TempOwner.TryRemove(QuarantineRoot); // false: held, swept by the next scope there
         if (HelperRoot is not null)
             try { if (Directory.Exists(HelperRoot)) Directory.Delete(HelperRoot, recursive: true); } catch { /* best-effort: swept with %TEMP%'s quarantines */ }
         // T-F523: every run of this scope has ended (each waits for its process, and its job kills

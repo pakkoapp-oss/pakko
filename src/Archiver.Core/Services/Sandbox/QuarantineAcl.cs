@@ -64,11 +64,9 @@ internal static partial class QuarantineAcl
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException();
-        string user = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value
-            ?? throw new InvalidOperationException("The current user's SID cannot be read.");
         const uint SddlRevision1 = 1;
         if (!NativeMethods.ConvertStringSecurityDescriptorToSecurityDescriptorW(
-                $"D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;{user})", SddlRevision1, out IntPtr securityDescriptor, 0))
+                OwnersOnly(), SddlRevision1, out IntPtr securityDescriptor, 0))
             throw new InvalidOperationException($"ConvertStringSecurityDescriptorToSecurityDescriptorW failed (Win32 error {Marshal.GetLastPInvokeError()}).");
         try
         {
@@ -87,6 +85,45 @@ internal static partial class QuarantineAcl
                     throw new UnauthorizedAccessException(message);
                 throw new IOException(message, unchecked((int)0x80070000) | error);
             }
+        }
+        finally
+        {
+            NativeMethods.LocalFree(securityDescriptor);
+        }
+    }
+
+    // The user, SYSTEM and Administrators only, protected.
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static string OwnersOnly()
+    {
+        string user = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value
+            ?? throw new InvalidOperationException("The current user's SID cannot be read.");
+        return $"D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;{user})";
+    }
+
+    /// <summary>
+    /// T-F527: writes the DACL of a private folder (<see cref="CreatePrivateFolder"/>) to the file or folder
+    /// <paramref name="path"/> itself (a junction's own DACL, never its target's), as its owner: the owner may write a DACL
+    /// that lets it nothing else. Throws <see cref="IOException"/> when it may not (an OWNER RIGHTS entry
+    /// took that right away too, or the user is not the owner).
+    /// </summary>
+    public static void GiveBackToOwner(string path)
+    {
+        const uint DACL_SECURITY_INFORMATION = 0x00000004;
+        const uint SddlRevision1 = 1;
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException();
+        if (!NativeMethods.ConvertStringSecurityDescriptorToSecurityDescriptorW(OwnersOnly(), SddlRevision1, out IntPtr securityDescriptor, 0))
+            throw new InvalidOperationException($"ConvertStringSecurityDescriptorToSecurityDescriptorW failed (Win32 error {Marshal.GetLastPInvokeError()}).");
+        try
+        {
+            byte[] descriptor = new byte[NativeMethods.GetSecurityDescriptorLength(securityDescriptor)];
+            Marshal.Copy(securityDescriptor, descriptor, 0, descriptor.Length);
+            // Not through CreateFileW: it asks SYNCHRONIZE and FILE_READ_ATTRIBUTES too, which such a DACL
+            // denies; SetFileSecurityW asks WRITE_DAC alone, and writes a junction's own DACL, never its
+            // target's (measured).
+            if (!NativeMethods.SetFileSecurityW(InputPaths.Literal(Path.GetFullPath(path)), DACL_SECURITY_INFORMATION, descriptor))
+                throw ErrorFor(Marshal.GetLastPInvokeError(), path);
         }
         finally
         {
@@ -546,6 +583,10 @@ internal static partial class QuarantineAcl
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool GetKernelObjectSecurity(
             Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint securityInformation, byte[]? securityDescriptor, uint length, out uint lengthNeeded);
+
+        [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool SetFileSecurityW(string fileName, uint securityInformation, byte[] securityDescriptor);
 
         [LibraryImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
