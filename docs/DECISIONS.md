@@ -14983,6 +14983,41 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 5h - the P3 tail (T-F547, T-F549, T-F545; 2026-11-17)
+
+**T-F547 is defensive.** Neither tar build sets the read-only attribute from mode 0444 (measured on
+3.8.9 here and 3.5.2 on PakkoW10), and Pakko sets it nowhere while staging, so no operation today
+leaves a read-only file under a name Windows trims. The fix is kept because `TempOwner` owns the
+removal of every folder Pakko makes, and a walk that skips names it cannot spell is a silent leak:
+`WalkAsSpelled` enters them, but only under a literal root and only for TempOwner (a guard test),
+because every other walker must keep refusing such names (T-F510).
+
+**T-F545 (1): evidence per line, no second `-tv` pass.** Measured on 3.8.9 and 3.5.2 with one tar
+(owners "own\nx" and "a b c", names "sp ace.txt", "a -> b.txt", "x link to y.txt", a control
+character, a backslash, a symlink and a hard link): both builds print the owner as it is, so its
+newline splits that entry's line in two; the name is the line's tail, escaped the same way in `-t`
+and `-tv`; a symlink's tail is "name -> target", a hard link's "name link to target". A row passes
+when its line ends with " " + the `-t` name, or holds " name -> " (type l) or " name link to " (type
+h); a name Pakko unescaped (`TarListingName.Unescape`) cannot be compared to the printed tail, so for
+a name with a control character or a backslash the line must at least start with a mode. The first
+line that fails stops the rows; the count check then fails the listing. Residual: an owner crafted to
+end in " first.txt" makes its first half pass for that entry, with size 0, before the listing fails
+on the next line; the row is wrong only in its size and the listing ends in an error, as before.
+
+**The helper is unchanged.** A format without a charset (T-F418's check) fails after the rows before
+the nameless entry: each of those rows is that entry's own data, as 7-Zip lists up to an error.
+
+**T-F545 (4): the second `-t` crosses the line, so it is T-F550.** Host, 3.8.9: a 300 MB `.tar.xz` of
+30,000 10 KiB text entries; one `-t` 3.9 s, one `-tv` 4.1 s; `pakko x` of one file 24.6 s (twice).
+The second `-t` is about 16 % of the run, over the plan's 10 % / 2 s line; by the plan's stop rule
+keeping the first `-t`'s bytes is a task of its own, since it changes T-F465's check. (A 1 GB
+`.tar.zst` of random data was 18 MB after zstd and listed in 0.8 s: not representative.)
+
+**T-F545 (5): totals saturate.** A declared size is the archive's to state; a sum past
+`long.MaxValue` wrapped negative (the old checked LINQ `Sum` threw out of Core). `AddDeclared`
+saturates instead: the largest total, which T-F94's bomb check refuses. `DeclaredSizeOf` counts each
+copy of a duplicate name, as tar.exe writes each (progress only).
+
 ## Batch 5g - the P3s pulled into this wave (T-F533, T-F522, T-F521, T-F543; 2026-11-16)
 
 **T-F533: the fix is in `TempOwner.TryRemove`, not in `InputPaths.NameTrimmed`.** A `\\?\` path is

@@ -1127,6 +1127,50 @@ Add-SmokeStep 'CLI-067' {
     'the damaged encrypted ZIP fails as damaged, never as password-protected'
 }
 
+# T-F545: an owner's newline, which tar.exe prints as it is, split one entry's -tv line in two; every
+# later row took the line before its own. Now no row passes without its own line's evidence.
+Add-SmokeStep 'CLI-068' {
+    $folder = Get-StepFolder 'cli068'
+    $tar = Join-Path $folder 'owner.tar'
+    $ascii = [System.Text.Encoding]::ASCII
+    $stream = [System.IO.File]::Create($tar)
+    try {
+        foreach ($entry in @(@('zero.txt', 'root', 5), @('first.txt', "own`nx", 1), @('second.txt', 'root', 22))) {
+            $header = [byte[]]::new(512)
+            $put = { param($text, $at) $bytes = $ascii.GetBytes($text); [Array]::Copy($bytes, 0, $header, $at, $bytes.Length) }
+            & $put $entry[0] 0
+            & $put '0000644' 100; & $put '0000000' 108; & $put '0000000' 116
+            & $put ([Convert]::ToString($entry[2], 8).PadLeft(11, '0')) 124
+            & $put '14000000000' 136
+            & $put '        ' 148
+            $header[156] = [byte][char]'0'
+            & $put 'ustar' 257; & $put '00' 263
+            & $put $entry[1] 265; & $put 'root' 297
+            $sum = 0; foreach ($b in $header) { $sum += $b }
+            & $put ([Convert]::ToString($sum, 8).PadLeft(6, '0')) 148
+            $header[154] = 0; $header[155] = [byte][char]' '
+            $stream.Write($header, 0, 512)
+            $data = [byte[]]::new([Math]::Ceiling($entry[2] / 512) * 512)
+            $stream.Write($data, 0, $data.Length)
+        }
+        $end = [byte[]]::new(1024)
+        $stream.Write($end, 0, 1024)
+    }
+    finally { $stream.Dispose() }
+    # The archive helper lists each entry itself (exit 0, every row its own); tar.exe's route
+    # (no helper) fails the list as inconsistent after zero.txt. Either way no row has another's size.
+    $run = Invoke-Pakko @('l', $tar)
+    Assert-Smoke ($run.ExitCode -in 0, 2) "owner.tar: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke ($run.Text -match '(?m)^5\t.*\tzero\.txt\r?$') "zero.txt is missing or not 5 bytes: $($run.Text)"
+    foreach ($name in @(@('first', 1), @('second', 22))) {
+        foreach ($row in @($run.Text -split "`n" | Where-Object { $_ -match "\t$($name[0])\.txt\r?$" })) {
+            Assert-Smoke ($row -match "^$($name[1])\t") "$($name[0]).txt was printed with another entry's line: $row"
+        }
+    }
+    Assert-Smoke ($run.ExitCode -eq 0 -or -not $run.Text.Contains('second.txt')) "tar.exe's route printed a row after the split line: $($run.Text)"
+    "exit $($run.ExitCode); no row is printed with another entry's line"
+}
+
 # T-F513: an archive declaring a billion entries is refused before its catalog is read.
 Add-SmokeStep 'CLI-062' {
     $folder = Get-StepFolder 'cli062'
