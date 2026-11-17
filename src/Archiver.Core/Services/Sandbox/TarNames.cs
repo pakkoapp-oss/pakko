@@ -92,10 +92,11 @@ internal static class TarNames
     }
 
     /// <summary>
-    /// T-F539: <see cref="ReadListedNameBytes"/> a line at a time, from a "-t" run of its own: the
-    /// bytes are read only where a name is sent back, never kept beside every listing.
+    /// T-F539: <see cref="ReadListedNameBytes"/> a line at a time. T-F550: <paramref name="keep"/>, when
+    /// given, decides which (name, printed bytes) pairs are counted: a pair it drops is never stored,
+    /// and a name is counted in full only when it keeps every pair of that name.
     /// </summary>
-    internal sealed class ListedNameBytes(System.Text.Encoding encoding)
+    internal sealed class ListedNameBytes(System.Text.Encoding encoding, Func<string, byte[]?, bool>? keep = null)
     {
         private readonly Dictionary<string, byte[]?> _listed = [with(StringComparer.Ordinal)];
         private bool _unknownText;
@@ -112,7 +113,7 @@ internal static class TarNames
                 return; // not a name: the service refuses such a listing before anything is sent
             string key = name.TrimEnd('/');
             byte[]? bytes = PrintedBytes(line, text, name, encoding) is { } printed ? printed[..^(name.Length - key.Length)] : null;
-            Add(_listed, key, bytes);
+            Add(key, bytes);
             if (UnescapePrinted(line, encoding) is not { } raw
                 || TarCommandLineEncoding.Decode(raw, (uint)encoding.CodePage) is not { } rawText)
             {
@@ -121,7 +122,7 @@ internal static class TarNames
             }
             string rawKey = rawText.TrimEnd('/');
             if (!string.Equals(rawKey, key, StringComparison.Ordinal))
-                Add(_listed, rawKey, raw[..^(rawText.Length - rawKey.Length)]);
+                Add(rawKey, raw[..^(rawText.Length - rawKey.Length)]);
         }
 
         public Dictionary<string, byte[]?> ToDictionary()
@@ -134,12 +135,14 @@ internal static class TarNames
             return _listed;
         }
 
-        private static void Add(Dictionary<string, byte[]?> listed, string key, byte[]? bytes)
+        private void Add(string key, byte[]? bytes)
         {
-            if (!listed.TryGetValue(key, out byte[]? known))
-                listed[key] = bytes;
+            if (keep is not null && !keep(key, bytes))
+                return;
+            if (!_listed.TryGetValue(key, out byte[]? known))
+                _listed[key] = bytes;
             else if (known is not null && (bytes is null || !known.AsSpan().SequenceEqual(bytes)))
-                listed[key] = null;
+                _listed[key] = null;
         }
 
         // The bytes tar.exe printed for name, or null when the line or those bytes do not decode to it
@@ -217,6 +220,45 @@ internal static class TarNames
         && TarCommandLineEncoding.Decode(printed, commandLinePage) is { } text
         && TarCommandLineEncoding.Decode(sent, commandLinePage) == text
         && byText.TryGetValue(text, out byte[]? only) && only is not null && only.AsSpan().SequenceEqual(printed);
+
+    /// <summary>
+    /// T-F550: <see cref="ReachesTheListedEntry"/> for each of <paramref name="selection"/> (a listed name
+    /// without a folder's '/', and the bytes Pakko would send for it, null when it has none), over the
+    /// lines of the scope's own "-t" (<paramref name="printed"/>): the index of the first that does not
+    /// reach its entry, or -1. The same verdicts as <see cref="ReadListedNameBytes"/> and
+    /// <see cref="IndexByText"/> over the whole listing, with only the names that can decide them
+    /// counted: the selection's own, then those printed in bytes that read as one of the selection's
+    /// texts in <paramref name="commandLinePage"/> - every name a text's <c>byText</c> entry is made of.
+    /// </summary>
+    public static int FirstUnreached(
+        TarPrintedNames printed, System.Text.Encoding encoding, uint commandLinePage, IReadOnlyList<(string Key, byte[]? Sent)> selection)
+    {
+        var selected = new HashSet<string>(selection.Select(item => item.Key), StringComparer.Ordinal);
+        var ownBytes = new ListedNameBytes(encoding, (key, _) => selected.Contains(key));
+        printed.ForEach(ownBytes.OnLine);
+        var texts = new HashSet<string>(StringComparer.Ordinal);
+        foreach (byte[]? bytes in ownBytes.ToDictionary().Values)
+        {
+            if (bytes is not null && TarCommandLineEncoding.Decode(bytes, commandLinePage) is { } text)
+                texts.Add(text);
+        }
+
+        var sharing = new ListedNameBytes(encoding, (_, bytes) =>
+            bytes is not null && TarCommandLineEncoding.Decode(bytes, commandLinePage) is { } text && texts.Contains(text));
+        printed.ForEach(sharing.OnLine);
+        selected.UnionWith(sharing.ToDictionary().Keys);
+
+        var counted = new ListedNameBytes(encoding, (key, _) => selected.Contains(key));
+        printed.ForEach(counted.OnLine);
+        var listed = counted.ToDictionary();
+        Dictionary<string, byte[]?> byText = IndexByText(listed, commandLinePage);
+        for (int i = 0; i < selection.Count; i++)
+        {
+            if (selection[i].Sent is not { } sent || !ReachesTheListedEntry(selection[i].Key, listed, byText, commandLinePage, sent))
+                return i;
+        }
+        return -1;
+    }
 
     // The listing's non-empty lines, a trailing '\r' dropped.
     private static IEnumerable<byte[]> ListingLines(byte[] listing)

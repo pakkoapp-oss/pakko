@@ -7,7 +7,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// <summary>
 /// T-F470: the one handler through which every list, extract, test and antivirus scan of a
 /// tar-family archive reads it. One session reads one archive for one operation, inside its own
-/// sandbox, in the order <see cref="ScanAsync"/>, a select, an extract. The callers - placement,
+/// sandbox, in the order <see cref="ScanAsync(CancellationToken)"/>, a select, an extract. The callers - placement,
 /// the compression-bomb gate, staging and commit, MOTW, the antivirus scan of the files - never
 /// see how the backend names or writes entries.
 /// </summary>
@@ -41,7 +41,13 @@ internal interface ISandboxedArchiveReader : IDisposable
     Task<ArchiveListSummary> ListAsync(Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken);
 
     /// <summary>The whole archive, checked: throws <see cref="TarSandboxedService.TarArchiveRejectedException"/> on an unsafe entry.</summary>
-    Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken);
+    Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken) => ScanAsync(sendsNamesBack: false, cancellationToken);
+
+    /// <summary>
+    /// <see cref="ScanAsync(CancellationToken)"/>; T-F550: <paramref name="sendsNamesBack"/> when a selection
+    /// will be sent to tar.exe, so the listing keeps the lines T-F465's check reads instead of a second "-t".
+    /// </summary>
+    Task<ReaderCatalog> ScanAsync(bool sendsNamesBack, CancellationToken cancellationToken);
 
     /// <summary>Resolves a selection and a filter against the scanned entries, for <see cref="ExtractAsync"/>.</summary>
     Task<SelectionOutcome> SelectForExtractAsync(

@@ -54,8 +54,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         return new ArchiveListSummary { Success = true, Count = listing.Passed };
     }
 
-    public async Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken)
+    public async Task<ReaderCatalog> ScanAsync(bool sendsNamesBack, CancellationToken cancellationToken)
     {
+        _scope.KeepsPrintedNames = sendsNamesBack;
         _catalog = await ScanForUnsafeEntriesAsync(_scope, cancellationToken).ConfigureAwait(false);
         _allNames = _catalog.Names;
         // T-F196: `tar -C dir .` (the most common way to make a tar) prefixes every member with
@@ -693,6 +694,8 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     private static async Task<(int ExitCode, string StdErr, long DeclaredSize, bool NothingRead)> ScanAndTestAsync(
         TarSandboxScope scope, IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken)
     {
+        // T-F550: a filtered test sends names back, so its listing keeps the lines it printed.
+        scope.KeepsPrintedNames = entryFilter is not null;
         TarCatalog catalog = await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
         string[] names = catalog.Names;
         if (entryFilter is not null)

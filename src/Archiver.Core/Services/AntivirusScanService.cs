@@ -591,7 +591,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         {
             reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, readWith.Encoding, cancellationToken, readWith.Helper, readWith.Gate)
                 .ConfigureAwait(false);
-            _ = await reader.ScanAsync(cancellationToken).ConfigureAwait(false);
+            _ = await reader.ScanAsync(selectedEntryPaths is { Count: > 0 }, cancellationToken).ConfigureAwait(false);
 
             ScanQuarantine quarantine = await reader.ExtractForScanAsync(selectedEntryPaths, cancellationToken).ConfigureAwait(false);
             if (quarantine.Failure is { } failure)
