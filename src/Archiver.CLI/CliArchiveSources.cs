@@ -29,8 +29,6 @@ public static class CliArchiveSources
 {
     public const string NotFound = "The system cannot find the file specified.";
     public const string NotAFolder = "A name ending in a path separator names a folder, and this is a file.";
-    /// <summary>A folder a search meets whose name Windows trims ("d."): it is not entered (T-F509, T-F510).</summary>
-    public const string NameTrimmed = "Windows reads this folder's name as another one; it is left out.";
 
     private static readonly char[] Separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
@@ -221,18 +219,15 @@ public static class CliArchiveSources
         public void Run()
         {
             string start = Path.Combine(_root.Prefix, _root.Literal.Replace('/', Path.DirectorySeparatorChar));
-            foreach (WalkEntry entry in DirectoryWalker.Walk(start, LeaveOut))
+            // T-F531: a name Windows trims is entered and taken by its \\?\ path, as ZIP reads it.
+            foreach (WalkEntry entry in DirectoryWalker.Walk(start, LeaveOut, spelledBelow: true))
             {
                 switch (entry.Kind)
                 {
                     case WalkEntryKind.UnreadableDirectory:
                         _problems.Add(new CliSourceProblem(entry.Info.FullName, entry.Error?.Message ?? ""));
                         break;
-                    // A folder the search would enter: its files are not taken, and that is said.
-                    case WalkEntryKind.TrimmedName when entry.Info is DirectoryInfo:
-                        _problems.Add(new CliSourceProblem(entry.Info.FullName, NameTrimmed));
-                        break;
-                    // Taken or skipped in LeaveOut; a link is not entered.
+                    // Taken or skipped in LeaveOut; a link is not entered; never TrimmedName in a spelled walk.
                     case WalkEntryKind.Directory:
                     case WalkEntryKind.File:
                     case WalkEntryKind.LeftOut:
@@ -247,7 +242,7 @@ public static class CliArchiveSources
         // are skipped, a match is taken, a folder no mask reaches below is not entered.
         private bool LeaveOut(FileSystemInfo child)
         {
-            string name = child.FullName[_root.Prefix.Length..].TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/');
+            string name = DirectoryWalker.RelativePath(_root.Prefix, child.FullName).Replace(Path.DirectorySeparatorChar, '/');
             int depth = name.Split('/').Length;
             bool isFolder = child is DirectoryInfo;
             if (_root.Archive.Is(child) || (_excludes is not null && !_excludes.Includes(name, isFolder)))
@@ -279,7 +274,7 @@ public static class CliArchiveSources
                 kept.Add(source);
                 continue;
             }
-            string inside = NameOf(ancestor) + "/" + Path.GetRelativePath(ancestor.FullPath, source.FullPath).Replace(Path.DirectorySeparatorChar, '/');
+            string inside = NameOf(ancestor) + "/" + DirectoryWalker.RelativePath(ancestor.FullPath, source.FullPath).Replace(Path.DirectorySeparatorChar, '/');
             if (excludes is not null && !excludes.Includes(inside, Directory.Exists(source.FullPath)))
                 kept.Add(source);
         }
@@ -290,7 +285,9 @@ public static class CliArchiveSources
     {
         for (string? folder = Path.GetDirectoryName(path); folder is not null; folder = Path.GetDirectoryName(folder))
         {
-            if (taken.Find(folder) is { } ancestor)
+            // T-F531: below a name Windows trims the search gives \\?\ paths; a folder above it is the
+            // plain one another mask took.
+            if ((taken.Find(folder) ?? taken.Find(InputPaths.SamePlainPath(folder))) is { } ancestor)
                 return ancestor;
         }
         return null;

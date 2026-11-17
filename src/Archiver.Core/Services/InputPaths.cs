@@ -60,6 +60,21 @@ public static class InputPaths
         return @"\\?\" + fullPath;
     }
 
+    /// <summary>T-F531: <paramref name="path"/> without its <c>\\?\</c> prefix where the plain path names
+    /// the same file - a drive or a share after the prefix, and no part Windows would trim; otherwise
+    /// as it is. A final path read from a handle ("a.txt ") would otherwise come back as its twin's.</summary>
+    public static string SamePlainPath(string path)
+    {
+        string plain;
+        if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+            plain = @"\\" + path[8..];
+        else if (path.Length >= 6 && path.StartsWith(@"\\?\", StringComparison.Ordinal) && char.IsAsciiLetter(path[4]) && path[5] == ':')
+            plain = path[4..];
+        else
+            return path;
+        return NameTrimmed(plain) ? path : plain;
+    }
+
     /// <summary><see cref="Problem"/>, or "not found" for an archive path that is no file (T-F221: not
     /// "not a recognized archive"). The twin of "x.zip " is a file, so the order matters (T-F509).</summary>
     internal static CoreText? ArchiveProblem(string archivePath) =>

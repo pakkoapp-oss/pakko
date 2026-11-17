@@ -141,6 +141,12 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
 
         foreach (string source in sources.Distinct(StringComparer.Ordinal))
         {
+            // T-F531: archived in full, but the archive would be the only copy of a name Windows trims.
+            if (snapshot.HoldsTrimmedName(source))
+            {
+                notDeleted.Add(new KeptSource(source, KeepReason.NotSafeToDelete));
+                continue;
+            }
             // T-F419: a file written into the source or edited since it was archived is not in
             // the archive; the whole source stays.
             if (!snapshot.Unchanged(source))

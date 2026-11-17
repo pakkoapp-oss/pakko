@@ -119,6 +119,35 @@ public sealed class SdelAdversarialTests : IDisposable
         File.Delete(@"\\?\" + Path.Combine(folder, "a.txt "));
     }
 
+    // T-F531: the source typed as \\?\ names the file itself. ZIP archives it with its own bytes;
+    // -sdel keeps it (Pakko's extraction cannot give the name back) and says why; the twin is never
+    // touched. tar.exe cannot read such a name: refused, nothing deleted.
+    [Theory]
+    [InlineData("zip", 1)]
+    [InlineData("tar", 2)]
+    public void Sdel_SourceTypedAsLiteralWithANameWindowsTrims_ZipArchivesItsOwnBytesAndNothingIsDeleted(string type, int exit)
+    {
+        string folder = _scratch.Inside("lt" + type);
+        Directory.CreateDirectory(folder);
+        string named = @"\\?\" + Path.Combine(folder, "a.txt ");
+        File.WriteAllText(named, "SPACED");
+        File.WriteAllText(Path.Combine(folder, "a.txt"), "TWIN");
+        string archive = _scratch.Inside("lt." + type);
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-t" + type, "-sdel", archive, named);
+
+        exitCode.Should().Be(exit, stdErr);
+        stdErr.Should().Contain("ends in a space or a dot");
+        File.ReadAllText(named).Should().Be("SPACED");
+        File.ReadAllText(Path.Combine(folder, "a.txt")).Should().Be("TWIN");
+        if (type == "zip")
+        {
+            stdErr.Should().Contain("-sdel kept");
+            ZipFiles(archive).Should().Equal("a.txt =SPACED");
+        }
+        File.Delete(named);
+    }
+
     // T-F512 (c), found by CLI-056: a name Windows trims typed as the source itself ("a.txt.", a
     // folder on the way "d.\f.txt", or through \\.\). The CLI made it a full path before Core saw it,
     // which turned it into the twin: the twin was archived and -sdel deleted it.

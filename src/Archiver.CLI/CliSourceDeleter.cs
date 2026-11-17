@@ -10,8 +10,9 @@ namespace Archiver.CLI;
 /// <param name="Links">Sources that are links: never entered, never deleted.</param>
 /// <param name="Unlisted">Sources with a folder that could not be listed: what they hold is unknown,
 /// so nothing of them is deleted.</param>
-/// <param name="TrimmedNames">T-F509: sources holding a name Windows trims ("a.txt "): deleting by
-/// that name would take its twin, so nothing of them is deleted.</param>
+/// <param name="TrimmedNames">T-F509/T-F531: sources that are or hold a name Windows trims ("a.txt "):
+/// ZIP archives them by their \\?\ paths, but extracting cannot give the name back, so nothing of them
+/// is deleted.</param>
 public sealed record CliDeleteOutcome(
     IReadOnlyList<string> Kept,
     IReadOnlyList<(string Path, string Reason)> Failed,

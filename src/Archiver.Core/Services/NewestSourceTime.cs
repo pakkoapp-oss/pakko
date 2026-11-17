@@ -15,8 +15,9 @@ internal static class NewestSourceTime
         DateTime? newest = null;
         foreach (string source in sourcePaths)
         {
-            // T-F509: a refused source ("a.txt ") by its plain path is its twin's.
-            if (InputPaths.Problem(source) is not null)
+            // T-F509: a refused source ("a.txt ") by its plain path is its twin's; T-F531: written as \\?\
+            // it is itself, and ZIP archives it (tar refuses it, and its time then dates no archive).
+            if (InputPaths.SpelledProblem(source) is not null)
                 continue;
             bool isFolder = Directory.Exists(source);
             string name = names.For(source);
@@ -28,7 +29,7 @@ internal static class NewestSourceTime
                     newest = Later(newest, File.GetLastWriteTimeUtc(source));
                 continue;
             }
-            foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name))
+            foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name), spelledBelow: true)
                 .Where(entry => entry.Kind is WalkEntryKind.Directory or WalkEntryKind.File))
             {
                 newest = Later(newest, entry.Info.LastWriteTimeUtc);

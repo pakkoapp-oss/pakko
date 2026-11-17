@@ -56,7 +56,6 @@ public sealed partial class DirectoryWalkerOwnerTests
     private static readonly (string File, int Count, string Why)[] RelativePathAllowed =
     [
         ("Archiver.App.Core/HashReport.cs", 1, "a hashed source's name for the report; hashing refuses such a name (TrimmedName)"),
-        ("Archiver.CLI/CliArchiveSources.cs", 1, "a source under another source, both typed or found by the search"),
         ("Archiver.CLI/Program.cs", 2, "names printed under the destination and the folder of a failed source"),
         ("Archiver.Core/Services/ExtractionStaging.cs", 3, "Pakko's own staging tree: EntryDiskName's names"),
         ("Archiver.Core/Services/FileHashService.cs", 1, "hashing's walk, which refuses such a name (TrimmedName)"),

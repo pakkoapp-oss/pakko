@@ -181,7 +181,8 @@ public sealed class PathMatrixPureTests
 
     // T-F511 PR 4: App and CLI match the sources they gave with what Core reported by SourceKey. In
     // every spelling the key of the path given is the key of Core's form of it (SourcePathNormalizer),
-    // and a name Windows trims has no key, so neither it nor its twin is matched by it.
+    // and a name Windows trims has no key, so neither it nor its twin is matched by it - unless written
+    // as \\?\ (T-F531), which names the file itself.
     [Fact]
     public void SourceKey_OfTheSpellingGiven_IsTheKeyOfWhatCoreReports()
     {
@@ -196,7 +197,7 @@ public sealed class PathMatrixPureTests
                     {
                         string? given = SourceKey.Of(path);
                         string? reported = SourceKey.Of(SourcePathNormalizer.Normalize(path));
-                        if (InputPaths.NameTrimmed(path))
+                        if (InputPaths.NameTrimmed(path) && !path.StartsWith(@"\\?\", StringComparison.Ordinal))
                         {
                             if (given is not null)
                                 failures.Add($"{id} ({Show(path)}): a name Windows trims has the key {Show(given)}");
