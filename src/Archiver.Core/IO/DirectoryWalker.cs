@@ -79,9 +79,13 @@ public static class DirectoryWalker
     /// <summary>T-F531: the path of a walk's entry relative to <paramref name="root"/>, as spelled. A
     /// literal <c>\\?\</c> entry below a plain root is compared with the root's literal form:
     /// <see cref="Path.GetRelativePath(string, string)"/> on a plain path drops a trailing space or dot
-    /// ("a.txt " would be named as its twin "a.txt"), on two literal ones it changes nothing.</summary>
+    /// ("a.txt " would be named as its twin "a.txt"), on two literal ones it changes nothing. A path
+    /// Windows cannot parse (empty, a NUL) is below no root: <paramref name="fullName"/> comes back as given.</summary>
     public static string RelativePath(string root, string fullName)
     {
+        // T-F406: checked here, not caught: GetFullPath throws only for these.
+        if (string.IsNullOrEmpty(root) || string.IsNullOrEmpty(fullName) || root.Contains('\0') || fullName.Contains('\0'))
+            return fullName;
         string fullRoot = Path.GetFullPath(root);
         if (IsLiteral(fullName) && !IsLiteral(fullRoot))
             fullRoot = Archiver.Core.Services.InputPaths.Literal(fullRoot);

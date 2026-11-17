@@ -80,9 +80,10 @@ public sealed class SdelAdversarialTests : IDisposable
 
     // T-F509: "a.txt " beside "a.txt" in the folder. Its plain path opened the twin, so the archive
     // held the twin's bytes twice and -sdel then deleted the folder with the spaced file's bytes in
-    // no archive. The file is refused, so the folder is not fully archived and nothing is deleted.
+    // no archive. T-F531: ZIP reads it by its literal path, each under its own name; Pakko's own
+    // extraction cannot give "a.txt " back, so the folder is kept and the reason said.
     [Fact]
-    public void Sdel_FolderHoldingANameWindowsTrims_DeletesNothingAndNeverArchivesTheTwinForIt()
+    public void Sdel_FolderHoldingANameWindowsTrims_ArchivesEachAsItIsAndDeletesNothing()
     {
         string folder = _scratch.Inside("tw");
         Directory.CreateDirectory(folder);
@@ -91,11 +92,11 @@ public sealed class SdelAdversarialTests : IDisposable
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-sdel", "tw.zip", "tw");
 
-        exitCode.Should().Be(2, stdErr);
-        stdErr.Should().Contain("ends in a space or a dot");
+        exitCode.Should().Be(1, stdErr);
+        stdErr.Should().Contain("-sdel kept").And.Contain("ends in a space or a dot");
         File.ReadAllText(@"\\?\" + Path.Combine(folder, "a.txt ")).Should().Be("SPACED");
         File.ReadAllText(Path.Combine(folder, "a.txt")).Should().Be("TWIN");
-        ZipFiles(_scratch.Inside("tw.zip")).Should().Equal("a.txt=TWIN");
+        ZipFiles(_scratch.Inside("tw.zip")).Should().BeEquivalentTo("a.txt=TWIN", "a.txt =SPACED");
         File.Delete(@"\\?\" + Path.Combine(folder, "a.txt "));
     }
 

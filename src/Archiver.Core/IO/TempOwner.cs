@@ -57,8 +57,13 @@ public static class TempOwner
     /// the run's destination meets the run's own temporary file and chunk folder; they are not the
     /// user's content.
     /// </summary>
-    internal static bool IsOwnBelow(string fullRoot, string fullPath) =>
-        fullPath.Length > fullRoot.Length && fullPath.AsSpan(fullRoot.Length).Contains(CurrentTag, StringComparison.Ordinal);
+    internal static bool IsOwnBelow(string fullRoot, string fullPath)
+    {
+        // T-F531: a walk gives a name Windows trims, and what is below it, by its literal path.
+        if (IsLiteral(fullPath) && !IsLiteral(fullRoot))
+            fullRoot = InputPaths.Literal(fullRoot);
+        return fullPath.Length > fullRoot.Length && fullPath.AsSpan(fullRoot.Length).Contains(CurrentTag, StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// True when the process a bare tag names runs on this machine. Also reads v1.6.0's

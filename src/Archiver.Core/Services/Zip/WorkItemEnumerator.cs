@@ -65,12 +65,13 @@ internal static class WorkItemEnumerator
     }
 
     // T-F236/T-F237: the shared iterative walker — an unreadable subfolder is one error, not an
-    // exception out of the producer, and depth no longer costs thread stack.
+    // exception out of the producer, and depth no longer costs thread stack. T-F531: a name Windows
+    // trims is read by its literal path and named as spelled.
     private static IEnumerable<FileWorkItem> EnumerateDirectory(
         string rootDir, string entryPrefix, Func<FileSystemInfo, bool>? leaveOut, Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError)
     {
         string fullRoot = Path.GetFullPath(rootDir);
-        foreach (WalkEntry entry in DirectoryWalker.Walk(rootDir, leaveOut))
+        foreach (WalkEntry entry in DirectoryWalker.Walk(rootDir, leaveOut, spelledBelow: true))
         {
             if (TempOwner.IsOwnBelow(fullRoot, entry.Info.FullName))
                 continue;
@@ -84,7 +85,7 @@ internal static class WorkItemEnumerator
                         reportSkipped(CoreMessages.Skip(rootDir, MessageCode.NothingToArchive, rootDir));
                     break;
                 case WalkEntryKind.File:
-                    string relativePath = Path.GetRelativePath(rootDir, entry.Info.FullName).Replace('\\', '/');
+                    string relativePath = DirectoryWalker.RelativePath(rootDir, entry.Info.FullName).Replace('\\', '/');
                     yield return BuildFileItem((FileInfo)entry.Info, ZipArchiveService.EntryNameUnder(entryPrefix, relativePath));
                     break;
                 case WalkEntryKind.ReparsePoint:
@@ -92,9 +93,6 @@ internal static class WorkItemEnumerator
                     break;
                 case WalkEntryKind.UnreadableDirectory:
                     reportError(ZipArchiveService.UnreadableDirectoryError(entry.Info.FullName, entry.Error!));
-                    break;
-                case WalkEntryKind.TrimmedName:
-                    reportError(ZipArchiveService.TrimmedNameError(entry.Info.FullName));
                     break;
             }
         }
