@@ -191,6 +191,45 @@ public sealed class WorkRootTests : IDisposable
         Rules(actualDest).Should().Contain(r => r.Contains(everyone.Value, StringComparison.Ordinal));
     }
 
+    // T-F534: the entry the parent gives its children only reaches the renamed folder alone, and what
+    // the folder passes down equals what staging passed down, so only the folder itself is rewritten: a
+    // rewrite of its inheritance walked the whole tree (0.9 s per 20,000 files) with no cancel. An entry
+    // flagged inherited that nothing gives survives in a file only when the tree is not walked.
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public void FastPathCommit_RewritesTheFolderOnly_NotItsTree()
+    {
+        string parent = Path.Combine(_temp.Path, "parent");
+        Directory.CreateDirectory(parent);
+        GiveChildrenOnly(parent, new SecurityIdentifier(WellKnownSidType.WorldSid, null));
+        string actualDest = Path.Combine(parent, "out");
+        const string Mark = "(A;ID;FR;;;BG)";
+
+        using (var staging = ExtractionStaging.Create(parent))
+        {
+            string file = Path.Combine(staging.Path, "sub", "a.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, "a");
+            RawDacl.Write(file, RawDacl.Sddl(file) + Mark);
+            staging.CommitInto(actualDest).Should().BeEmpty();
+        }
+
+        string direct = Path.Combine(parent, "direct");
+        Directory.CreateDirectory(direct);
+        RawDacl.Sddl(actualDest).Should().Be(RawDacl.Sddl(direct), "the folder carries what one made there does, its auto-inherited flag too");
+        RawDacl.Sddl(Path.Combine(actualDest, "sub", "a.txt")).Should().EndWith(Mark, "a rewrite of the folder's inheritance walks its tree");
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void GiveChildrenOnly(string folder, SecurityIdentifier sid)
+    {
+        var info = new DirectoryInfo(folder);
+        DirectorySecurity security = info.GetAccessControl();
+        security.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.ReadData,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.NoPropagateInherit, AccessControlType.Allow));
+        info.SetAccessControl(security);
+    }
+
     // T-F528 opus review: another account can put a junction where the commit renamed the folder,
     // between the rename and the ACL call. The call opens the name itself and leaves a link alone, so
     // the folder it points to keeps its own entries.
@@ -223,8 +262,11 @@ public sealed class WorkRootTests : IDisposable
         innerInfo.SetAccessControl(innerSecurity);
         List<string> innerBefore = Rules(inner);
         string moved = Path.Combine(parent, "out");
+        using var work = WorkRoot.Near(moved);
+        _ = work.Folder("x");
         ZipArchiveServiceArchiveTests.TryCreateJunction(moved, target).Should().BeTrue();
 
+        work.TakeParentEntriesOfFolder(moved);
         WorkRoot.TakeParentEntries(moved);
 
         Rules(target).Should().Equal(before);

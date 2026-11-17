@@ -135,7 +135,7 @@ internal sealed class ExtractionStaging : IDisposable
                 // The work root may be above the destination's folder (T-F528): none of it exists yet.
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(actualDest))!);
                 (moveOverride ?? Directory.Move)(Path, actualDest);
-                WorkRoot.TakeParentEntries(actualDest);
+                _work.TakeParentEntriesOfFolder(actualDest);
                 ApplyFolderTimes(newFolderTimes);
                 // Named only once the move succeeded: a failed one goes on to the merge below, which names them.
                 if (committed is not null && folders is not null && files is not null)

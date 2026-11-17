@@ -94,7 +94,8 @@ public sealed partial class WorkRoot : IDisposable
     }
 
     /// <summary>
-    /// After a file or folder made in the root was renamed into place as <paramref name="moved"/>: gives
+    /// After a file made in the root was renamed into place as <paramref name="moved"/> (a folder:
+    /// <see cref="TakeParentEntriesOfFolder"/>, which needs no walk): gives
     /// it what one made there gets. A rename keeps permissions, and an entry its new parent gives its
     /// children only (NO_PROPAGATE) never reached one made a level deeper (measured, T-F528). Only then is
     /// the inheritance written again, which for a folder walks its whole tree (0.9 s for 20,000 files).
@@ -107,6 +108,36 @@ public sealed partial class WorkRoot : IDisposable
         {
             if (parent is not null && QuarantineAcl.GivesChildrenOnly(parent))
                 QuarantineAcl.InheritOnly(moved);
+        }
+        catch (IOException)
+        {
+            /* best-effort: the folder keeps every entry but the one-level one */
+        }
+    }
+
+    /// <summary>
+    /// T-F534: <see cref="TakeParentEntries"/> for a folder renamed from this root into place as
+    /// <paramref name="moved"/>. The entry its parent gives its children only reaches the folder alone,
+    /// and what the folder passes down equals what it got in the root, so only the folder itself is
+    /// written: it takes the root's DACL, a folder made in that same parent (<see cref="QuarantineAcl.CopyFolderDacl"/>),
+    /// with no walk of its tree. A folder in another parent has its inheritance written again, as before.
+    /// Best-effort, as <see cref="TakeParentEntries"/>.
+    /// </summary>
+    internal void TakeParentEntriesOfFolder(string moved)
+    {
+        string full = Path.GetFullPath(moved);
+        string? parent = Path.GetDirectoryName(full);
+        string? root;
+        lock (_gate)
+            root = _root;
+        try
+        {
+            if (parent is null || !QuarantineAcl.GivesChildrenOnly(parent))
+                return;
+            if (root is not null && string.Equals(Path.GetDirectoryName(root), parent, StringComparison.OrdinalIgnoreCase))
+                QuarantineAcl.CopyFolderDacl(root, full);
+            else
+                QuarantineAcl.InheritOnly(full);
         }
         catch (IOException)
         {

@@ -220,6 +220,57 @@ internal static partial class QuarantineAcl
     }
 
     /// <summary>
+    /// T-F534: gives the folder <paramref name="to"/> the DACL of the folder <paramref name="from"/>, which
+    /// must be a folder made in the same parent, so that <paramref name="to"/> carries what a folder made
+    /// there carries, its auto-inherited flag included. Written to the name itself (a link is not
+    /// followed) by the low-level call, which never walks what is below it: what a folder passes down is
+    /// the same either way. Throws <see cref="IOException"/> when a DACL cannot be read or written.
+    /// </summary>
+    public static void CopyFolderDacl(string from, string to)
+    {
+        const uint DACL_SECURITY_INFORMATION = 0x00000004;
+        const uint ReadControl = 0x00020000;
+        const uint WriteDac = 0x00040000;
+        // SE_DACL_AUTO_INHERIT_REQ: without it the low-level write drops the auto-inherited flag
+        // (measured), and the next change of the parent's entries would treat this folder's as its own.
+        const ushort DaclAutoInheritRequest = 0x0100;
+
+        byte[] descriptor;
+        using (Microsoft.Win32.SafeHandles.SafeFileHandle source = OpenFolderItself(from, ReadControl))
+        {
+            _ = NativeMethods.GetKernelObjectSecurity(source, DACL_SECURITY_INFORMATION, null, 0, out uint needed);
+            descriptor = new byte[needed];
+            if (needed == 0 || !NativeMethods.GetKernelObjectSecurity(source, DACL_SECURITY_INFORMATION, descriptor, needed, out _))
+                throw ErrorFor(Marshal.GetLastPInvokeError(), from);
+        }
+        // A self-relative descriptor: Revision, Sbz1, then Control (little-endian).
+        ushort control = (ushort)(descriptor[2] | (descriptor[3] << 8) | DaclAutoInheritRequest);
+        descriptor[2] = (byte)control;
+        descriptor[3] = (byte)(control >> 8);
+        using Microsoft.Win32.SafeHandles.SafeFileHandle target = OpenFolderItself(to, WriteDac);
+        if (!NativeMethods.SetKernelObjectSecurity(target, DACL_SECURITY_INFORMATION, descriptor))
+            throw ErrorFor(Marshal.GetLastPInvokeError(), to);
+    }
+
+    private static Microsoft.Win32.SafeHandles.SafeFileHandle OpenFolderItself(string path, uint access)
+    {
+        const uint FileShareAll = 7;
+        const uint OpenExisting = 3;
+        const uint BackupSemantics = 0x02000000;
+        const uint OpenReparsePoint = 0x00200000;
+        Microsoft.Win32.SafeHandles.SafeFileHandle handle = NativeMethods.CreateFileW(
+            InputPaths.Literal(Path.GetFullPath(path)), access, FileShareAll, 0, OpenExisting, BackupSemantics | OpenReparsePoint, 0);
+        if (!handle.IsInvalid)
+            return handle;
+        int error = Marshal.GetLastPInvokeError();
+        handle.Dispose();
+        throw ErrorFor(error, path);
+    }
+
+    private static IOException ErrorFor(int error, string path) =>
+        new($"{Marshal.GetPInvokeErrorMessage(error)} : '{path}'", unchecked((int)0x80070000) | error);
+
+    /// <summary>
     /// T-F389: true when <paramref name="filePath"/> has an entry for an AppContainer SID or an
     /// integrity label - what a file created by the sandboxed tar.exe carries. False when the file's
     /// security cannot be read: a volume without permissions (FAT, exFAT) has none to carry, and a
@@ -442,5 +493,19 @@ internal static partial class QuarantineAcl
 
         [LibraryImport("advapi32.dll")]
         public static partial uint GetSecurityDescriptorLength(IntPtr securityDescriptor);
+
+        [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+        public static partial Microsoft.Win32.SafeHandles.SafeFileHandle CreateFileW(
+            string fileName, uint access, uint share, nint security, uint disposition, uint flags, nint template);
+
+        [LibraryImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool GetKernelObjectSecurity(
+            Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint securityInformation, byte[]? securityDescriptor, uint length, out uint lengthNeeded);
+
+        [LibraryImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool SetKernelObjectSecurity(
+            Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint securityInformation, byte[] securityDescriptor);
     }
 }
