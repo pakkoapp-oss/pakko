@@ -46,14 +46,14 @@ public static class InputPaths
     }
 
     /// <summary>T-F547: the <c>\\?\</c> form of a full path, which Windows opens as spelled (no part
-    /// trimmed) and at any length: a <c>\\?\</c> path as it is, <c>\\.\</c> as <c>\\?\</c>, a share as
-    /// <c>\\?\UNC\</c>. The one place Core makes it (<c>QuarantineFiles</c>, <c>WorkRoot</c>,
+    /// trimmed) and at any length: a <c>\\?\</c> path as it is, <c>\\.\</c> and <c>\??\</c> (T-F552: .NET
+    /// and Windows take it as <c>\\?\</c>) as <c>\\?\</c>, a share as <c>\\?\UNC\</c>. The one place Core makes it (<c>QuarantineFiles</c>, <c>WorkRoot</c>,
     /// <c>TempOwner</c>).</summary>
     internal static string Literal(string fullPath)
     {
         if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal))
             return fullPath;
-        if (fullPath.StartsWith(@"\\.\", StringComparison.Ordinal))
+        if (fullPath.StartsWith(@"\\.\", StringComparison.Ordinal) || fullPath.StartsWith(@"\??\", StringComparison.Ordinal))
             return @"\\?\" + fullPath[4..];
         if (fullPath.StartsWith(@"\\", StringComparison.Ordinal))
             return @"\\?\UNC\" + fullPath[2..];

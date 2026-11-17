@@ -134,7 +134,8 @@ public static class TempOwner
         }
     }
 
-    private static bool IsLiteral(string path) => path.StartsWith(@"\\?\", StringComparison.Ordinal);
+    private static bool IsLiteral(string path) =>
+        path.StartsWith(@"\\?\", StringComparison.Ordinal) || path.StartsWith(@"\??\", StringComparison.Ordinal);
 
     internal static void SweepStale(string directory, string prefix, string suffix, TempScope scope) =>
         SweepStale(directory, [(prefix, suffix)], scope);

@@ -297,6 +297,20 @@ public sealed class TempOwnerTests : IDisposable
         Directory.Delete(literalDestination);
     }
 
+    // T-F552: .NET and Windows take "\??\" as the "\\?\" prefix; Literal made "\\?\\??\C:\...", found
+    // nothing there and reported the folder removed while it stayed.
+    [Fact]
+    public void TryRemove_NtPrefixedPath_RemovesTheFolder()
+    {
+        string folder = Path.Combine(_temp.Path, "nt");
+        Directory.CreateDirectory(Path.Combine(folder, "sub"));
+        File.WriteAllText(Path.Combine(folder, "sub", "a.txt"), "x");
+
+        TempOwner.TryRemove(@"\??\" + folder).Should().BeTrue();
+
+        Directory.Exists(folder).Should().BeFalse();
+    }
+
     // T-F549: a NUL reached new FileInfo and threw ArgumentException out of a Core method.
     [Fact]
     public void TryRemove_LiteralPathWithNul_RefusedWithoutThrowing()
