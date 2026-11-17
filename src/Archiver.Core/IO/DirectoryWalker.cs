@@ -67,8 +67,26 @@ public static class DirectoryWalker
     /// <param name="leaveOut">T-F410: true for an entry below the root to leave out. Called once per
     /// entry, in the folder's listing order, before the entry is entered (T-F511: the CLI's searches
     /// take a match there).</param>
-    public static IEnumerable<WalkEntry> Walk(string root, Func<FileSystemInfo, bool>? leaveOut = null) =>
-        Archiver.Core.Services.InputPaths.Problem(root) is null ? WalkFrom(root, leaveOut, asSpelled: false) : [];
+    /// <param name="spelledBelow">T-F531: a name Windows trims below the root is given by its literal
+    /// <c>\\?\</c> path (as is everything below it) and walked as any other, never
+    /// <see cref="WalkEntryKind.TrimmedName"/>; <paramref name="leaveOut"/> gets it so too. A root written
+    /// as <c>\\?\</c> may then itself be such a name. Name the entries with <see cref="RelativePath"/>.</param>
+    public static IEnumerable<WalkEntry> Walk(string root, Func<FileSystemInfo, bool>? leaveOut = null, bool spelledBelow = false) =>
+        (spelledBelow ? Archiver.Core.Services.InputPaths.SpelledProblem(root) : Archiver.Core.Services.InputPaths.Problem(root)) is null
+            ? WalkFrom(root, leaveOut, spelled: spelledBelow)
+            : [];
+
+    /// <summary>T-F531: the path of a walk's entry relative to <paramref name="root"/>, as spelled. A
+    /// literal <c>\\?\</c> entry below a plain root is compared with the root's literal form:
+    /// <see cref="Path.GetRelativePath(string, string)"/> on a plain path drops a trailing space or dot
+    /// ("a.txt " would be named as its twin "a.txt"), on two literal ones it changes nothing.</summary>
+    public static string RelativePath(string root, string fullName)
+    {
+        string fullRoot = Path.GetFullPath(root);
+        if (IsLiteral(fullName) && !IsLiteral(fullRoot))
+            fullRoot = Archiver.Core.Services.InputPaths.Literal(fullRoot);
+        return Path.GetRelativePath(fullRoot, fullName);
+    }
 
     /// <summary>T-F547: Pakko's own folder, walked by its literal <c>\\?\</c> path: every path below
     /// stays literal, so a name Windows trims names that entry and no twin, and is entered as any
@@ -77,10 +95,13 @@ public static class DirectoryWalker
     /// <c>\\?\</c>, or holding a NUL, walks nothing.</summary>
     internal static IEnumerable<WalkEntry> WalkAsSpelled(string literalRoot) =>
         literalRoot.StartsWith(@"\\?\", StringComparison.Ordinal) && !literalRoot.Contains('\0')
-            ? WalkFrom(literalRoot, null, asSpelled: true)
+            ? WalkFrom(literalRoot, null, spelled: true)
             : [];
 
-    private static IEnumerable<WalkEntry> WalkFrom(string root, Func<FileSystemInfo, bool>? leaveOut, bool asSpelled)
+    private static bool IsLiteral(string path) => path.StartsWith(@"\\?\", StringComparison.Ordinal);
+
+    // spelled: a name Windows trims is reached by its literal path; below a literal root every path already is.
+    private static IEnumerable<WalkEntry> WalkFrom(string root, Func<FileSystemInfo, bool>? leaveOut, bool spelled)
     {
         var rootDir = new DirectoryInfo(root);
         bool isDriveRoot = rootDir.Parent is null;
@@ -102,6 +123,8 @@ public static class DirectoryWalker
                 yield return new WalkEntry(WalkEntryKind.UnreadableDirectory, dir, Error: listingError);
                 continue;
             }
+            if (spelled)
+                children = AsSpelled(children);
 
             children = WithoutLeftOut(children, leaveOut, out FileSystemInfo[] leftOut);
             foreach (FileSystemInfo child in leftOut)
@@ -109,19 +132,34 @@ public static class DirectoryWalker
 
             yield return new WalkEntry(WalkEntryKind.Directory, dir, IsEmptyDirectory: children.Length == 0);
 
-            foreach (FileInfo file in children.OfType<FileInfo>().OrderBy(f => f.FullName, StringComparer.OrdinalIgnoreCase))
-                yield return new WalkEntry(KindOf(file, WalkEntryKind.File, asSpelled), file);
+            // By name: the children of one folder share its path, and a literal one (T-F531) must not sort apart.
+            foreach (FileInfo file in children.OfType<FileInfo>().OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
+                yield return new WalkEntry(KindOf(file, WalkEntryKind.File, spelled), file);
 
-            foreach (WalkEntry trimmed in PushSubfolders(children, pending, asSpelled))
+            foreach (WalkEntry trimmed in PushSubfolders(children, pending, spelled))
                 yield return trimmed;
         }
+    }
+
+    // T-F531: each child whose name Windows trims, by its literal path; by the plain one it is its twin.
+    private static FileSystemInfo[] AsSpelled(FileSystemInfo[] children)
+    {
+        for (int i = 0; i < children.Length; i++)
+        {
+            FileSystemInfo child = children[i];
+            if (IsLiteral(child.FullName) || !Archiver.Core.Services.InputPaths.OwnNameTrimmed(child.Name))
+                continue;
+            string literal = Archiver.Core.Services.InputPaths.Literal(child.FullName);
+            children[i] = child is DirectoryInfo ? new DirectoryInfo(literal) : new FileInfo(literal);
+        }
+        return children;
     }
 
     // The subfolders to walk go on the stack, first one on top; those with a name Windows trims are
     // returned instead, in order, and never entered.
     private static List<WalkEntry> PushSubfolders(FileSystemInfo[] children, Stack<(DirectoryInfo Dir, bool IsReparsePoint)> pending, bool asSpelled)
     {
-        DirectoryInfo[] subDirs = [.. children.OfType<DirectoryInfo>().OrderBy(d => d.FullName, StringComparer.OrdinalIgnoreCase)];
+        DirectoryInfo[] subDirs = [.. children.OfType<DirectoryInfo>().OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
         var trimmed = new List<WalkEntry>();
         for (int i = subDirs.Length - 1; i >= 0; i--)
         {
@@ -151,7 +189,7 @@ public static class DirectoryWalker
             leftOut = [];
             return children;
         }
-        leftOut = [.. children.Where(leaveOut).OrderBy(c => c.FullName, StringComparer.OrdinalIgnoreCase)];
+        leftOut = [.. children.Where(leaveOut).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)];
         return [.. children.Except(leftOut)];
     }
 

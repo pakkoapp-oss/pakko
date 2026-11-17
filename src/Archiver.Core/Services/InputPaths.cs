@@ -65,6 +65,13 @@ public static class InputPaths
     internal static CoreText? ArchiveProblem(string archivePath) =>
         Problem(archivePath) ?? (File.Exists(archivePath) ? null : CoreMessages.Text(MessageCode.SourceNotFound, archivePath));
 
+    /// <summary>T-F531: <see cref="Problem"/>, but a name Windows trims written as <c>\\?\</c> is no problem:
+    /// Windows opens it as spelled. Only where every use of the path keeps that spelling (ZIP's creation).</summary>
+    internal static CoreText? SpelledProblem(string? path) =>
+        Problem(path) is { } problem && !(problem.Code == MessageCode.SourceNameTrimmed && path!.StartsWith(@"\\?\", StringComparison.Ordinal))
+            ? problem
+            : null;
+
     /// <summary>Why <paramref name="path"/> cannot be opened at all, or null when it can be tried.</summary>
     internal static CoreText? Problem(string? path)
     {
