@@ -97,7 +97,7 @@ above stays as the record of what each stream holds.
 | 5l | Trimmed names in ZIP | T-F531 | every key built from a source path carries its `\\?\` spelling | plan mode and advisor; the path matrix; `SHL-019`-like rows |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`) | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
-| 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, the release tier | what needs the device or the user | one batch right before the tag |
+| 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, `APP-005` on a tar (T-F550: an App selection keeps the first `-t`'s lines), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
 
 Order: 1, 2, then 3 and 4 (independent), 5a, 5b, 5c, 5d, 5e, 5f, 5g, 5h, 5i, 5j, 5k, 5l, 6, 7, 8. Batches 5i-5l and the additions to 6 and 8 were pulled in by the agent (the user, 2026-11-17: "add the open tasks not yet in the wave, at your discretion"). Batch 5 was split by its checks (the agent, 2026-11-13); T-F512 and T-F515 were found merged and only waiting to graduate.
