@@ -15525,3 +15525,25 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     fails the helper's extraction there (exit 6, Defender's notice). A retry with the quarantine in
     `%TEMP%` after a refused write in `out\` would cover it; it touches the order-sensitive
     `ExtractSingleArchiveAsync`, so it is not part of T-F524 (`docs/DECISIONS.md`, "T-F524").
+
+### T-F531 - Archive a name Windows trims, in ZIP, through `\\?\` (P3, split from T-F510)
+
+- [x] **Status:** done 2026-11-18 (batch 5l). ZIP walks below a source by the spelling on disk: a name
+  Windows trims ("`a.txt `", "`d.`") is entered and archived by its `\\?\` path under its own name, in
+  both writers and the `-x` filter (`DirectoryWalker.Walk(spelledBelow)`, `DirectoryWalker.RelativePath`);
+  a source written as `\\?\` with such a name is taken by ZIP (`InputPaths.SpelledProblem`), and tar
+  still refuses both. Every key built from a source path keeps the spelling (`SourceKey`, `SourceTree`,
+  `PathIdentity` through `InputPaths.SamePlainPath`); such a source is archived but never deleted, as
+  extracting cannot give the name back (the App's `NotSafeToDelete`, the CLI's `-sdel` reason). The CLI's
+  mask search and `-stl` see what ZIP archives (`docs/DECISIONS.md`, "Batch 5l"). T-F556 filed for the
+  Shell and the App, which get the plain path from Explorer.
+- **Graduated 2026-11-18:** batch 5l.
+- **As filed:**
+  - [ ] **Status:** open, batch 5l of this wave (the agent's decision, 2026-11-14, `docs/DECISIONS.md`, "T-F510").
+    T-F509 refuses a source named "`a.txt `" or "`d.`" (its plain path opens the twin). ZIP can read
+    `\\?\...\a.txt ` (probed 2026-11-12): the walk would enter such a folder and open each file
+    through `\\?\`, naming the entry from the file's own name. Before that, every key built from a
+    source path must carry the spelling: `InputPaths.Problem` at Core's entry, `SourceResult`, the
+    App's and the CLI's deletion snapshots, `ResolveFinalPath` (`PathIdentity` already answers for the
+    `\\?\` spelling). tar.exe cannot read such a top-level name; tar keeps refusing it.
+  - **Reported by:** the agent (T-F510), 2026-11-14.

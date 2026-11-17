@@ -14983,6 +14983,51 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 5l - names Windows trims, archived by ZIP (T-F531; 2026-11-18)
+
+Measured on the host (Windows 11 26300, NTFS on D:).
+
+**The walk.** `Path.GetRelativePath` calls `GetFullPath`, which drops a trailing space or dot of a plain
+path, so a name below a source ("a.txt ") was named as its twin; on a `\\?\` path it changes nothing.
+`DirectoryWalker.Walk(..., spelledBelow: true)` rebuilds a child whose name Windows trims on its
+`\\?\` path and enters it, so everything below it is literal; `DirectoryWalker.RelativePath` names an
+entry, comparing a literal entry with the literal form of a plain root (`DirectoryWalkerOwnerTests`
+lists every other `GetRelativePath` with why). Both ZIP writers, the `-x` filter
+(`SourceEntryNames.LeaveOutBelow`), the folder totals, `-stl` and the CLI's mask search walk so. A
+source written as `\\?\` with such a name is taken by ZIP (`InputPaths.SpelledProblem`); its plain
+spelling is still refused, as it opens the twin. tar is unchanged: both refusals (the top-level name,
+and `WalkRefusal` for a folder holding one) are Pakko's, before tar.exe runs, so the tar.exe version
+does not reach them and no run on PakkoW10's 3.5.2 was needed.
+
+**Deleting such a source stays forbidden (the agent's decision).** Every key now carries the `\\?\`
+spelling (`SourceKey.Of`, `SourceTree.List`, `PathIdentity`'s final path through
+`InputPaths.SamePlainPath`), so the frontends see the source as archived in full and name the real
+reason. But the archive would be the only copy, and extracting it cannot give the name back. Measured
+with an archive of `tw/a.txt`, `tw/a.txt `, `tw/d/in.txt`, `tw/d./in.txt`: `pakko x` (default, `-aoa`,
+`-aou`, `-aos` alike, exit 0, no message) writes `a (1).txt` and `d/in (1).txt` for the trimmed ones;
+7za writes `a.txt_` and `d_/in.txt`. The bytes survive, the names do not, the Recycle Bin cannot take a
+`\\?\` path, and `-sdel` deletes for good. So: the App's `ISourceSnapshot.HoldsTrimmedName` keeps such
+a source as `NotSafeToDelete` (before, it was marked unreadable and reported as changed since the
+start); the CLI's `-sdel` keeps it with the reason that extracting cannot give the name back.
+
+**Not in this batch.**
+- The Shell and the App do not turn Explorer's path into `\\?\`: Explorer passes the plain path, which
+  is the twin's, and its own listing would be needed to know the spelling. Filed as T-F556.
+- Hashing (`FileHashService`) and the archive search of `x -air!` keep `TrimmedName`.
+- `NewestSourceTime` serves both engines before routing: a `\\?\` source tar later refuses still dates
+  `-stl`. Accepted: tar then refuses the source, and the run is not complete.
+- `CliSourceDeleter.RealPath`/`WithoutLongPathPrefix` strip `\\?\` and would give the twin's path for a
+  literal trimmed source; they only judge refusals (a volume root, a missing path), and such a source is
+  kept before them, so they are left.
+- `TempOwnerTests.IsOwnBelow_LiteralEntryBelowAPlainRoot_IsJudgedBelowTheRoot` cannot be seen red: the
+  old slice by `fullRoot.Length` only straddled the boundary, and Pakko's tag is searched in the tail, so
+  the answer was right by accident; the test pins the comparison by `RelativePath`.
+
+**Red before the change.** The walker tests by mutation (six); the ZIP folder, filter, matrix and literal
+folder tests before the change; the key, listing, final path, recycler, `-sdel`, mask search and `-stl`
+tests with the code of commit 4 reverted (14 red); the mask search's "taken once" by removing the plain
+spelling from `TakenAncestor`.
+
 ## Batch 5k - work folders' security (T-F534, T-F532, T-F527, T-F526; 2026-11-17)
 
 Measured on the host (Windows 11 26300, NTFS on D:) unless noted; the sandbox's facts came from a real
