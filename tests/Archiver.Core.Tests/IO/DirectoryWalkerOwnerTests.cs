@@ -50,6 +50,34 @@ public sealed partial class DirectoryWalkerOwnerTests
         string.Join(Environment.NewLine, stale).Should().BeEmpty("a listed call that is gone leaves room for a new one");
     }
 
+    // T-F531: Path.GetRelativePath drops a trailing space or dot of a plain path, so it named "a.txt "
+    // in a walk as its twin "a.txt"; a walk's entries are named by DirectoryWalker.RelativePath. Every
+    // other call is listed here with why it never meets such a name.
+    private static readonly (string File, int Count, string Why)[] RelativePathAllowed =
+    [
+        ("Archiver.App.Core/HashReport.cs", 1, "a hashed source's name for the report; hashing refuses such a name (TrimmedName)"),
+        ("Archiver.CLI/CliArchiveSources.cs", 1, "a source under another source, both typed or found by the search"),
+        ("Archiver.CLI/Program.cs", 2, "names printed under the destination and the folder of a failed source"),
+        ("Archiver.Core/Services/ExtractionStaging.cs", 3, "Pakko's own staging tree: EntryDiskName's names"),
+        ("Archiver.Core/Services/FileHashService.cs", 1, "hashing's walk, which refuses such a name (TrimmedName)"),
+        ("Archiver.Core/Services/Sandbox/TarExeReader.cs", 1, "an entry's place under the destination, EntryDiskName's names"),
+        ("Archiver.Core/Services/TarSandboxedService.cs", 2, "a landed file under the destination, EntryDiskName's names"),
+        ("Archiver.Core/Services/ZipArchiveService.cs", 1, "an extracted file under the destination, EntryDiskName's names"),
+        ("Archiver.Shell/OperationMessages.cs", 1, "a failed source's name in a message"),
+    ];
+
+    [Fact]
+    public void RelativePath_OutsideTheOwner_IsOnlyTheListedOnes()
+    {
+        var found = SourceFiles().Where(f => f != Owner)
+            .Select(f => (File: f, Count: Regex.Count(Code(f), @"\bGetRelativePath\(")))
+            .Where(f => f.Count > 0)
+            .ToDictionary(f => f.File, f => f.Count);
+
+        found.Should().BeEquivalentTo(RelativePathAllowed.ToDictionary(a => a.File, a => a.Count),
+            "a walk's entry is named by DirectoryWalker.RelativePath (T-F531); any other call is listed with why");
+    }
+
     // T-F547: WalkAsSpelled enters names Windows trims, which a walk over the user's folders must
     // never do; only the removal of Pakko's own folders takes it.
     [Fact]

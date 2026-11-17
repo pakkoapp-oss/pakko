@@ -1,3 +1,4 @@
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 
 namespace Archiver.Core.Services;
@@ -84,7 +85,8 @@ internal sealed class SourceEntryNames
         string fullRoot = Path.GetFullPath(rootDir);
         return info =>
         {
-            string relative = Path.GetRelativePath(fullRoot, info.FullName).Replace('\\', '/');
+            // T-F531: as spelled; by its plain path "a.txt " is judged as its twin "a.txt".
+            string relative = DirectoryWalker.RelativePath(fullRoot, info.FullName).Replace('\\', '/');
             return !keep(prefix.Length == 0 ? relative : prefix + "/" + relative, info is DirectoryInfo);
         };
     }

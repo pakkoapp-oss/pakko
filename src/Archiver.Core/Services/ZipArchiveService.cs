@@ -2221,7 +2221,8 @@ public sealed class ZipArchiveService : IArchiveService
         CancellationToken cancellationToken = default)
     {
         string fullRoot = Path.GetFullPath(sourceDir);
-        foreach (WalkEntry entry in DirectoryWalker.Walk(sourceDir, context.Names.LeaveOutBelow(sourceDir, context.Names.For(sourceDir))))
+        // T-F531: a name Windows trims is read by its literal path and named as spelled.
+        foreach (WalkEntry entry in DirectoryWalker.Walk(sourceDir, context.Names.LeaveOutBelow(sourceDir, context.Names.For(sourceDir)), spelledBelow: true))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
@@ -2255,18 +2256,11 @@ public sealed class ZipArchiveService : IArchiveService
                 case WalkEntryKind.UnreadableDirectory:
                     context.ReportError(UnreadableDirectoryError(entry.Info.FullName, entry.Error!));
                     break;
-                case WalkEntryKind.TrimmedName:
-                    context.ReportError(TrimmedNameError(entry.Info.FullName));
-                    break;
             }
         }
 
         return startOffset;
     }
-
-    // T-F509: by its plain path the walk's entry is its twin's ("a.txt " is "a.txt"); the folder
-    // holding it is then not archived in full, so nothing deletes it.
-    internal static ArchiveError TrimmedNameError(string path) => CoreMessages.Error(path, MessageCode.SourceNameTrimmed, path);
 
     private static async Task<long> AddFileFromWalkAsync(
         ZipArchive archive, FileInfo file, DirectoryArchiveContext context, long startOffset, CancellationToken cancellationToken)
@@ -2275,7 +2269,7 @@ public sealed class ZipArchiveService : IArchiveService
         long fileSize = 0;
         try { fileSize = file.Length; } catch { /* best-effort */ }
 
-        string relativePath = Path.GetRelativePath(context.RootDir, filePath).Replace('\\', '/');
+        string relativePath = DirectoryWalker.RelativePath(context.RootDir, filePath).Replace('\\', '/');
         string entryName = EntryNameUnder(context.EntryPrefix, relativePath);
 
         // T-F243 item 6: ZipArchive.CreateEntry throws on a name over 65,535 UTF-8 bytes.
@@ -2309,7 +2303,7 @@ public sealed class ZipArchiveService : IArchiveService
     // above and the parallel path's WorkItemEnumerator so both name it identically.
     internal static string EmptyDirectoryEntryName(string rootDir, string directory, string entryPrefix)
     {
-        string relativeDir = Path.GetRelativePath(rootDir, directory);
+        string relativeDir = DirectoryWalker.RelativePath(rootDir, directory);
         // An empty drive root has no name to write: "" tells the caller to write nothing (T-F345).
         if (relativeDir == ".")
             return entryPrefix.Length == 0 ? string.Empty : entryPrefix + "/";
@@ -2403,7 +2397,7 @@ public sealed class ZipArchiveService : IArchiveService
         long bytes = 0;
         int files = 0;
         long largest = 0;
-        foreach (WalkEntry entry in DirectoryWalker.Walk(dir))
+        foreach (WalkEntry entry in DirectoryWalker.Walk(dir, spelledBelow: true))
         {
             if (entry.Kind != WalkEntryKind.File)
                 continue;

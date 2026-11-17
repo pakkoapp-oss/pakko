@@ -443,6 +443,19 @@ public sealed class TempOwnerTests : IDisposable
             .Should().BeFalse("another process's file is not this run's to hide");
     }
 
+    // T-F531: ZIP's walk gives a name Windows trims, and what is below it, by its literal path.
+    [Fact]
+    public void IsOwnBelow_LiteralEntryBelowAPlainRoot_IsJudgedBelowTheRoot()
+    {
+        const string root = @"C:\data\src";
+        string literal = @"\\?\" + root;
+
+        TempOwner.IsOwnBelow(root, Path.Combine(literal, "d.", TempOwner.NewName(".pakko-a-", ".tmp"))).Should().BeTrue();
+        TempOwner.IsOwnBelow(root, Path.Combine(literal, "d.", "a.txt ")).Should().BeFalse();
+        string ownRoot = Path.Combine(@"C:\Temp", TempOwner.NewName(".pakko-x-"));
+        TempOwner.IsOwnBelow(ownRoot, Path.Combine(@"\\?\" + ownRoot, "d.", "a.txt")).Should().BeFalse("the root's own name is not below it");
+    }
+
     [Fact]
     public void IsOwnBelow_RootItselfCarriesTheTag_ItsContentIsNotOwn()
     {

@@ -233,6 +233,11 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         string path = Path(kind);
         _ = Archiver.Core.IO.DirectoryWalker.Walk(path).ToList();
         _ = Archiver.Core.IO.DirectoryWalker.Walk(path, _ => true).ToList();
+        _ = Archiver.Core.IO.DirectoryWalker.Walk(path, spelledBelow: true).ToList();
+        _ = Archiver.Core.IO.DirectoryWalker.Walk("\\\\?\\" + path, spelledBelow: true).ToList();
+        _ = Archiver.Core.IO.DirectoryWalker.RelativePath(path, path);
+        _ = Archiver.Core.IO.DirectoryWalker.RelativePath(_temp.Path, path);
+        _ = Archiver.Core.IO.DirectoryWalker.RelativePath(path, _temp.Path);
         return Task.CompletedTask;
     });
 
@@ -487,6 +492,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["SourceKey.Of"] = [nameof(PathIdentity_Path)],
         ["TempOwner.SweepStaleInTemp"] = [nameof(TempOwner_Path)],
         ["DirectoryWalker.Walk"] = [nameof(DirectoryWalker_Path)],
+        ["DirectoryWalker.RelativePath"] = [nameof(DirectoryWalker_Path)],
         ["TempOwner.TryRemove"] = [nameof(TempOwner_Path), nameof(TempOwner_LiteralPath)],
         ["SourceTree.List"] = [nameof(SourceTree_Path)],
     };

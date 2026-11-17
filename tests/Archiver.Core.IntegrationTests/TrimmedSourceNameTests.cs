@@ -95,8 +95,9 @@ public sealed class TrimmedSourceNameTests : IDisposable
         result.CreatedFiles.Should().BeEmpty();
     }
 
-    // Each ZIP writer walks the folder: the sequential one (Optimal), the parallel one (Fastest, or
-    // over 64 files) and the one-archive-per-item one (T-F503).
+    // T-F531: each ZIP writer walks the folder - the sequential one (Optimal), the parallel one (Fastest,
+    // or over 64 files) and the one-archive-per-item one (T-F503) - and reads a name Windows trims by
+    // its literal path: each file goes in under its own name with its own bytes, the twin beside it.
     [Theory]
     [InlineData(false, "sequential")]
     [InlineData(true, "sequential")]
@@ -105,16 +106,21 @@ public sealed class TrimmedSourceNameTests : IDisposable
     [InlineData(false, "many")]
     [InlineData(false, "separate")]
     [InlineData(true, "separate")]
-    public async Task Create_ZipFolderHoldingTwins_RefusesTheTrimmedFileAndKeepsTheFolder(bool nested, string writer)
+    public async Task Create_ZipFolderHoldingTwins_ArchivesEachUnderItsOwnName(bool nested, string writer)
     {
         string src = Folder(Path.Combine("z", "src"));
         string trimmedFolder = Path.Combine(src, "d.");
-        string trimmed = nested
-            ? WriteLiteral(Path.Combine(trimmedFolder, "x", "y.txt"), "IN DOTTED")
-            : WriteLiteral(Path.Combine(src, "a.txt "), "SPACED");
+        if (nested)
+            WriteLiteral(Path.Combine(trimmedFolder, "x", "y.txt"), "IN DOTTED");
+        else
+            WriteLiteral(Path.Combine(src, "a.txt "), "SPACED");
         string twinName = nested ? "d/x/y.txt" : "a.txt";
         WriteLiteral(Path.Combine(src, twinName.Replace('/', '\\')), TwinBytes);
-        var expected = new Dictionary<string, string> { ["src/" + twinName] = TwinBytes };
+        var expected = new Dictionary<string, string>
+        {
+            ["src/" + twinName] = TwinBytes,
+            [nested ? "src/d./x/y.txt" : "src/a.txt "] = nested ? "IN DOTTED" : "SPACED",
+        };
         if (writer == "many")
         {
             for (int i = 0; i < 70; i++)
@@ -131,10 +137,34 @@ public sealed class TrimmedSourceNameTests : IDisposable
             Mode = writer == "separate" ? ArchiveMode.SeparateArchives : ArchiveMode.SingleArchive,
         });
 
-        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SourceNameTrimmed);
-        result.Errors[0].SourcePath.Should().Be(nested ? trimmedFolder : trimmed);
-        result.FullyProcessedSources.Should().BeEmpty("a folder with a file left out is never deleted");
+        result.Errors.Should().BeEmpty();
+        result.SkippedFiles.Should().BeEmpty();
+        result.FullyProcessedSources.Should().Equal(src);
         Contents(result, ArchiveContainerFormat.Zip).Should().Equal(expected);
+    }
+
+    // T-F531: the filter judges the name as spelled: leaving out "a.txt" keeps "a.txt ", and the other
+    // way round; an empty folder "e." is kept as its own entry.
+    [Theory]
+    [InlineData("src/a.txt", "src/a.txt ", "SPACED")]
+    [InlineData("src/a.txt ", "src/a.txt", "PLAIN")]
+    public async Task Create_ZipFilterOverTwins_JudgesEachByItsOwnName(string leftOut, string kept, string bytes)
+    {
+        string src = Folder(Path.Combine("zf" + leftOut.Length, "src"));
+        WriteLiteral(Path.Combine(src, "a.txt "), "SPACED");
+        WriteLiteral(Path.Combine(src, "a.txt"), "PLAIN");
+        Directory.CreateDirectory(Literal + Path.Combine(src, "e."));
+
+        ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [src], DestinationFolder = Path.Combine(_temp.Path, "out-zf" + leftOut.Length), ArchiveName = "x",
+            EntryFilter = (name, _) => !string.Equals(name, leftOut, StringComparison.Ordinal),
+        });
+
+        result.Errors.Should().BeEmpty();
+        Contents(result, ArchiveContainerFormat.Zip).Should().Equal(new Dictionary<string, string> { [kept] = bytes });
+        using ZipArchive zip = ZipFile.OpenRead(result.CreatedFiles[0]);
+        zip.Entries.Select(e => e.FullName).Should().Contain("src/e./");
     }
 
     // tar.exe walks the folder itself and would read both names, but Core's checks of what it will
