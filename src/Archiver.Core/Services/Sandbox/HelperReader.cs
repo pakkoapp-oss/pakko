@@ -448,7 +448,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         // T-F526: refused at its first file (CFA refuses each one it creates; any other write failure
         // leaves the files before it), next to the destination: the caller may run it again under %TEMP%.
         if (mode == ArchiveHelperMode.Extract && exit == ArchiveHelperExit.Write && _scope.NearDestination
-            && !Directory.EnumerateFileSystemEntries(_scope.OutputDirectory!).Any())
+            && QuarantineFiles.FolderEmpty(_scope.OutputDirectory!))
             throw new QuarantineRefusedException();
         string detail = limitHit.Length > 0 ? limitHit : output.Failure?.Message ?? "exit " + ((int)exit).ToString(CultureInfo.InvariantCulture);
         if (IsLikelyEncryptionFailure(detail))
