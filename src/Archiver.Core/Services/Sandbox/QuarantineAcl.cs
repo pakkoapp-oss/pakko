@@ -220,6 +220,50 @@ internal static partial class QuarantineAcl
     }
 
     /// <summary>
+    /// T-F532: the entries <paramref name="folder"/> passes down to a file made in it, in their order, each
+    /// without its flags (a file's copy is only "inherited"), as one string to compare. Each entry is read
+    /// as an entry, not as SDDL text: a conditional entry holds parentheses of its own. Null when the DACL
+    /// cannot be read: a volume without permissions has none.
+    /// </summary>
+    public static string? FileInheritableEntries(string folder)
+    {
+        const int SE_FILE_OBJECT = 1;
+        const uint DACL_SECURITY_INFORMATION = 0x00000004;
+
+        if (!OperatingSystem.IsWindows()
+            || NativeMethods.GetNamedSecurityInfoW(folder, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+                IntPtr.Zero, IntPtr.Zero, out _, IntPtr.Zero, out IntPtr securityDescriptor) != 0)
+            return null;
+        try
+        {
+            byte[] bytes = new byte[NativeMethods.GetSecurityDescriptorLength(securityDescriptor)];
+            Marshal.Copy(securityDescriptor, bytes, 0, bytes.Length);
+            return PassedToFiles(new System.Security.AccessControl.RawSecurityDescriptor(bytes, 0).DiscretionaryAcl);
+        }
+        finally
+        {
+            NativeMethods.LocalFree(securityDescriptor);
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static string PassedToFiles(System.Security.AccessControl.RawAcl? dacl)
+    {
+        var text = new System.Text.StringBuilder();
+        foreach (System.Security.AccessControl.GenericAce ace in dacl ?? new System.Security.AccessControl.RawAcl(2, 0))
+        {
+            if ((ace.AceFlags & System.Security.AccessControl.AceFlags.ObjectInherit) == 0)
+                continue;
+            System.Security.AccessControl.GenericAce copy = ace.Copy();
+            copy.AceFlags = System.Security.AccessControl.AceFlags.None;
+            byte[] form = new byte[copy.BinaryLength];
+            copy.GetBinaryForm(form, 0);
+            text.Append(Convert.ToHexString(form)).Append(';');
+        }
+        return text.ToString();
+    }
+
+    /// <summary>
     /// T-F534: gives the folder <paramref name="to"/> the DACL of the folder <paramref name="from"/>, which
     /// must be a folder made in the same parent, so that <paramref name="to"/> carries what a folder made
     /// there carries, its auto-inherited flag included. Written to the name itself (a link is not

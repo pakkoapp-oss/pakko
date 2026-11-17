@@ -1714,6 +1714,8 @@ public sealed class ZipArchiveService : IArchiveService
             skippedFiles.Add(CoreMessages.Skip(relativePath, CoreMessages.Text(MessageCode.AccessDenied, relativePath)));
         foreach (string relativePath in staging.BlockedByFolder)
             context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationIsAFolder, relativePath));
+        foreach (string relativePath in staging.PermissionsNotApplied)
+            context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.AccessDenied, relativePath));
 
         // T-F87: every entry was individually skipped (conflict/ADS/reserved name/reparse point/
         // zip bomb) — nothing was actually extracted, so the caller must not count this archive

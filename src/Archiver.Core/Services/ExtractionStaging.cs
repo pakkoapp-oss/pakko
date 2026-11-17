@@ -1,4 +1,5 @@
 using Archiver.Core.IO;
+using Archiver.Core.Services.Sandbox;
 
 namespace Archiver.Core.Services;
 
@@ -37,6 +38,12 @@ internal sealed class ExtractionStaging : IDisposable
     public IReadOnlyList<string> LeftOutThroughLink => _leftOutThroughLink;
 
     private readonly List<string> _leftOutUnreadable = [];
+
+    private readonly List<string> _permissionsNotApplied = [];
+
+    /// <summary>T-F532: files that arrived in a folder that passes down other entries than staging's,
+    /// and whose inheritance could not be written again, relative to the destination.</summary>
+    public IReadOnlyList<string> PermissionsNotApplied => _permissionsNotApplied;
 
     /// <summary>T-F522: what <see cref="CommitInto"/> left out because a folder on its path in the
     /// destination could not be told from a link (its attributes could not be read), as
@@ -177,9 +184,15 @@ internal sealed class ExtractionStaging : IDisposable
     }
 
     // Each file on its own: a locked target fails only itself and is returned, not named.
+    // T-F532: a rename keeps the file's DACL, which staging's folder gave it; a file whose folder here
+    // passes down other entries has its inheritance written again. Decided once a folder: the walk
+    // yields a folder's files one after another, so the last folder's verdict is all that is kept.
     private List<string> MergeFiles(string actualDest, List<string> files, Action<string>? committed)
     {
         var lockedRelativePaths = new List<string>();
+        string? stagingGives = null;
+        string? lastFolder = null;
+        bool lastDiffers = false;
         foreach (string file in files)
         {
             string relative = System.IO.Path.GetRelativePath(Path, file);
@@ -201,9 +214,32 @@ internal sealed class ExtractionStaging : IDisposable
                 (Directory.Exists(finalFile) ? _blockedByFolder : lockedRelativePaths).Add(relative);
                 continue;
             }
+            string folder = System.IO.Path.GetDirectoryName(finalFile)!;
+            if (!string.Equals(folder, lastFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                lastFolder = folder;
+                stagingGives ??= QuarantineAcl.FileInheritableEntries(Path) ?? "";
+                lastDiffers = QuarantineAcl.FileInheritableEntries(folder) is { } folderGives && folderGives != stagingGives;
+            }
+            if (lastDiffers && !TryInheritOnly(finalFile))
+                _permissionsNotApplied.Add(relative);
             committed?.Invoke(finalFile);
         }
         return lockedRelativePaths;
+    }
+
+    // T-F532: not swallowed - the file would keep staging's entries in a folder that may give fewer.
+    private static bool TryInheritOnly(string file)
+    {
+        try
+        {
+            QuarantineAcl.InheritOnly(file);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
     // T-F419: the conflict was decided as an overwrite; 7-Zip replaces a read-only file too. On a
