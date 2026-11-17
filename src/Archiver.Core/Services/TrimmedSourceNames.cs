@@ -7,14 +7,15 @@ namespace Archiver.Core.Services;
 /// such a source opened a twin beside it ("a.txt"), whose bytes went in under the source's name, and
 /// the run counted the source done, so deleting the sources afterwards took the twin. Each one is
 /// refused before the engine sees the list - before <see cref="SourcePathNormalizer"/>, whose
-/// <see cref="Path.GetFullPath(string)"/> trims, and before the entry names are claimed. The
-/// <c>\\?\</c> form is refused too: tar.exe cannot read such a name, and one rule keeps the frontends'
-/// deletion keys simple (T-F510 archives them through ZIP).
+/// <see cref="Path.GetFullPath(string)"/> trims, and before the entry names are claimed. T-F531: ZIP
+/// takes the <c>\\?\</c> form, which names the file itself and keeps that spelling all the way
+/// (<see cref="InputPaths.SpelledProblem"/>); tar.exe cannot read such a name, so tar refuses it too.
 /// </summary>
 internal static class TrimmedSourceNames
 {
-    /// <summary>The options with those sources left out, and the result for them; null when none.</summary>
-    internal static (ArchiveOptions Kept, ArchiveResult? Refused) Split(ArchiveOptions options)
+    /// <summary>The options with those sources left out, and the result for them; null when none.
+    /// <paramref name="spelledAllowed"/>: the engine takes a <c>\\?\</c> spelling (ZIP).</summary>
+    internal static (ArchiveOptions Kept, ArchiveResult? Refused) Split(ArchiveOptions options, bool spelledAllowed)
     {
         var keptPaths = new List<string>(options.SourcePaths.Count);
         List<int>? keptParts = options.SourceNameParts is null ? null : [];
@@ -23,7 +24,7 @@ internal static class TrimmedSourceNames
         for (int i = 0; i < options.SourcePaths.Count; i++)
         {
             string path = options.SourcePaths[i];
-            if (InputPaths.Problem(path) is { Code: MessageCode.SourceNameTrimmed } trimmed)
+            if ((spelledAllowed ? InputPaths.SpelledProblem(path) : InputPaths.Problem(path)) is { Code: MessageCode.SourceNameTrimmed } trimmed)
             {
                 errors.Add(CoreMessages.Error(path, trimmed));
                 sources.Add(new SourceResult { Path = path, Outcome = SourceOutcome.NotProcessed });

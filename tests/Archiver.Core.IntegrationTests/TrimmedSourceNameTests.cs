@@ -45,8 +45,10 @@ public sealed class TrimmedSourceNameTests : IDisposable
         return data;
     }
 
+    // T-F531: written as \\?\ the name is the file's own, and ZIP archives it under that name; its plain
+    // path is the twin's, and tar.exe cannot read such a name at all: refused.
     [Theory, MemberData(nameof(Matrix))]
-    public async Task Create_FileNamedWithATrailingSpace_IsRefusedAndTheOthersArchived(ArchiveContainerFormat format, bool twin, bool literal)
+    public async Task Create_FileNamedWithATrailingSpace_ZipTakesItsLiteralSpelling_OthersAreRefused(ArchiveContainerFormat format, bool twin, bool literal)
     {
         string folder = Folder("f");
         string trimmed = WriteLiteral(Path.Combine(folder, "a.txt "), "SPACED");
@@ -54,14 +56,22 @@ public sealed class TrimmedSourceNameTests : IDisposable
             File.WriteAllText(Path.Combine(folder, "a.txt"), TwinBytes);
         string ok = WriteLiteral(Path.Combine(folder, "ok.txt"), "OK");
 
-        ArchiveResult result = await CreateAsync(format, literal ? Literal + trimmed : trimmed, ok);
+        string source = literal ? Literal + trimmed : trimmed;
+        ArchiveResult result = await CreateAsync(format, source, ok);
 
+        if (format == ArchiveContainerFormat.Zip && literal)
+        {
+            result.Errors.Should().BeEmpty();
+            result.FullyProcessedSources.Should().BeEquivalentTo(source, ok);
+            Contents(result, format).Should().Equal(new Dictionary<string, string> { ["a.txt "] = "SPACED", ["ok.txt"] = "OK" });
+            return;
+        }
         RefusedAlone(result, trimmed);
         Contents(result, format).Should().Equal(new Dictionary<string, string> { ["ok.txt"] = "OK" });
     }
 
     [Theory, MemberData(nameof(Matrix))]
-    public async Task Create_FolderNamedWithATrailingDot_IsRefusedAndTheOthersArchived(ArchiveContainerFormat format, bool twin, bool literal)
+    public async Task Create_FolderNamedWithATrailingDot_ZipTakesItsLiteralSpelling_OthersAreRefused(ArchiveContainerFormat format, bool twin, bool literal)
     {
         string folder = Folder("d");
         string trimmed = Path.Combine(folder, "d.");
@@ -70,10 +80,51 @@ public sealed class TrimmedSourceNameTests : IDisposable
             WriteLiteral(Path.Combine(folder, "d", "x", "y.txt"), TwinBytes);
         string ok = WriteLiteral(Path.Combine(folder, "ok.txt"), "OK");
 
-        ArchiveResult result = await CreateAsync(format, literal ? Literal + trimmed : trimmed, ok);
+        string source = literal ? Literal + trimmed : trimmed;
+        ArchiveResult result = await CreateAsync(format, source, ok);
 
+        if (format == ArchiveContainerFormat.Zip && literal)
+        {
+            result.Errors.Should().BeEmpty();
+            result.FullyProcessedSources.Should().BeEquivalentTo(source, ok);
+            Contents(result, format).Should().Equal(new Dictionary<string, string> { ["d./x/y.txt"] = "IN DOTTED", ["ok.txt"] = "OK" });
+            return;
+        }
         RefusedAlone(result, trimmed);
         Contents(result, format).Should().Equal(new Dictionary<string, string> { ["ok.txt"] = "OK" });
+    }
+
+    // T-F531: a \\?\ folder "d." holding more files than the parallel writer's threshold, through each
+    // ZIP route: every file comes back with its own bytes and none of the twin's; a folder whose root
+    // a walk would not list is never "empty, done".
+    [Theory]
+    [InlineData("sequential", 3)]
+    [InlineData("many", 70)]
+    [InlineData("fastest", 3)]
+    [InlineData("separate", 70)]
+    [InlineData("separate", 3)]
+    public async Task Create_ZipLiteralFolderWindowsTrims_EachRouteReadsItsOwnFiles(string writer, int files)
+    {
+        string folder = Folder("lit" + writer + files);
+        string dotted = Literal + Path.Combine(folder, "d.");
+        var expected = new Dictionary<string, string>();
+        for (int i = 0; i < files; i++)
+        {
+            WriteLiteral(Path.Combine(folder, "d.", $"f{i:D2}.txt"), "DOTTED " + i);
+            WriteLiteral(Path.Combine(folder, "d", $"f{i:D2}.txt"), TwinBytes);
+            expected[$"d./f{i:D2}.txt"] = "DOTTED " + i;
+        }
+
+        ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [dotted], DestinationFolder = Path.Combine(_temp.Path, "out-lit" + writer + files), ArchiveName = "x",
+            CompressionLevel = writer == "fastest" ? System.IO.Compression.CompressionLevel.Fastest : System.IO.Compression.CompressionLevel.Optimal,
+            Mode = writer == "separate" ? ArchiveMode.SeparateArchives : ArchiveMode.SingleArchive,
+        });
+
+        result.Errors.Should().BeEmpty();
+        result.FullyProcessedSources.Should().Equal(dotted);
+        Contents(result, ArchiveContainerFormat.Zip).Should().Equal(expected);
     }
 
     // ZIP walks the folder itself: the file is refused inside it and the folder is not done.
