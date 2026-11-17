@@ -15006,7 +15006,10 @@ last folder and its verdict are kept, no collection. A file whose folder differs
 its move. Its failure is not silent: the file keeps staging's wider entries in a folder that restricts
 access, so it is reported as Access denied with its relative path; the file stays, since it may already
 have replaced the user's. That failure path has no test: forcing `SetNamedSecurityInfoW` to fail on a
-file the test owns needs fault injection, a seam only for that.
+file the test owns needs fault injection, a seam only for that. A folder whose entries cannot be read
+(closing review: a path past MAX_PATH where long paths are off) counts as different, so its files are
+re-inherited rather than left with staging's; the paths go to the API literal. This host has
+`LongPathsEnabled` = 1, so the deep-folder test passes here either way; it was seen red on PakkoW10.
 
 **T-F527 - an entry its owner cannot delete, within a measured limit.**
 - What the sandbox creates is owned by the token's default owner, not the AppContainer SID: the user,
@@ -15021,6 +15024,13 @@ file the test owns needs fault injection, a seam only for that.
   A folder that grants only the sandbox's SID therefore locks the sandbox out too; a compromised run gets
   that state by opening a folder to its SID and Everyone, filling it, then stripping it to its SID alone.
   The test builds exactly that.
+- Only in a quarantine (closing review, P2): `TempOwner.TryRemoveQuarantine` and the quarantine sweeps
+  (`TempScope.TakeBack`) take back; `TryRemove` and the work roots' sweep in a destination folder do not.
+  A folder another principal can write to could hold a planted tree that steers the walk (a junction
+  swapped in by a handle held from before), and the walk would rewrite the user's own files. Each entry
+  is also taken back only when the user, or the token's default owner, owns it, and an entry owned by
+  another principal is not entered. The owner check has no test: a standard user cannot give an entry
+  another owner.
 - The limit: an OWNER RIGHTS entry removes the owner's implicit WRITE_DAC. A file with such a DACL still
   goes through the parent's FILE_DELETE_CHILD; a non-empty folder can be renamed that way but its content
   cannot be deleted by a standard user, and `takeown` fails. Only an administrator removes it. Left as

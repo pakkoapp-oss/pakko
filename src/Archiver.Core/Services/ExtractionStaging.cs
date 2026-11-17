@@ -218,10 +218,11 @@ internal sealed class ExtractionStaging : IDisposable
             if (!string.Equals(folder, lastFolder, StringComparison.OrdinalIgnoreCase))
             {
                 lastFolder = folder;
-                stagingGives ??= QuarantineAcl.FileInheritableEntries(Path) ?? "";
-                lastDiffers = QuarantineAcl.FileInheritableEntries(folder) is { } folderGives && folderGives != stagingGives;
+                stagingGives ??= QuarantineAcl.FileInheritableEntries(InputPaths.Literal(Path)) ?? "";
+                // Unread is not the same: the file then takes its folder's entries all the same.
+                lastDiffers = QuarantineAcl.FileInheritableEntries(InputPaths.Literal(folder)) is not { } folderGives || folderGives != stagingGives;
             }
-            if (lastDiffers && !TryInheritOnly(finalFile))
+            if (lastDiffers && !TryInheritOnly(InputPaths.Literal(finalFile)))
                 _permissionsNotApplied.Add(relative);
             committed?.Invoke(finalFile);
         }

@@ -473,10 +473,35 @@ public sealed class TempOwnerTests : IDisposable
         Action list = () => Directory.GetFiles(locked);
         list.Should().Throw<UnauthorizedAccessException>();
 
-        TempOwner.TryRemove(root).Should().BeTrue();
+        TempOwner.TryRemove(root).Should().BeFalse("only a quarantine root, private to the user from its birth, is taken back");
+        Directory.Exists(locked).Should().BeTrue();
+
+        TempOwner.TryRemoveQuarantine(root).Should().BeTrue();
 
         Directory.Exists(root).Should().BeFalse();
         File.ReadAllText(Path.Combine(outside, "keep.txt")).Should().Be("keep");
         RawDacl.Sddl(outside).Should().Be(outsideDacl);
+    }
+
+    // A sweep of a folder another principal can write to (a destination's work roots) takes nothing back:
+    // a planted folder there could steer the walk. The quarantine's sweep does.
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public void SweepStale_TakesBackOnlyForTheQuarantine()
+    {
+        string stale = Path.Combine(_temp.Path, ".pakko-w-" + "m00000000-1-1-" + Guid.NewGuid().ToString("N"));
+        string locked = Path.Combine(stale, "x");
+        Directory.CreateDirectory(locked);
+        File.WriteAllText(Path.Combine(locked, "f.txt"), "f");
+        RawDacl.Write(locked, "D:P(A;OICI;FA;;;SY)");
+        var probe = new TempOwnerProbe("00000000", (_, _) => false, DateTime.UtcNow);
+
+        TempOwner.SweepStale(_temp.Path, ".pakko-w-", "", TempScope.Destination, probe);
+
+        Directory.Exists(locked).Should().BeTrue();
+
+        TempOwner.SweepStale(_temp.Path, ".pakko-w-", "", TempScope.Destination with { TakeBack = true }, probe);
+
+        Directory.Exists(stale).Should().BeFalse();
     }
 }
