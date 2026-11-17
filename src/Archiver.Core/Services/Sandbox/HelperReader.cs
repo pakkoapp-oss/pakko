@@ -143,19 +143,33 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         Entry[] entries = Listed();
         int[] selected = _selected ?? throw new InvalidOperationException("SelectForExtractAsync comes first.");
         int[] files = FilesAmong(entries, selected);
-        string outDir = _scope.OutputDirectory!;
         if (files.Length > 0)
         {
-            Task<ArchiveHelperOutput> run = ExtractFilesAsync(entries, files, cancellationToken);
-            if (poll is { } p)
+            ArchiveHelperOutput output;
+            try
             {
-                await PollExtractionProgressAsync(outDir, p.TotalBytes, new NamedProgress(p.Progress, entries, files), run, cancellationToken, p.ExtractionEnd)
-                    .ConfigureAwait(false);
+                output = await ExtractPolledAsync(entries, files, poll, cancellationToken).ConfigureAwait(false);
             }
-            ArchiveHelperOutput output = await run.ConfigureAwait(false);
+            catch (QuarantineRefusedException)
+            {
+                // T-F526: once, under %TEMP%; the scan, the selection and every decision on them stand.
+                _scope.MoveQuarantineToTemp();
+                output = await ExtractPolledAsync(entries, files, poll, cancellationToken).ConfigureAwait(false);
+            }
             EnsureOutDirHoldsExactly(entries, files, output);
         }
-        return new HelperQuarantine(outDir, entries, files, [.. selected.Where(i => entries[i].IsFolder)]);
+        return new HelperQuarantine(_scope.OutputDirectory!, entries, files, [.. selected.Where(i => entries[i].IsFolder)]);
+    }
+
+    private async Task<ArchiveHelperOutput> ExtractPolledAsync(Entry[] entries, int[] files, ExtractionPoll? poll, CancellationToken cancellationToken)
+    {
+        Task<ArchiveHelperOutput> run = ExtractFilesAsync(entries, files, cancellationToken);
+        if (poll is { } p)
+        {
+            await PollExtractionProgressAsync(_scope.OutputDirectory!, p.TotalBytes, new NamedProgress(p.Progress, entries, files), run, cancellationToken, p.ExtractionEnd)
+                .ConfigureAwait(false);
+        }
+        return await run.ConfigureAwait(false);
     }
 
     public async Task<ScanQuarantine> ExtractForScanAsync(IReadOnlyList<string>? selectedEntryPaths, CancellationToken cancellationToken)
@@ -431,6 +445,11 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             .ConfigureAwait(false);
         if (exit == ArchiveHelperExit.Done)
             return;
+        // T-F526: refused at its first file (CFA refuses each one it creates; any other write failure
+        // leaves the files before it), next to the destination: the caller may run it again under %TEMP%.
+        if (mode == ArchiveHelperMode.Extract && exit == ArchiveHelperExit.Write && _scope.NearDestination
+            && !Directory.EnumerateFileSystemEntries(_scope.OutputDirectory!).Any())
+            throw new QuarantineRefusedException();
         string detail = limitHit.Length > 0 ? limitHit : output.Failure?.Message ?? "exit " + ((int)exit).ToString(CultureInfo.InvariantCulture);
         if (IsLikelyEncryptionFailure(detail))
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
@@ -636,3 +655,6 @@ internal static class HelperFormats
     private static bool Ok(IReadOnlyDictionary<string, int?> capabilities, string name) =>
         capabilities.TryGetValue(name, out int? rc) && rc == ArchiveOk;
 }
+
+/// <summary>T-F526: the helper could write nothing into a quarantine next to the destination.</summary>
+internal sealed class QuarantineRefusedException() : IOException("The archive helper could write nothing next to the destination.");
