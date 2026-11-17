@@ -968,9 +968,9 @@ Add-SmokeStep 'CLI-053' {
     $results -join '; '
 }
 
-# T-F509: a folder holding "a.txt " (made through \\?\) beside "a.txt". Its plain path is the twin's,
-# so the file is refused: the archive never holds the twin's bytes under the spaced name, and -sdel
-# deletes nothing.
+# T-F509: a folder holding "a.txt " (made through \\?\) beside "a.txt". Its plain path is the twin's.
+# T-F531: ZIP reads it by its \\?\ path, so the archive holds both, each with its own bytes; -sdel keeps
+# the folder (extracting cannot give the name back) and says why.
 Add-SmokeStep 'CLI-054' {
     $folder = Get-StepFolder 'cli054'
     $source = Join-Path $folder 'tw'
@@ -979,16 +979,51 @@ Add-SmokeStep 'CLI-054' {
     [System.IO.File]::WriteAllText((Join-Path $source 'a.txt'), 'TWIN')
     $zip = Join-Path $folder 'tw.zip'
     $run = Invoke-Pakko @('a', '-sdel', $zip, $source)
-    Assert-Smoke ($run.ExitCode -eq 2) "pakko a -sdel: exit $($run.ExitCode) $($run.Text)"
-    Assert-Smoke ($run.Text -match 'ends in a space or a dot') "no refusal for the trimmed name: $($run.Text)"
+    Assert-Smoke ($run.ExitCode -eq 1) "pakko a -sdel: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke ($run.Text -match '-sdel kept' -and $run.Text -match 'ends in a space or a dot') "no reason for the kept folder: $($run.Text)"
     Assert-Smoke ([System.IO.File]::ReadAllText('\\?\' + (Join-Path $source 'a.txt ')) -eq 'SPACED') 'the spaced file changed or went'
     Assert-Smoke ([System.IO.File]::ReadAllText((Join-Path $source 'a.txt')) -eq 'TWIN') 'the twin changed or went'
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
-    try { $names = @($archive.Entries | ForEach-Object { $_.FullName }) } finally { $archive.Dispose() }
-    Assert-Smoke (($names -join ',') -eq 'tw/a.txt') "archive entries: $($names -join ',')"
+    try {
+        $entries = @($archive.Entries | Sort-Object FullName | ForEach-Object {
+            $reader = [System.IO.StreamReader]::new($_.Open())
+            try { "$($_.FullName)=$($reader.ReadToEnd())" } finally { $reader.Dispose() }
+        })
+    } finally { $archive.Dispose() }
+    Assert-Smoke (($entries -join ',') -ceq 'tw/a.txt=TWIN,tw/a.txt =SPACED') "archive entries: $($entries -join ',')"
     [System.IO.File]::Delete('\\?\' + (Join-Path $source 'a.txt '))
-    'refused, exit 2; both files kept; the archive holds only the twin under its own name'
+    'exit 1, -sdel kept the folder with why; both files kept; the archive holds each under its own name with its own bytes'
+}
+
+# T-F531: the source typed as \\?\ names the file itself. ZIP archives its own bytes; -sdel keeps it;
+# tar.gz refuses it (tar.exe cannot read such a name). The twin is never touched.
+Add-SmokeStep 'CLI-070' {
+    $folder = Get-StepFolder 'cli070'
+    $named = '\\?\' + (Join-Path $folder 'a.txt ')
+    [System.IO.File]::WriteAllText($named, 'SPACED')
+    [System.IO.File]::WriteAllText((Join-Path $folder 'a.txt'), 'TWIN')
+    $zip = Join-Path $folder 'lt.zip'
+    $run = Invoke-Pakko @('a', '-sdel', $zip, $named)
+    Assert-Smoke ($run.ExitCode -eq 1) "pakko a -sdel zip: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke ($run.Text -match '-sdel kept') "no reason for the kept source: $($run.Text)"
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
+    try {
+        $entries = @($archive.Entries | ForEach-Object {
+            $reader = [System.IO.StreamReader]::new($_.Open())
+            try { "$($_.FullName)=$($reader.ReadToEnd())" } finally { $reader.Dispose() }
+        })
+    } finally { $archive.Dispose() }
+    Assert-Smoke (($entries -join ',') -ceq 'a.txt =SPACED') "archive entries: $($entries -join ',')"
+    $tgz = Join-Path $folder 'lt.tar.gz'
+    $tar = Invoke-Pakko @('a', '-sdel', $tgz, $named)
+    Assert-Smoke ($tar.ExitCode -eq 2) "pakko a -sdel tar.gz: exit $($tar.ExitCode) $($tar.Text)"
+    Assert-Smoke ($tar.Text -match 'ends in a space or a dot') "no refusal for tar.gz: $($tar.Text)"
+    Assert-Smoke ([System.IO.File]::ReadAllText($named) -eq 'SPACED') 'the spaced file changed or went'
+    Assert-Smoke ([System.IO.File]::ReadAllText((Join-Path $folder 'a.txt')) -eq 'TWIN') 'the twin changed or went'
+    [System.IO.File]::Delete($named)
+    'zip: exit 1, its own bytes, kept with why; tar.gz refused, exit 2; the twin untouched'
 }
 
 Add-SmokeStep 'CLI-057' {
