@@ -15424,3 +15424,39 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
        process is outside the threat model, and a wrapper already passes the policy without a race.
        Left in T-F457: item 3's menu name for `.tlz` (C++, low).
   - **Reported by:** the agent, 2026-11-06.
+
+### T-F551 - A crafted tar owner can still shift a streamed row before the listing fails (P3, from T-F545)
+
+- [x] **Status:** done 2026-11-17 (batch 5j), at the source rather than by pairing: `-tv` runs with
+  `--numeric-owner`, which prints the owner and group as numbers on 3.8.9 and 3.5.2 for every format
+  tar.exe reads (measured), so no line is split and no column moves. It also fixed a P2 found while
+  planning: an owner or group with a space moved the size column, so T-F94's whole-archive total read 0
+  and a bomb was extracted (`ExtractAsync_BombWhoseOwnerAndGroupHaveSpaces_IsStillDeclined`, red before).
+  Batch 5h's pairing check stays as defence in depth (`docs/DECISIONS.md`, "Batch 5j").
+- **Graduated 2026-11-17:** batch 5j.
+- **As filed:**
+  - [ ] **Status:** open, batch 5j of this wave. Batch 5h's evidence check (`TarExeReader.NamesItsEntry`) passes a
+    shifted half of a `-tv` line that ends with the next name (an owner ending in " name", duplicate
+    names, a name that is a space-separated suffix of an earlier one) or, for a name with a backslash or
+    a control character, any half that starts with a mode. Such rows print in `pakko l` before exit 2.
+    Compare the printed tail with the name escaped again (`\\`, `\n`, `\r`, `\ooo`, measured identical on
+    3.8.9 and 3.5.2) instead of the mode-only fallback, and pair on the whole line's fields, not the tail
+    alone; tests on both builds (`docs/DECISIONS.md`, "Batch 5h").
+
+### T-F550 - A tar selection decompresses the whole archive again for its second -t (P3, from T-F545)
+
+- [x] **Status:** done 2026-11-17 (batch 5j). The first `-t`'s lines are kept in 1 MiB blocks
+  (`TarPrintedNames`) where names go back to tar.exe - an App selection's extraction or scan, a filtered
+  test - and T-F465's check reads them (`TarNames.FirstUnreached`, the same verdicts as the
+  whole-listing dictionaries by an oracle test). The task's premise was half wrong: `pakko x` with names
+  passes a filter, which sends tar.exe no names, so it had no second `-t`; a filtered `pakko t` did:
+  16.2 s to 12.2 s on the host (3.8.9, `.tar.xz`), 7.7 s to 6.1 s on PakkoW10 (3.5.2, `.tar.gz`).
+- **Graduated 2026-11-17:** batch 5j.
+- **As filed:**
+  - [ ] **Status:** open, batch 5j of this wave. Measured in batch 5h (`docs/DECISIONS.md`, "Batch 5h"): `pakko x`
+    of one file from a 300 MB `.tar.xz` of 30,000 text entries takes 24.6 s; one `-t` of it takes
+    3.9 s, so `EnsureSentAsListedAsync`'s second `-t` (T-F539) is about 16 % of the run, over the plan's
+    10 % / 2 s line. Keep the first `-t`'s printed bytes in chunks (byte blocks and offsets, no string
+    per name) and compare against them instead of a second run. It changes T-F465's check that a
+    selection takes the entries listed, a security boundary: a plan of its own, advisor at both ends,
+    tests on 3.8.9 and 3.5.2, and the same measurement on PakkoW10 first.
