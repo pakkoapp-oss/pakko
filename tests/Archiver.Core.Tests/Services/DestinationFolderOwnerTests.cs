@@ -24,7 +24,7 @@ public sealed partial class DestinationFolderOwnerTests
         ("Archiver.Core/Services/ExtractionStaging.cs", "Directory.CreateDirectory(finalFolder)", 1, "an entry's folder below the destination, named by EntryDiskName"),
         ("Archiver.Core/Services/ExtractionStaging.cs", "Directory.CreateDirectory(System.IO.Path.GetDirectoryName(finalFile)!)", 1, "an entry's folder below the destination, named by EntryDiskName"),
         ("Archiver.Core/Services/Sandbox/HelperReader.cs", "Directory.CreateDirectory(Path.Combine(placement.Staging.Path, relative))", 1, "the staging folder, entry names by EntryDiskName"),
-        ("Archiver.Core/Services/Sandbox/QuarantineFiles.cs", "Directory.CreateDirectory(Literal(folder))", 1, "the quarantine's owner (T-F463)"),
+        ("Archiver.Core/Services/Sandbox/QuarantineFiles.cs", "Directory.CreateDirectory(InputPaths.Literal(folder))", 1, "the quarantine's owner (T-F463)"),
         ("Archiver.Core/Services/Sandbox/TarExeReader.cs", "Directory.CreateDirectory(Path.Combine(actualDest, relative))", 1, "an entry's folder below the destination, named by EntryDiskName"),
         ("Archiver.Core/Services/Sandbox/TarExeReader.cs", "Directory.CreateDirectory(Path.Combine(plan.Staging.Path, relative))", 1, "the staging folder, entry names by EntryDiskName"),
         ("Archiver.Core/Services/Sandbox/TarSandboxScope.cs", "Directory.CreateDirectory(SandboxParentDirectory)", 1, "the sandbox parent folder, Pakko's name"),

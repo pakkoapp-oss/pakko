@@ -49,6 +49,28 @@ public sealed partial class DirectoryWalkerOwnerTests
         string.Join(Environment.NewLine, stale).Should().BeEmpty("a listed call that is gone leaves room for a new one");
     }
 
+    // T-F547: WalkAsSpelled enters names Windows trims, which a walk over the user's folders must
+    // never do; only the removal of Pakko's own folders takes it.
+    [Fact]
+    public void WalkAsSpelled_OnlyTempOwnerCallsIt()
+    {
+        SourceFiles().Where(f => f != Owner && Code(f).Contains("WalkAsSpelled(", StringComparison.Ordinal))
+            .Should().Equal("Archiver.Core/IO/TempOwner.cs");
+    }
+
+    // T-F547: the \\?\ form of a path is InputPaths.Literal's; QuarantineFiles and WorkRoot each had
+    // their own, which differed for \\.\. A check of a prefix (StartsWith) is not one.
+    [Fact]
+    public void LiteralPathPrefix_IsBuiltOnlyByInputPaths()
+    {
+        SourceFiles().Where(f => f != "Archiver.Core/Services/InputPaths.cs" && LiteralPrefixBuilt().IsMatch(Code(f)))
+            .Should().BeEmpty();
+        LiteralPrefixBuilt().IsMatch(Code("Archiver.Core/Services/InputPaths.cs")).Should().BeTrue("the scan must see the owner's own");
+    }
+
+    [GeneratedRegex(@"@""\\\\\?\\(UNC\\)?""\s*\+")]
+    private static partial Regex LiteralPrefixBuilt();
+
     [Fact]
     public void Scan_SeesTheOwner()
     {

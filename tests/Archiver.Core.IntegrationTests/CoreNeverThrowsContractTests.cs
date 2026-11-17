@@ -246,6 +246,24 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         return Task.CompletedTask;
     });
 
+    // T-F549: TryRemove takes a \\?\ path as spelled (T-F533), past InputPaths' check; a NUL there
+    // threw ArgumentException.
+    [Theory]
+    [InlineData("a NUL")]
+    [InlineData("a trimmed name")]
+    [InlineData("missing")]
+    public Task TempOwner_LiteralPath(string kind) => NoThrow(() =>
+    {
+        string path = @"\\?\" + System.IO.Path.Combine(_temp.Path, kind switch
+        {
+            "a NUL" => "a\0b",
+            "a trimmed name" => "out.",
+            _ => "missing",
+        });
+        _ = Archiver.Core.IO.TempOwner.TryRemove(path);
+        return Task.CompletedTask;
+    });
+
     [Theory, MemberData(nameof(Hostile))]
     public Task SourceTree_Path(string kind) => NoThrow(() =>
     {
@@ -469,7 +487,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["SourceKey.Of"] = [nameof(PathIdentity_Path)],
         ["TempOwner.SweepStaleInTemp"] = [nameof(TempOwner_Path)],
         ["DirectoryWalker.Walk"] = [nameof(DirectoryWalker_Path)],
-        ["TempOwner.TryRemove"] = [nameof(TempOwner_Path)],
+        ["TempOwner.TryRemove"] = [nameof(TempOwner_Path), nameof(TempOwner_LiteralPath)],
         ["SourceTree.List"] = [nameof(SourceTree_Path)],
     };
 

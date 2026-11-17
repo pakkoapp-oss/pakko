@@ -77,25 +77,13 @@ public sealed partial class WorkRoot : IDisposable
         return folder;
     }
 
-    // The \\?\ form takes a path of any length; the plain one stops at MAX_PATH.
-    private static string LongForm(string full)
-    {
-        if (full.StartsWith(@"\\?\", StringComparison.Ordinal))
-            return full;
-        if (full.StartsWith(@"\\.\", StringComparison.Ordinal))
-            return @"\\?\" + full[4..];
-        if (full.StartsWith(@"\\", StringComparison.Ordinal))
-            return @"\\?\UNC\" + full[2..];
-        return @"\\?\" + full;
-    }
-
     /// <summary>Creates <paramref name="path"/> as a new folder; throws <see cref="IOException"/> when
     /// anything has that name, a link included, and <see cref="UnauthorizedAccessException"/> when the
     /// folder above may not be written.</summary>
     internal static void CreateNewFolder(string path)
     {
         string full = Path.GetFullPath(path);
-        if (CreateDirectoryW(LongForm(full), IntPtr.Zero))
+        if (CreateDirectoryW(Archiver.Core.Services.InputPaths.Literal(full), IntPtr.Zero))
             return;
         const int ErrorAccessDenied = 5;
         int error = Marshal.GetLastPInvokeError();

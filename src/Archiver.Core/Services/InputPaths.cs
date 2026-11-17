@@ -45,6 +45,21 @@ public static class InputPaths
         return !string.Equals(Path.GetFullPath(probe), probe, StringComparison.Ordinal);
     }
 
+    /// <summary>T-F547: the <c>\\?\</c> form of a full path, which Windows opens as spelled (no part
+    /// trimmed) and at any length: a <c>\\?\</c> path as it is, <c>\\.\</c> as <c>\\?\</c>, a share as
+    /// <c>\\?\UNC\</c>. The one place Core makes it (<c>QuarantineFiles</c>, <c>WorkRoot</c>,
+    /// <c>TempOwner</c>).</summary>
+    internal static string Literal(string fullPath)
+    {
+        if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal))
+            return fullPath;
+        if (fullPath.StartsWith(@"\\.\", StringComparison.Ordinal))
+            return @"\\?\" + fullPath[4..];
+        if (fullPath.StartsWith(@"\\", StringComparison.Ordinal))
+            return @"\\?\UNC\" + fullPath[2..];
+        return @"\\?\" + fullPath;
+    }
+
     /// <summary><see cref="Problem"/>, or "not found" for an archive path that is no file (T-F221: not
     /// "not a recognized archive"). The twin of "x.zip " is a file, so the order matters (T-F509).</summary>
     internal static CoreText? ArchiveProblem(string archivePath) =>

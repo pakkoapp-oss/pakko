@@ -42,7 +42,7 @@ internal static class DestinationFolder
         if (!folder.StartsWith(@"\\.\", StringComparison.Ordinal))
             return folder;
         string full = Path.GetFullPath(folder);
-        return full.StartsWith(@"\\.\", StringComparison.Ordinal) ? @"\\?\" + full[4..] : full;
+        return full.StartsWith(@"\\.\", StringComparison.Ordinal) ? InputPaths.Literal(full) : full;
     }
 
     /// <summary>The result of an extraction whose folder could not be made: an error per archive.</summary>
