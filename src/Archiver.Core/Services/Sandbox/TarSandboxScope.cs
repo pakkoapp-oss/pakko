@@ -69,7 +69,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     // T-F529: one "-tv" line - a name Windows can write is at most 32,767 UTF-16 units: 3 UTF-8 bytes
     // each, 12 once tar.exe escapes every byte as \ooo, plus the columns before it. T-F543: an archive's
     // owner or group can be longer (libarchive 3.5.2 takes a 900 KiB one); such a line is refused as
-    // a catalog too large.
+    // a listing line too long (T-F549: its own text, not the names-in-total limit).
     private const int MaxVerboseLineBytes = 1 << 20;
 
     private const uint GenericRead = 0x80000000;
@@ -357,12 +357,9 @@ internal sealed partial class TarSandboxScope : IDisposable
     }
 
     // The run's StdOutLimit counts every byte first; this reader's own total never comes into play.
-    private StdOutLines ListingLines(StdOutLineHandler onLine)
-    {
-        int nameCharLimit = NameCharLimit;
-        return new StdOutLines(onLine, MaxVerboseLineBytes, long.MaxValue, LastLineMayBeOpen: true,
-            LineTooLong: () => ArchiveLimits.CatalogTooLarge(nameCharLimit));
-    }
+    private static StdOutLines ListingLines(StdOutLineHandler onLine) =>
+        new StdOutLines(onLine, MaxVerboseLineBytes, long.MaxValue, LastLineMayBeOpen: true,
+            LineTooLong: () => ArchiveLimits.ListingLineTooLong(MaxVerboseLineBytes));
 
     /// <summary>
     /// T-F529: "-tv" handed over a line at a time (without its '\n'), never held as one text: at
@@ -661,7 +658,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                     helper,
                     [mode.ToString().ToLowerInvariant(), .. arguments, .. selectArguments],
                     new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
-                        StdOutLines: new StdOutLines(output.Feed, ArchiveHelperOutput.MaxLineBytes, MaxHelperStdOutBytes),
+                        StdOutLines: HelperLines(output.Feed),
                         DiscardStdErr: true),
                     cancellationToken)
                     .ConfigureAwait(false);
@@ -673,6 +670,12 @@ internal sealed partial class TarSandboxScope : IDisposable
             return settled;
         }
     }
+
+    /// <summary>T-F549: the helper's stdout, a line at a time; a line over its protocol's limit is a
+    /// breach of it, shown as the other breaches are (it was the launcher's English IOException).</summary>
+    internal static StdOutLines HelperLines(StdOutLineHandler feed) =>
+        new StdOutLines(feed, ArchiveHelperOutput.MaxLineBytes, MaxHelperStdOutBytes,
+            LineTooLong: () => new ArchiveHelperProtocolException("an overlong line"));
 
     internal const string HelperProgram = "Archiver.ArchiveHelper.exe";
 

@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Az archívumban lévő nevek együttesen túl hosszúak ahhoz, hogy a Pakko megnyissa. Korlát: {0} karakter.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Az archívum egyik elemének neve vagy adatai túl hosszúak ahhoz, hogy a Pakko megnyissa. Korlát: {0} bájt.</value>
+  </data>
 </root>

@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>このアーカイブの名前は合計で長すぎるため、Pakko では開けません。上限: {0} 文字。</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>このアーカイブのエントリの名前または詳細が長すぎるため、Pakko では開けません。上限: {0} バイト。</value>
+  </data>
 </root>

@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Selle arhiivi nimed on kokku liiga pikad, et Pakko seda avaks. Piirang: {0} märki.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Selle arhiivi kirjel on nimi või andmed, mis on liiga pikad, et Pakko seda avaks. Piirang: {0} baiti.</value>
+  </data>
 </root>

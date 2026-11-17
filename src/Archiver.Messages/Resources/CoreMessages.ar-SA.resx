@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>أسماء العناصر في هذا الأرشيف طويلة جدًا في مجموعها ليفتحه Pakko. الحد: {0} حرف.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>يحتوي عنصر في هذا الأرشيف على اسم أو تفاصيل أطول من أن يفتحها Pakko. الحد: {0} بايت.</value>
+  </data>
 </root>

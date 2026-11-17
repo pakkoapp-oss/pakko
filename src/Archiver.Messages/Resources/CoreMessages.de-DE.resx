@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Die Namen in diesem Archiv sind insgesamt zu lang, um es in Pakko zu öffnen. Grenze: {0} Zeichen.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Ein Eintrag in diesem Archiv hat einen Namen oder Angaben, die zu lang sind, um es in Pakko zu öffnen. Grenze: {0} Byte.</value>
+  </data>
 </root>

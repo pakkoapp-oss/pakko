@@ -44,6 +44,34 @@ public sealed class TarSandboxedServiceExtractedItemReportTests : IDisposable
         System.IO.File.ReadAllText(Path.Combine(dest, "pkg", "a.txt")).Should().Be("mine");
     }
 
+    // T-F522/T-F549: a destination folder whose attributes cannot be read may be a link; what goes
+    // through it is left out and reported as access denied, as the ZIP engine reports it.
+    [Integration]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task ExtractAsync_FolderWhoseAttributesCannotBeRead_SkipsWhatGoesThroughIt()
+    {
+        string archivePath = Path.Combine(_temp.Path, "pkg.tar");
+        TarBuilder.WriteTar(archivePath, [File("a.txt"), Dir("sub/"), File("sub/b.txt")]);
+        string dest = Path.Combine(_temp.Path, "dest");
+        string sub = Path.Combine(dest, "sub");
+        Directory.CreateDirectory(sub);
+        ArchiveResult result;
+
+        using (Archiver.Core.Tests.Helpers.UnreadableAttributes.Of(sub))
+        {
+            result = await _sut.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [archivePath], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            });
+
+            System.IO.File.Exists(Path.Combine(sub, "b.txt")).Should().BeFalse();
+        }
+
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == Path.Combine("sub", "b.txt"))
+            .Which.Text!.Code.Should().Be(MessageCode.AccessDenied);
+        System.IO.File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("a.txt");
+    }
+
     private async Task<(List<string> Named, string Dest)> ExtractAsync(ExtractMode mode, ConflictBehavior onConflict, string? preexisting)
     {
         string archivePath = Path.Combine(_temp.Path, "pkg.tar");

@@ -192,4 +192,7 @@ public enum MessageCode
 
     // An archive whose names together are longer than Pakko holds at once (T-F529)
     CatalogTooLarge,
+
+    // One line of tar.exe's listing longer than Pakko reads: a name or an owner too long (T-F549)
+    ListingLineTooLong,
 }

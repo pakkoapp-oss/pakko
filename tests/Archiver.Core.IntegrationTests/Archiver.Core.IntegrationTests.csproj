@@ -30,6 +30,9 @@
     <Compile Include="..\Archiver.Core.Tests\PathMatrix\NameShapes.cs" Link="PathMatrix\NameShapes.cs" />
     <Compile Include="..\Archiver.Core.Tests\PathMatrix\PathForms.cs" Link="PathMatrix\PathForms.cs" />
     <Compile Include="..\Archiver.Core.Tests\PathMatrix\AllPairs.cs" Link="PathMatrix\AllPairs.cs" />
+    <!-- T-F549: a folder whose attributes cannot be read, for the tar engine's T-F522 report. -->
+    <Compile Include="..\Archiver.Core.Tests\Helpers\UnreadableAttributes.cs" Link="Helpers\UnreadableAttributes.cs" />
+    <Compile Include="..\Archiver.Core.Tests\Helpers\DeniedFolder.cs" Link="Helpers\DeniedFolder.cs" />
   </ItemGroup>
 
   <ItemGroup>

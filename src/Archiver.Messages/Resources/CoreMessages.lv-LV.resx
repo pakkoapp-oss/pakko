@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Šī arhīva nosaukumi kopā ir pārāk gari, lai Pakko to atvērtu. Ierobežojums: {0} rakstzīmes.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Šī arhīva vienumam ir pārāk garš nosaukums vai dati, lai Pakko to atvērtu. Ierobežojums: {0} baiti.</value>
+  </data>
 </root>

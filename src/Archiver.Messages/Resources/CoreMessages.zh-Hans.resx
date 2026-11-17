@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>此压缩包中的名称总长度过长，Pakko 无法打开。上限：{0} 个字符。</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>此压缩包中某个条目的名称或详细信息过长，Pakko 无法打开。上限：{0} 字节。</value>
+  </data>
 </root>

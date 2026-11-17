@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>Názvy v tomto archíve sú spolu príliš dlhé na to, aby ho Pakko otvoril. Limit: {0} znakov.</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>Položka v tomto archíve má názov alebo údaje príliš dlhé na to, aby ho Pakko otvoril. Limit: {0} bajtov.</value>
+  </data>
 </root>

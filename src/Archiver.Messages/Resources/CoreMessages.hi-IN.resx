@@ -396,4 +396,7 @@
   <data name="CatalogTooLarge" xml:space="preserve">
     <value>इस संग्रह के नाम कुल मिलाकर इतने लंबे हैं कि Pakko इसे नहीं खोलता। सीमा: {0} वर्ण।</value>
   </data>
+  <data name="ListingLineTooLong" xml:space="preserve">
+    <value>इस संग्रह की एक प्रविष्टि का नाम या विवरण इतना लंबा है कि Pakko इसे नहीं खोलता। सीमा: {0} बाइट।</value>
+  </data>
 </root>
