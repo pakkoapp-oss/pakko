@@ -245,7 +245,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             }
             else
             {
-                TempOwner.SweepStale(nearFolder, QuarantineLocation.RootPrefix, "", TempScope.Destination);
+                TempOwner.SweepStale(nearFolder, QuarantineLocation.RootPrefix, "", TempScope.Destination with { TakeBack = true });
                 string root = Path.Combine(nearFolder, TempOwner.NewName(QuarantineLocation.RootPrefix));
                 QuarantineAcl.CreatePrivateFolder(root);
                 quarantineRoot = root;
@@ -292,7 +292,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         Directory.CreateDirectory(SandboxParentDirectory);
         // T-F263: a killed run's quarantine holds the archive's plaintext; the next one removes it.
         // Older quarantines are named by a GUID alone, so only their age can tell.
-        TempOwner.SweepStale(SandboxParentDirectory, "", "", TempScope.LocalTemp(TimeSpan.FromDays(1)));
+        TempOwner.SweepStale(SandboxParentDirectory, "", "", TempScope.LocalTemp(TimeSpan.FromDays(1)) with { TakeBack = true });
         string root = Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
         Directory.CreateDirectory(root);
         return root;
@@ -309,25 +309,26 @@ internal sealed partial class TarSandboxScope : IDisposable
         if (!NearDestination || OutputDirectory is null)
             throw new InvalidOperationException("Only an extraction's quarantine next to its destination moves.");
         string old = QuarantineRoot;
-        string root = NewRootInTemp();
-        string outDir = Path.Combine(root, OutputFolderName);
+        string? root = null;
         try
         {
+            root = NewRootInTemp();
+            string outDir = Path.Combine(root, OutputFolderName);
             QuarantineAcl.GrantTraverseListReadAttributes(root, _sid);
             Directory.CreateDirectory(outDir);
             QuarantineAcl.GrantModify(outDir, _sid);
+            QuarantineRoot = root;
+            OutputDirectory = outDir;
+            NearDestination = false;
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
         {
-            _ = TempOwner.TryRemove(root); // best-effort: swept with %TEMP%'s quarantines
-            if (ex is InvalidOperationException)
-                throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
-            throw;
+            if (root is not null)
+                _ = TempOwner.TryRemoveQuarantine(root); // best-effort: swept with %TEMP%'s quarantines
+            // An IOException, as the refusal it replaces: the extraction's own catch reports it.
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
         }
-        QuarantineRoot = root;
-        OutputDirectory = outDir;
-        NearDestination = false;
-        _ = TempOwner.TryRemove(old); // false: held, swept by the next scope there
+        _ = TempOwner.TryRemoveQuarantine(old); // false: held, swept by the next scope there
     }
 
     // Read-only, sharing read only: no writer can change the archive and no one can rename or
@@ -880,7 +881,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         _archive.Dispose();
         _sid.Dispose();
         // T-F511's owner: links on their own; T-F527: what a run took from the user is taken back first.
-        _ = TempOwner.TryRemove(QuarantineRoot); // false: held, swept by the next scope there
+        _ = TempOwner.TryRemoveQuarantine(QuarantineRoot); // false: held, swept by the next scope there
         if (HelperRoot is not null)
             try { if (Directory.Exists(HelperRoot)) Directory.Delete(HelperRoot, recursive: true); } catch { /* best-effort: swept with %TEMP%'s quarantines */ }
         // T-F523: every run of this scope has ended (each waits for its process, and its job kills

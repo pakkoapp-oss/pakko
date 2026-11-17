@@ -102,19 +102,30 @@ internal static partial class QuarantineAcl
     }
 
     /// <summary>
-    /// T-F527: writes the DACL of a private folder (<see cref="CreatePrivateFolder"/>) to the file or folder
-    /// <paramref name="path"/> itself (a junction's own DACL, never its target's), as its owner: the owner may write a DACL
-    /// that lets it nothing else. Throws <see cref="IOException"/> when it may not (an OWNER RIGHTS entry
-    /// took that right away too, or the user is not the owner).
+    /// T-F527: when the user owns the file or folder <paramref name="path"/> (the user, or the token's default
+    /// owner), writes the DACL of a private folder (<see cref="CreatePrivateFolder"/>) to it, itself (a
+    /// junction's own DACL, never its target's): the owner may write a DACL that lets it nothing else.
+    /// False when another principal owns it, or its owner cannot be read (an OWNER RIGHTS entry took the
+    /// owner's rights away); <see cref="IOException"/> when the write fails.
     /// </summary>
-    public static void GiveBackToOwner(string path)
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public static bool GiveBackIfOwned(string path)
     {
         const uint DACL_SECURITY_INFORMATION = 0x00000004;
         const uint SddlRevision1 = 1;
-        if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException();
-        if (!NativeMethods.ConvertStringSecurityDescriptorToSecurityDescriptorW(OwnersOnly(), SddlRevision1, out IntPtr securityDescriptor, 0))
-            throw new InvalidOperationException($"ConvertStringSecurityDescriptorToSecurityDescriptorW failed (Win32 error {Marshal.GetLastPInvokeError()}).");
+        if (!OwnedByTheUser(path))
+            return false;
+        string ownersOnly;
+        try
+        {
+            ownersOnly = OwnersOnly();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new IOException(ex.Message, ex);
+        }
+        if (!NativeMethods.ConvertStringSecurityDescriptorToSecurityDescriptorW(ownersOnly, SddlRevision1, out IntPtr securityDescriptor, 0))
+            throw new IOException($"ConvertStringSecurityDescriptorToSecurityDescriptorW failed (Win32 error {Marshal.GetLastPInvokeError()}).");
         try
         {
             byte[] descriptor = new byte[NativeMethods.GetSecurityDescriptorLength(securityDescriptor)];
@@ -124,6 +135,29 @@ internal static partial class QuarantineAcl
             // target's (measured).
             if (!NativeMethods.SetFileSecurityW(path, DACL_SECURITY_INFORMATION, descriptor))
                 throw ErrorFor(Marshal.GetLastPInvokeError(), path);
+            return true;
+        }
+        finally
+        {
+            NativeMethods.LocalFree(securityDescriptor);
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static bool OwnedByTheUser(string path)
+    {
+        const int SE_FILE_OBJECT = 1;
+        const uint OWNER_SECURITY_INFORMATION = 0x00000001;
+        if (NativeMethods.GetNamedSecurityInfoW(path, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION,
+                IntPtr.Zero, IntPtr.Zero, out _, IntPtr.Zero, out IntPtr securityDescriptor) != 0)
+            return false;
+        try
+        {
+            byte[] bytes = new byte[NativeMethods.GetSecurityDescriptorLength(securityDescriptor)];
+            Marshal.Copy(securityDescriptor, bytes, 0, bytes.Length);
+            System.Security.Principal.SecurityIdentifier? owner = new System.Security.AccessControl.RawSecurityDescriptor(bytes, 0).Owner;
+            using var token = System.Security.Principal.WindowsIdentity.GetCurrent();
+            return owner is not null && (owner == token.User || owner == token.Owner);
         }
         finally
         {
@@ -315,13 +349,14 @@ internal static partial class QuarantineAcl
         // SE_DACL_AUTO_INHERIT_REQ: without it the low-level write drops the auto-inherited flag
         // (measured), and the next change of the parent's entries would treat this folder's as its own.
         const ushort DaclAutoInheritRequest = 0x0100;
+        const uint SecurityDescriptorMinLength = 20;
 
         byte[] descriptor;
         using (Microsoft.Win32.SafeHandles.SafeFileHandle source = OpenFolderItself(from, ReadControl))
         {
             _ = NativeMethods.GetKernelObjectSecurity(source, DACL_SECURITY_INFORMATION, null, 0, out uint needed);
             descriptor = new byte[needed];
-            if (needed == 0 || !NativeMethods.GetKernelObjectSecurity(source, DACL_SECURITY_INFORMATION, descriptor, needed, out _))
+            if (needed < SecurityDescriptorMinLength || !NativeMethods.GetKernelObjectSecurity(source, DACL_SECURITY_INFORMATION, descriptor, needed, out _))
                 throw ErrorFor(Marshal.GetLastPInvokeError(), from);
         }
         // A self-relative descriptor: Revision, Sbz1, then Control (little-endian).

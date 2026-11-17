@@ -95,7 +95,7 @@ above stays as the record of what each stream holds.
 | 5j | tar listing pairing | T-F551, T-F550 | the `-t`/`-tv` check that a selection takes the entries listed (T-F465): pairing each row by its escaped name, and the first `-t`'s bytes kept in chunks instead of a second run (done, 2026-11-17) | plan mode and advisor at both ends, tests and the measurement on 3.8.9 and 3.5.2, a fresh opus reviewer (a security boundary) |
 | 5k | Work folders' security | T-F532, T-F534, T-F527, T-F526 | the security descriptors and the place of Pakko's work folders: inheritance on a merge and its cancel, an entry its owner cannot delete, the helper refused by CFA | plan mode; PakkoW10 for CFA; an opus reviewer |
 | 5l | Trimmed names in ZIP | T-F531 | every key built from a source path carries its `\\?\` spelling | plan mode and advisor; the path matrix; `SHL-019`-like rows |
-| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse) | calibration and the CI image | one series on an idle machine |
+| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s) | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, `APP-005` on a tar (T-F550: an App selection keeps the first `-t`'s lines), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
@@ -2004,6 +2004,21 @@ re-measured with T-F346's script before and after.
   penalty, T-F359), it can go straight into the temp archive - Pakko's own file, so the header's
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
+
+### T-F555 - Batch 5k's reviewer's P3s: an empty inherited DACL, the work root copied by path, the profile name after a move (P3, 2026-11-17)
+
+- [ ] **Status:** open, batch 6. From batch 5k's closing review (`docs/DECISIONS.md`, "Batch 5k"):
+  1. T-F532 re-inherits a merged file in a folder that passes no entry to files (only container-inherit
+     or this-folder-only entries): the file then gets an empty DACL, while one created there gets the
+     token's default DACL. Measure what a file created there gets, and write that, or skip.
+  2. T-F534 copies the work root's DACL by path. Someone with Modify on the parent (this branch's case:
+     an entry the parent gives its children only) could rename the root and put a folder of their own
+     there, whose DACL then lands on the user's extracted folder. Check the root's owner is the user, or
+     hold the root open without delete sharing from its creation.
+  3. `TarSandboxScope.SandboxNameFor` derives the profile from the root's name; after T-F526's move the
+     scope's `QuarantineRoot` no longer names its profile. Production code asks it only in `CreateAsync`;
+     a test helper that derives the SID from a moved scope's root would get another one. Keep the
+     profile name on the scope instead.
 
 ### T-F554 - tar.exe's `-tv` on 3.3.2, and a size that does not parse counts as 0 (P3, batch 5j's reviewer)
 

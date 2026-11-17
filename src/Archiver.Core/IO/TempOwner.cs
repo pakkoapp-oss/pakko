@@ -13,7 +13,9 @@ namespace Archiver.Core.IO;
 /// here.</param>
 /// <param name="UnownedMaxAge">How old an entry must be before it is removed when its owner cannot be
 /// checked.</param>
-internal readonly record struct TempScope(bool LocalOnly, TimeSpan UnownedMaxAge)
+/// <param name="TakeBack">T-F527: entries are sandbox quarantines, private to the user from their birth:
+/// one whose DACL lets the user nothing is taken back (<see cref="TempOwner.TryRemoveQuarantine"/>).</param>
+internal readonly record struct TempScope(bool LocalOnly, TimeSpan UnownedMaxAge, bool TakeBack = false)
 {
     /// <summary>A folder next to a destination the user chose.</summary>
     public static TempScope Destination => new(false, TimeSpan.FromDays(1));
@@ -116,7 +118,17 @@ public static class TempOwner
     /// T-F533: a literal path is opened as spelled, so no part of it is trimmed. T-F547: the folder is
     /// removed by literal paths throughout, so a name Windows trims inside it is reached as itself.
     /// </summary>
-    public static bool TryRemove(string path)
+    public static bool TryRemove(string path) => Remove(path, takeBack: false);
+
+    /// <summary>
+    /// T-F527: <see cref="TryRemove(string)"/> for a sandbox quarantine root, which only the user and the
+    /// sandbox could ever write to: an entry the sandbox left with a DACL that lets the user nothing is
+    /// taken back by its owner and removed. Never for a folder another principal can write to, where a
+    /// planted entry could steer the walk.
+    /// </summary>
+    internal static bool TryRemoveQuarantine(string path) => Remove(path, takeBack: true);
+
+    private static bool Remove(string path, bool takeBack)
     {
         if (IsLiteral(path) ? path.Contains('\0') : InputPaths.Problem(path) is not null)
             return false;
@@ -126,7 +138,7 @@ public static class TempOwner
             string literal = InputPaths.Literal(Path.GetFullPath(path));
             FileSystemInfo entry = Directory.Exists(literal) ? new DirectoryInfo(literal) : new FileInfo(literal);
             if (entry.Exists)
-                Remove(entry);
+                Remove(entry, takeBack);
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -170,7 +182,7 @@ public static class TempOwner
             try
             {
                 if (IsStale(entry, prefix, suffix, scope, probe))
-                    Remove(entry);
+                    Remove(entry, scope.TakeBack);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -199,30 +211,31 @@ public static class TempOwner
     // walked by its literal path (TryRemove's, or the sweep's listing below a checked %TEMP% or
     // destination folder), one folder listed at a time as it is walked.
     // T-F527: a compromised sandboxed run can leave a folder or file whose DACL lets the user nothing
-    // (the sandbox's own SID only); the user owns it (measured), and an owner may always write the DACL.
-    // Taken back then, and removed again. An OWNER RIGHTS entry takes that right away too: then it stays,
-    // and only an administrator can remove it (measured).
-    private static void Remove(FileSystemInfo entry)
+    // (the sandbox's own SID only); the token's default owner owns it (measured), and an owner may always
+    // write the DACL. Taken back then, only in a quarantine, and removed again. An OWNER RIGHTS entry takes
+    // that right away too: then it stays, and only an administrator can remove it (measured).
+    private static void Remove(FileSystemInfo entry, bool takeBack)
     {
         try
         {
             RemoveOnce(entry);
         }
-        catch (UnauthorizedAccessException) when (OperatingSystem.IsWindows())
+        catch (UnauthorizedAccessException) when (takeBack && OperatingSystem.IsWindows())
         {
             TakeBack(entry);
             RemoveOnce(entry);
         }
     }
 
-    // Top-down, each folder given back before it is listed; a link is never entered (it goes as a link).
+    // Top-down, each folder given back before it is listed; a link is never entered (it goes as a link),
+    // and an entry the user does not own is neither given back nor entered.
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static void TakeBack(FileSystemInfo entry)
     {
         if ((entry.Attributes & FileAttributes.ReparsePoint) != 0)
             return;
         string literal = InputPaths.Literal(entry.FullName);
-        QuarantineAcl.GiveBackToOwner(literal);
-        if (entry is not DirectoryInfo)
+        if (!QuarantineAcl.GiveBackIfOwned(literal) || entry is not DirectoryInfo)
             return;
         var pending = new Stack<string>();
         pending.Push(literal);
@@ -232,8 +245,7 @@ public static class TempOwner
             {
                 if ((inner.Attributes & FileAttributes.ReparsePoint) != 0)
                     continue;
-                QuarantineAcl.GiveBackToOwner(inner.FullName);
-                if (inner is DirectoryInfo)
+                if (QuarantineAcl.GiveBackIfOwned(inner.FullName) && inner is DirectoryInfo)
                     pending.Push(inner.FullName);
             }
         }

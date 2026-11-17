@@ -86,6 +86,27 @@ public sealed class ExtractionStagingPermissionsTests : IDisposable
         RawDacl.Sddl(Path.Combine(dest, "s", "b.txt")).Should().EndWith(Mark);
     }
 
+    // A folder whose entries cannot be read by its plain path (deeper than MAX_PATH) is not taken for one
+    // that gives what staging gave: its files take its entries all the same.
+    [Fact]
+    public void Merge_AFolderDeeperThanMaxPath_StillGivesItsEntries()
+    {
+        string dest = Path.Combine(_temp.Path, "dest");
+        string relativeFolder = Path.Combine(new string('d', 100), new string('e', 100), new string('f', 100), "s");
+        Directory.CreateDirectory(Path.Combine(dest, relativeFolder));
+        Give(Path.Combine(dest, relativeFolder), PropagationFlags.None);
+        string relative = Path.Combine(relativeFolder, "b.txt");
+
+        using (var staging = ExtractionStaging.Create(dest))
+        {
+            Stage(staging, relative);
+            staging.CommitInto(dest).Should().BeEmpty();
+            staging.PermissionsNotApplied.Should().BeEmpty();
+        }
+
+        Rules(Path.Combine(dest, relative)).Should().Contain(r => r.StartsWith(Everyone.Value, StringComparison.Ordinal));
+    }
+
     // ZIP extraction commits through the same staging.
     [Fact]
     public async Task ZipExtraction_IntoAFolderWithEntriesOfItsOwn_FilesTakeThem()
