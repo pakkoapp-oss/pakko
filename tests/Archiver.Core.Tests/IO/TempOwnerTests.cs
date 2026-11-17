@@ -302,13 +302,14 @@ public sealed class TempOwnerTests : IDisposable
     [Fact]
     public void TryRemove_NtPrefixedPath_RemovesTheFolder()
     {
-        string folder = Path.Combine(_temp.Path, "nt");
-        Directory.CreateDirectory(Path.Combine(folder, "sub"));
-        File.WriteAllText(Path.Combine(folder, "sub", "a.txt"), "x");
+        // "nt." - a name Windows trims: only a literal spelling reaches it, so the plain branch's refusal shows.
+        string folder = Path.Combine(_temp.Path, "nt.");
+        Directory.CreateDirectory(@"\\?\" + Path.Combine(folder, "sub"));
+        File.WriteAllText(@"\\?\" + Path.Combine(folder, "sub", "a.txt"), "x");
 
         TempOwner.TryRemove(@"\??\" + folder).Should().BeTrue();
 
-        Directory.Exists(folder).Should().BeFalse();
+        Directory.Exists(@"\\?\" + folder).Should().BeFalse();
     }
 
     // T-F549: a NUL reached new FileInfo and threw ArgumentException out of a Core method.

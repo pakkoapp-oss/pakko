@@ -82,6 +82,8 @@ public sealed partial class DirectoryWalkerOwnerTests
             @"return string.Concat(@""\\?\"", path);",
             @"return ""\\\\?\\"" + path;",
             @"return $""\\\\?\\{path}"";",
+            @"return Path.Join(@""\\?"", path);",
+            @"return ""\\\\?"" + ""\\\\"" + path;",
         ];
         string[] notBuilt =
         [
@@ -95,9 +97,10 @@ public sealed partial class DirectoryWalkerOwnerTests
         notBuilt.Where(line => LiteralPrefixBuilt().IsMatch(line)).Should().BeEmpty();
     }
 
-    // A literal holding the prefix ("\\?\" verbatim or "\\\\?\\" escaped) not right after StartsWith(,
+    // A literal holding the prefix ("\\?\" verbatim or "\\\\?\\" escaped, or the same without its last
+    // backslash) not right after StartsWith(,
     // and not a volume GUID path.
-    [GeneratedRegex(@"(?<!StartsWith\([$@]{0,2})""(\\\\\?\\|\\\\\\\\\?\\\\)(?!Volume\{)")]
+    [GeneratedRegex(@"(?<!StartsWith\([$@]{0,2})""(\\\\\?(\\|"")|\\\\\\\\\?(\\\\|""))(?!Volume\{)")]
     private static partial Regex LiteralPrefixBuilt();
 
     [Fact]

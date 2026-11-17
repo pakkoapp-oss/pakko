@@ -15000,6 +15000,8 @@ listing, for a gain only against that process.
 the extended form, so `InputPaths.Literal` maps it rather than prefixing it again, and `TempOwner`
 takes it as spelled.
 
+**The closing reviewer (2026-11-17).** P2, fixed in the batch: `QuarantineFiles`' rename built its NT path with a copy of the prefix logic and made `\??\\??\C:\...` of a `\??\` destination, so every file of a tar extracted there failed; it now takes `InputPaths.Literal`'s form and puts the NT prefix on it (`TakeOut_ADestinationInEachSpelling_LandsOnTheFile`). The guard sees a prefix without its last backslash too. Left as they are: the guard does not look for the NT form `\??\` (only the rename builds it, from `Literal`), and `DestinationFolder` refuses a `\??\` destination whose name Windows trims while it accepts the `\\?\` spelling (a refusal, nothing written).
+
 **A `.tlz` in the Explorer menu is lzma or lzip.** Core decides a `.tlz` by its bytes (an lzip
 magic, else LZMA_Alone, T-F457 item 3); the menu reads the name only, so it shows the file while
 either format is allowed and read by this tar.exe.
