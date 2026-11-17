@@ -1128,7 +1128,7 @@ Add-SmokeStep 'CLI-067' {
 }
 
 # T-F545: an owner's newline, which tar.exe prints as it is, split one entry's -tv line in two; every
-# later row took the line before its own. Now no row passes without its own line's evidence.
+# later row took the line before its own. Batch 5j: "-tv --numeric-owner" prints no owner name at all.
 Add-SmokeStep 'CLI-068' {
     $folder = Get-StepFolder 'cli068'
     $tar = Join-Path $folder 'owner.tar'
@@ -1157,18 +1157,38 @@ Add-SmokeStep 'CLI-068' {
         $stream.Write($end, 0, 1024)
     }
     finally { $stream.Dispose() }
-    # The archive helper lists each entry itself (exit 0, every row its own); tar.exe's route
-    # (no helper) fails the list as inconsistent after zero.txt. Either way no row has another's size.
+    # The archive helper and tar.exe's route (no helper) both list each entry with its own size.
     $run = Invoke-Pakko @('l', $tar)
-    Assert-Smoke ($run.ExitCode -in 0, 2) "owner.tar: exit $($run.ExitCode) $($run.Text)"
-    Assert-Smoke ($run.Text -match '(?m)^5\t.*\tzero\.txt\r?$') "zero.txt is missing or not 5 bytes: $($run.Text)"
-    foreach ($name in @(@('first', 1), @('second', 22))) {
-        foreach ($row in @($run.Text -split "`n" | Where-Object { $_ -match "\t$($name[0])\.txt\r?$" })) {
-            Assert-Smoke ($row -match "^$($name[1])\t") "$($name[0]).txt was printed with another entry's line: $row"
-        }
+    Assert-Smoke ($run.ExitCode -eq 0) "owner.tar: exit $($run.ExitCode) $($run.Text)"
+    foreach ($name in @(@('zero', 5), @('first', 1), @('second', 22))) {
+        Assert-Smoke ($run.Text -match "(?m)^$($name[1])\t.*\t$($name[0])\.txt\r?$") "$($name[0]).txt is missing or not $($name[1]) bytes: $($run.Text)"
     }
-    Assert-Smoke ($run.ExitCode -eq 0 -or -not $run.Text.Contains('second.txt')) "tar.exe's route printed a row after the split line: $($run.Text)"
-    "exit $($run.ExitCode); no row is printed with another entry's line"
+    "exit 0; every entry listed with its own size"
+}
+
+# Batch 5j: an owner and a group with spaces moved tar.exe's size column, so a bomb declared 0 bytes and
+# was extracted without a word. Now it is declined (no -y) on both routes.
+Add-SmokeStep 'CLI-069' {
+    $folder = Get-StepFolder 'cli069'
+    $archive = Join-Path $folder 'bomb.tar.gz'
+    $file = [System.IO.File]::Create($archive)
+    try {
+        $gzip = [System.IO.Compression.GZipStream]::new($file, [System.IO.Compression.CompressionLevel]::SmallestSize)
+        $writer = [System.Formats.Tar.TarWriter]::new($gzip, [System.Formats.Tar.TarEntryFormat]::Pax)
+        $entry = [System.Formats.Tar.PaxTarEntry]::new([System.Formats.Tar.TarEntryType]::RegularFile, 'bomb.txt')
+        $entry.UserName = 'a b c'
+        $entry.GroupName = 'd e f'
+        $entry.DataStream = [System.IO.MemoryStream]::new([byte[]]::new(20000000))
+        $writer.WriteEntry($entry)
+        $writer.Dispose()
+        $gzip.Dispose()
+    }
+    finally { $file.Dispose() }
+    $out = Join-Path $folder 'out'
+    $run = Invoke-Pakko @('x', $archive, "-o$out")
+    Assert-Smoke ($run.ExitCode -ne 0) "the bomb was extracted: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke (-not (Test-Path (Join-Path $out 'bomb.txt'))) "bomb.txt was written"
+    "exit $($run.ExitCode); the bomb is declined"
 }
 
 # T-F513: an archive declaring a billion entries is refused before its catalog is read.

@@ -1647,9 +1647,11 @@ Flow (`TarSandboxScope.CreateAsync` + `ListAsync`/`ExtractAsync`):
    root as current directory, `-f -` and (once decided) `--options tar:hdrcharset=UTF-8`
 6. The first listing decides the tar header charset: UTF-8, or the OEM code page when tar.exe
    reports the names are not valid UTF-8 (T-F204); tar.exe's output is decoded with the system
-   ANSI code page, the one its command line goes through (`TextBoundaries.TarExeOutput`, T-F465). The plain
-   listing's bytes are kept: a name sent back to tar.exe (`-T`, `-X`, `-q`) must go out as exactly
-   the bytes tar.exe printed for it (`TarNames.ReadListedNameBytes`), or the archive is refused
+   ANSI code page, the one its command line goes through (`TextBoundaries.TarExeOutput`, T-F465). A name
+   sent back to tar.exe (`-T`, `-X`, `-q`) must go out as exactly the bytes tar.exe printed for it
+   (`TarNames.FirstUnreached`), or the archive is refused; the plain listing's lines are kept for that
+   (`TarPrintedNames`, T-F550) when the reader says before its scan that names will go back, else read
+   by a second `-t`
    (on extraction's `-q` pass only the first copies are reported as not extracted)
 7. Run tar.exe inside the AppContainer for **both** the T-F49 whole-archive pre-scan (`-t`/`-tv`)
    and the extraction (`-x -C out`). Before extraction, Pakko itself pre-creates every directory

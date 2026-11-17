@@ -14983,6 +14983,50 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 5j - tar.exe's listings: numeric owners and the first -t's lines (T-F551, T-F550; 2026-11-17)
+
+**`-tv --numeric-owner` (T-F551, and a P2).** tar.exe prints an owner and a group name as they are.
+A newline split one entry's `-tv` line in two (T-F545, T-F551); a space moved the size and date
+columns, which `TarListingDate.Fields` splits on whitespace, so the size read 0. The catalog's
+`TotalDeclaredSize` is what T-F94's ratio check reads, so a gzip bomb whose owner and group held
+spaces declared 0 bytes and was extracted (a 20 MB entry of zeros, ratio about 1,030; red before).
+`--numeric-owner` prints both as numbers on 3.8.9 and 3.5.2, for tar, cpio, ar, iso, 7z and rar, with
+the same exit codes and stderr as without it (measured 2026-11-17), so neither can happen. Chosen over
+pairing each `-tv` line with its `-t` line by bytes (the plan's first idea): it removes the cause, and
+nothing in Pakko reads the owner's name. Batch 5h's pairing check stays, as defence in depth. On the device, an AOT `pakko`
+without the helper, on 3.8.9 and on PakkoW10's 3.5.2 alike: `x` of the spaced-owner bomb without `-y`
+exited 0 with the file written before and 1 with nothing written after (the same bomb owned by root:
+1 and nothing, both); `l` of crafted owners and suffix names exited 2 before and 0 with every row its
+own after (`CLI-068`, `CLI-069`).
+
+**The first `-t`'s lines, kept where names go back (T-F550).** T-F539 dropped the printed bytes from
+every listing and read them with a second `-t` where a name is sent back, a whole second
+decompression. They are now kept (`TarPrintedNames`: 1 MiB blocks, each line its length and its
+bytes, under twice the listing's bytes plus a block) only by a scope whose reader says, before its
+scan, that names will go back: an App selection's extraction or antivirus scan, and a filtered test.
+A list, a full test and an extraction without a selection keep nothing, so T-F539's reason holds
+where it applies and its budgets stand unchanged; keeping them for every extraction cost 111 B an
+entry against the budget's 100 and 3.0 B a character of long names against 2.4 (`CatalogMemoryBudgetTests`,
+measured first, then narrowed). A name sent back without kept lines (a duplicate's first copies)
+still reads them with one second `-t`.
+
+**The check over them gives the whole listing's verdicts.** `TarNames.FirstUnreached` counts only the
+names that can decide a selection: its own, then every name printed in bytes that read as one of its
+texts in tar.exe's page (every name a text's `byText` entry is made of), then those names in full. An
+oracle test compares it with `ReadListedNameBytes` + `IndexByText` over random listings on 932/932,
+1251/1251, 1252/1251 and 65001/932. Removing the second pass does not turn that test red: on these
+pages no sendable name shares its tar.exe text with a differently keyed name (searched over every two-
+byte line and every byte with an escape), since a name that can be sent reads the same in both pages
+and two such lines then share a key. The pass stays, since it is what makes the result equal by
+construction rather than by that observation.
+
+**What the second `-t` cost (the task's premise corrected).** Batch 5h counted it in `pakko x` of one
+file (24.6 s), but names after the archive are a filter there, and an extraction's filter sends tar.exe
+no names: that run had no second `-t` (28.1 s before and 27.8 s after, today). A filtered test sends
+them: `pakko t big.tar.xz d000/f000001.txt` 16.2 s to 12.2 s on the host (3.8.9, twice each), and the
+same set as `.tar.gz` 7.7 s to 6.1 s on PakkoW10 (3.5.2; one `-t` there is 1.6 s). The App's
+extraction of selected entries gains the same `-t`.
+
 ## Batch 5i - literal paths and the menu's .tlz (T-F552, T-F457; 2026-11-17)
 
 **A folder swapped for a junction during `TempOwner`'s walk is accepted, no code.** The walk lists
