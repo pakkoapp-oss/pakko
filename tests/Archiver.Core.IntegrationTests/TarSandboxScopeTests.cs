@@ -212,6 +212,55 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         await extract.Should().ThrowAsync<IOException>();
     }
 
+    // T-F527: a compromised run can leave a folder whose DACL lets only the sandbox in, and fill it.
+    // The user owns what the sandbox makes (measured here), so the owner's WRITE_DAC takes it back:
+    // the scope's delete gave up on it, and the hidden root stayed next to the destination.
+    [Fact]
+    public async Task Dispose_AFolderOnlyTheSandboxMayEnter_IsRemovedWithTheRoot()
+    {
+        string archivePath = Path.Combine(_temp.Path, "fixture.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "x")]);
+        TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
+        string root = scope.QuarantineRoot;
+        try
+        {
+            string sidText;
+            using (SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid())
+                sidText = new System.Security.Principal.SecurityIdentifier(sid.DangerousGetHandle()).Value;
+            // An AppContainer is let in only where both the user's side and its own SID are: the run
+            // makes the folder open to both (Everyone and its SID, with WRITE_DAC), fills it, then takes
+            // everyone but itself off. The folders as the run would make them (cmd's mkdir is refused in
+            // the sandbox); it writes the files; the last step done here as it would do it.
+            DirectorySecurity Only(params string[] ids)
+            {
+                var security = new DirectorySecurity();
+                security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+                foreach (string id in ids)
+                    security.AddAccessRule(new FileSystemAccessRule(new System.Security.Principal.SecurityIdentifier(id),
+                        FileSystemRights.FullControl, InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                        PropagationFlags.None, AccessControlType.Allow));
+                return security;
+            }
+            string x = Path.Combine(scope.OutputDirectory!, "x");
+            Directory.CreateDirectory(Path.Combine(x, "sub"));
+            new DirectoryInfo(x).SetAccessControl(Only(sidText, "S-1-1-0"));
+            (await CmdInSandboxOfAsync(scope, @"echo x> out\x\sub\f.txt")).Should().Be(0);
+            (await CmdInSandboxOfAsync(scope, @"echo y> out\x\g.txt")).Should().Be(0);
+            new DirectoryInfo(x).SetAccessControl(Only(sidText));
+            Action list = () => Directory.GetFiles(Path.Combine(scope.OutputDirectory!, "x"));
+            list.Should().Throw<UnauthorizedAccessException>("the folder lets the user nothing");
+            new FileInfo(Path.Combine(scope.OutputDirectory!, "x", "g.txt")).GetAccessControl(AccessControlSections.Owner)
+                .GetOwner(typeof(System.Security.Principal.SecurityIdentifier))!.Value
+                .Should().Be(System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value, "what the sandbox makes is the user's");
+        }
+        finally
+        {
+            scope.Dispose();
+        }
+
+        Directory.Exists(root).Should().BeFalse();
+    }
+
     private static async Task<int> CmdInSandboxOfAsync(TarSandboxScope scope, string command)
     {
         using SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid();

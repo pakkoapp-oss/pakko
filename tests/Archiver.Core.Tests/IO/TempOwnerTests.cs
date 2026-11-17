@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Archiver.Core.IO;
 using Archiver.Core.Services;
 using Archiver.Core.Tests.Helpers;
+using Archiver.Core.Tests.Services;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.IO;
@@ -449,5 +450,33 @@ public sealed class TempOwnerTests : IDisposable
 
         TempOwner.IsOwnBelow(root, root).Should().BeFalse();
         TempOwner.IsOwnBelow(root, Path.Combine(root, "a.txt")).Should().BeFalse();
+    }
+
+    // T-F527: a folder (and what is in it) whose DACL lets the user nothing - what a compromised
+    // sandboxed run can leave - is taken back by its owner and removed; a junction in it goes as a
+    // link, and the folder it leads to keeps its files and its DACL.
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public void TryRemove_AFolderThatLetsItsOwnerNothing_IsTakenBackAndRemoved()
+    {
+        string outside = Path.Combine(_temp.Path, "outside");
+        Directory.CreateDirectory(outside);
+        File.WriteAllText(Path.Combine(outside, "keep.txt"), "keep");
+        string outsideDacl = RawDacl.Sddl(outside);
+        string root = Path.Combine(_temp.Path, TempOwner.NewName(".pakko-sandbox-"));
+        string locked = Path.Combine(root, "out", "x");
+        Directory.CreateDirectory(Path.Combine(locked, "sub"));
+        File.WriteAllText(Path.Combine(locked, "sub", "f.txt"), "f");
+        ZipArchiveServiceArchiveTests.TryCreateJunction(Path.Combine(locked, "link"), outside).Should().BeTrue();
+        foreach (string path in new[] { Path.Combine(locked, "sub", "f.txt"), Path.Combine(locked, "sub"), locked })
+            RawDacl.Write(path, "D:P(A;OICI;FA;;;SY)");
+        Action list = () => Directory.GetFiles(locked);
+        list.Should().Throw<UnauthorizedAccessException>();
+
+        TempOwner.TryRemove(root).Should().BeTrue();
+
+        Directory.Exists(root).Should().BeFalse();
+        File.ReadAllText(Path.Combine(outside, "keep.txt")).Should().Be("keep");
+        RawDacl.Sddl(outside).Should().Be(outsideDacl);
     }
 }

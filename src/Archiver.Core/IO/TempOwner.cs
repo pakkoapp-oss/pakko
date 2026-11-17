@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Sandbox;
 
 namespace Archiver.Core.IO;
 
@@ -197,7 +198,48 @@ public static class TempOwner
     // once none is left, so the recursive delete cannot reach the user's files. T-F547: a folder is
     // walked by its literal path (TryRemove's, or the sweep's listing below a checked %TEMP% or
     // destination folder), one folder listed at a time as it is walked.
+    // T-F527: a compromised sandboxed run can leave a folder or file whose DACL lets the user nothing
+    // (the sandbox's own SID only); the user owns it (measured), and an owner may always write the DACL.
+    // Taken back then, and removed again. An OWNER RIGHTS entry takes that right away too: then it stays,
+    // and only an administrator can remove it (measured).
     private static void Remove(FileSystemInfo entry)
+    {
+        try
+        {
+            RemoveOnce(entry);
+        }
+        catch (UnauthorizedAccessException) when (OperatingSystem.IsWindows())
+        {
+            TakeBack(entry);
+            RemoveOnce(entry);
+        }
+    }
+
+    // Top-down, each folder given back before it is listed; a link is never entered (it goes as a link).
+    private static void TakeBack(FileSystemInfo entry)
+    {
+        if ((entry.Attributes & FileAttributes.ReparsePoint) != 0)
+            return;
+        string literal = InputPaths.Literal(entry.FullName);
+        QuarantineAcl.GiveBackToOwner(literal);
+        if (entry is not DirectoryInfo)
+            return;
+        var pending = new Stack<string>();
+        pending.Push(literal);
+        while (pending.TryPop(out string? folder))
+        {
+            foreach (FileSystemInfo inner in new DirectoryInfo(folder).EnumerateFileSystemInfos())
+            {
+                if ((inner.Attributes & FileAttributes.ReparsePoint) != 0)
+                    continue;
+                QuarantineAcl.GiveBackToOwner(inner.FullName);
+                if (inner is DirectoryInfo)
+                    pending.Push(inner.FullName);
+            }
+        }
+    }
+
+    private static void RemoveOnce(FileSystemInfo entry)
     {
         string literal = InputPaths.Literal(entry.FullName);
         if (entry is FileInfo)
