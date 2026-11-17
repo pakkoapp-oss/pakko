@@ -90,12 +90,17 @@ above stays as the record of what each stream holds.
 | 5e | Reading in batches | T-F529, T-F537, T-F538 | the ZIP central directory walked as a stream, .NET's reader given one batch at a time (`ZipCatalog`); only a compact name set kept | done on `perf/batch5e-batch-reading`: oracle of 1,476 archives against the old reader, counter tests red before, smoke CLI quick 41/41 on 1.10.0.29, tar.exe 33/33 on 3.8.9 and 3.5.2; memory table in `docs/DECISIONS.md`, "T-F529" |
 | 5f | Everything in batches | T-F540, T-F541, T-F542, T-F539, T-F535, T-F536, T-F544 | done on `perf/batch5f-everything-in-batches`: a list streamed to its caller, one copy of each name in tar.exe's and the helper's readers, the quarantine walked, the App's index compact; counter test per holder red before; before/after table in `docs/DECISIONS.md`, "Batch 5f"; smoke quick 66/66 and `CLI-066` on 1.10.0.30, tar.exe 36/36 on 3.8.9 and 3.5.2, the App browsing 1,000,000 entries; T-F544 (a scan's result) found and fixed in the batch | plan mode and advisor first; an opus reviewer |
 | 5g | Pulled-in P3s | T-F521, T-F522, T-F533, T-F543, and T-F548 found on device (done, 2026-11-16) | three P3s of the same code the agent pulled into this wave (2026-11-16) | each its red test |
-| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
+| 5h | The P3 tail | T-F547, T-F549, T-F545 (done, 2026-11-17, PR #248) | P3s of batches 5f and 5g | each its red test; the tar probe on 3.8.9 and 3.5.2 |
+| 5i | Literal paths, small leftovers | T-F552, T-F457's last item (the menu's `.tlz` name for `BlockedFormats`) | batch 5h's reviewer's P3s and a C++ one-liner | each its red test; the menu's C++ tests |
+| 5j | tar listing pairing | T-F551, T-F550 | the `-t`/`-tv` check that a selection takes the entries listed (T-F465): pairing each row by its escaped name, and the first `-t`'s bytes kept in chunks instead of a second run | plan mode and advisor at both ends, tests and the measurement on 3.8.9 and 3.5.2, a fresh opus reviewer (a security boundary) |
+| 5k | Work folders' security | T-F532, T-F534, T-F527, T-F526 | the security descriptors and the place of Pakko's work folders: inheritance on a merge and its cancel, an entry its owner cannot delete, the helper refused by CFA | plan mode; PakkoW10 for CFA; an opus reviewer |
+| 5l | Trimmed names in ZIP | T-F531 | every key built from a source path carries its `\\?\` spelling | plan mode and advisor; the path matrix; `SHL-019`-like rows |
+| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`) | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
-| 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the release tier | what needs the device or the user | one batch right before the tag |
+| 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
 
-Order: 1, 2, then 3 and 4 (independent), 5a, 5b, 5c, 5d, 5e, 5f, 5g, 6, 7, 8. Batch 5 was split by its checks (the agent, 2026-11-13); T-F512 and T-F515 were found merged and only waiting to graduate.
+Order: 1, 2, then 3 and 4 (independent), 5a, 5b, 5c, 5d, 5e, 5f, 5g, 5h, 5i, 5j, 5k, 5l, 6, 7, 8. Batches 5i-5l and the additions to 6 and 8 were pulled in by the agent (the user, 2026-11-17: "add the open tasks not yet in the wave, at your discretion"). Batch 5 was split by its checks (the agent, 2026-11-13); T-F512 and T-F515 were found merged and only waiting to graduate.
 
 **Findings during a batch.** A P1 or P2 from the batch's own area is fixed in the batch, test first.
 One from another area goes to the batch of that area, or to a new one before batch 8. A P3 is filed
@@ -104,7 +109,12 @@ in this file and goes to the next wave, unless a batch not yet started already c
 **Not in this wave:** runtime async (preview), Zstandard (tar in-process is forbidden), the new
 `Process` APIs (no AppContainer), C# 15 features for their own sake, async ZIP APIs, the P4 tar.exe
 fallback tasks (T-F464, T-F469, T-F461, T-F453), T-F359, and the future items that are not fixes
-(T-F02, T-F10, T-F121, T-F127, T-F132, T-F144, T-F152), and T-F496 (keeping a damaged file).
+(T-F02, T-F10, T-F121, T-F127, T-F132, T-F144, T-F152), and T-F496 (keeping a damaged file). Also
+left out on 2026-11-17: T-F445 (P4, pool threads per launch, no user-visible cost measured),
+T-F393 (no repro in 25 tries), T-F514 (a spike the user put after this wave), T-F328 and T-F329
+(the localization audit, its own pass over 36 locales), T-F331 and T-F332 (Store listing, done
+except the next submission), T-F202 (the old UI gate, replaced by `docs/SMOKE.md`), T-F447
+(measured, no code), T-F119 and T-F91 (future).
 
 ---
 
@@ -1974,7 +1984,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F532 - A merge takes the staging's inheritable entries, not its folder's (P3, from T-F528)
 
-- [ ] **Status:** open, next wave. Extracting into a folder that already exists, each file is renamed
+- [ ] **Status:** open, batch 5k of this wave. Extracting into a folder that already exists, each file is renamed
   from the staging, and a rename keeps its security descriptor: the file carries what the staging's
   folder passed down, not what its own folder in the destination does, when the two differ (a
   subfolder of the destination with entries of its own). The same before T-F528. Possible: write the
@@ -1983,14 +1993,14 @@ re-measured with T-F346's script before and after.
 
 ### T-F534 - The fast path's re-inheritance has no cancel (P3, from T-F528)
 
-- [ ] **Status:** open, next wave. `WorkRoot.TakeParentEntries` re-inherits a whole extracted tree in
+- [ ] **Status:** open, batch 5k of this wave. `WorkRoot.TakeParentEntries` re-inherits a whole extracted tree in
   one `SetNamedSecurityInfoW` call when the destination's folder has a NO_PROPAGATE entry: 0.9 s per
   20,000 files (T-F528 step 0), so tens of seconds for 10^6, with no cancel. Rare (only such a parent).
   Found by T-F528's opus review.
 
 ### T-F531 - Archive a name Windows trims, in ZIP, through `\\?\` (P3, split from T-F510)
 
-- [ ] **Status:** open, next wave (the agent's decision, 2026-11-14, `docs/DECISIONS.md`, "T-F510").
+- [ ] **Status:** open, batch 5l of this wave (the agent's decision, 2026-11-14, `docs/DECISIONS.md`, "T-F510").
   T-F509 refuses a source named "`a.txt `" or "`d.`" (its plain path opens the twin). ZIP can read
   `\\?\...\a.txt ` (probed 2026-11-12): the walk would enter such a folder and open each file
   through `\\?\`, naming the entry from the file's own name. Before that, every key built from a
@@ -2011,9 +2021,19 @@ re-measured with T-F346's script before and after.
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
 
+### T-F553 - SonarCloud: 48 open findings on `main` after .NET 11 (P3, 2026-11-17)
+
+- [ ] **Status:** open, batch 6. `issues/search` on `main`, 2026-11-17: 48 unresolved, none in the
+  gate (the gate reads new code only). 26 are `IDE0028` (collection initializers) from the .NET 11
+  analyzers in Core, App.Core, CLI and tests; 21 are in `tests/Archiver.Core.Litmus` (T-F508's litmus
+  program: `S3903`, `S127`, `S6966`, `S2245`, `S1215`, `S3776`, `S1854`); `S1135` in `build.yml` and
+  `ArchiveEntrySecurity.cs:86` (TODOs). Fix in place, or a Won't-Fix line in `docs/CONVENTIONS.md`
+  with its reason (a random fixture is not security, `S2245`); done when `main` shows only the tracked
+  TODOs.
+
 ### T-F552 - Batch 5h's reviewer's P3s: a \??\ root, the literal-prefix guard, a folder swapped during the walk (P3, 2026-11-17)
 
-- [ ] **Status:** open, next wave. The fresh reviewer of batch 5h (2026-11-17) found no P1 or P2; one
+- [ ] **Status:** open, batch 5i of this wave. The fresh reviewer of batch 5h (2026-11-17) found no P1 or P2; one
   P3 was fixed in the batch (an entry with an ACL prints "-rw-r--r--+", measured on 3.8.9 and 3.5.2,
   and failed a valid listing whose names tar.exe escapes: `TarStreamedListingTests`). Beside that:
   - `TempOwner.TryRemove(@"\??\C:\t\pakko-x")`: `IsLiteral` sees no `\\?\`, `InputPaths.Problem` accepts it
@@ -2029,7 +2049,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F551 - A crafted tar owner can still shift a streamed row before the listing fails (P3, from T-F545)
 
-- [ ] **Status:** open, next wave. Batch 5h's evidence check (`TarExeReader.NamesItsEntry`) passes a
+- [ ] **Status:** open, batch 5j of this wave. Batch 5h's evidence check (`TarExeReader.NamesItsEntry`) passes a
   shifted half of a `-tv` line that ends with the next name (an owner ending in " name", duplicate
   names, a name that is a space-separated suffix of an earlier one) or, for a name with a backslash or
   a control character, any half that starts with a mode. Such rows print in `pakko l` before exit 2.
@@ -2039,7 +2059,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F550 - A tar selection decompresses the whole archive again for its second -t (P3, from T-F545)
 
-- [ ] **Status:** open, next wave. Measured in batch 5h (`docs/DECISIONS.md`, "Batch 5h"): `pakko x`
+- [ ] **Status:** open, batch 5j of this wave. Measured in batch 5h (`docs/DECISIONS.md`, "Batch 5h"): `pakko x`
   of one file from a 300 MB `.tar.xz` of 30,000 text entries takes 24.6 s; one `-t` of it takes
   3.9 s, so `EnsureSentAsListedAsync`'s second `-t` (T-F539) is about 16 % of the run, over the plan's
   10 % / 2 s line. Keep the first `-t`'s printed bytes in chunks (byte blocks and offsets, no string
@@ -2049,7 +2069,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F527 - A run can leave an entry its owner cannot delete, now next to the destination (P3, from T-F524's review)
 
-- [ ] **Status:** open, next wave. A compromised run can create a folder or file whose own DACL has an
+- [ ] **Status:** open, batch 5k of this wave. A compromised run can create a folder or file whose own DACL has an
   OWNER RIGHTS entry and none for the user, which takes the owner's implicit rights away: the scope's
   delete and the next sweep then fail (best-effort), and the hidden `.pakko-sandbox-*` folder stays in
   the destination's folder rather than in `%TEMP%`; a standard user needs to take ownership to remove
@@ -2059,7 +2079,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F526 - The helper refused by Controlled Folder Access on another volume: retry in `%TEMP%` (P3, from T-F524)
 
-- [ ] **Status:** open, next wave. `QuarantineLocation` keeps the helper's quarantine in `%TEMP%` when
+- [ ] **Status:** open, batch 5k of this wave. `QuarantineLocation` keeps the helper's quarantine in `%TEMP%` when
   CFA is in block mode by the local setting, Group Policy or MDM (measured on PakkoW10). CFA set by a
   channel none of those keys show, with a protected folder on another volume than `%TEMP%`, still
   fails the helper's extraction there (exit 6, Defender's notice). A retry with the quarantine in
