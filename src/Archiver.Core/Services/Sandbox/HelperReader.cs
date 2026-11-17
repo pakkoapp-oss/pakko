@@ -109,7 +109,8 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         // the settling listings passed nothing on
     }
 
-    public async Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken)
+    // The helper's selection goes by index, never back to tar.exe as names.
+    public async Task<ReaderCatalog> ScanAsync(bool sendsNamesBack, CancellationToken cancellationToken)
     {
         Entry[] entries = await ScanEntriesAsync(refuseEncrypted: true, cancellationToken).ConfigureAwait(false);
         return new ReaderCatalog(

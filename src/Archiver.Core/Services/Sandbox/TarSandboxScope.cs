@@ -93,9 +93,22 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <summary>T-F470: the signature check archiveint.dll passes before the first helper run; a test may replace it.</summary>
     internal Func<string, bool> VerifyArchiveint { get; set; } = TarSignatureVerifier.Verify;
 
-    // T-F465: the bytes tar.exe printed for each name, read when a name is first sent back (T-F539).
-    private Dictionary<string, byte[]?>? _listedNameBytes;
-    private Dictionary<string, byte[]?>? _listedByText;
+    // T-F550: the lines this scope's "-t" printed (T-F465 checks a name sent back against them); null
+    // until a listing that kept them succeeds.
+    private TarPrintedNames? _printedNames;
+
+    /// <summary>
+    /// T-F550: whether the next "-t" keeps its printed lines, so that sending names back to tar.exe
+    /// (a selection, a filtered test) needs no second "-t". Set by the reader before its listing: a
+    /// selection's extraction or scan, a filtered test. Off, a listing keeps only the names (T-F539), and
+    /// a name sent back after all (the first copies of a duplicate) reads the lines with a second "-t".
+    /// </summary>
+    internal bool KeepsPrintedNames { get; set; }
+
+    /// <summary>T-F550: how many "-t" runs this scope made; read by tests.</summary>
+    internal int NameListingRuns { get; private set; }
+
+    internal bool HoldsPrintedNames => _printedNames is not null;
 
     // T-F523: this scope's own AppContainer, deleted with it.
     private readonly AppContainerProfile _profile;
@@ -351,9 +364,20 @@ internal sealed partial class TarSandboxScope : IDisposable
     private async Task<(int ExitCode, string[]? Names, string StdErr)> RunNameListingAsync(CancellationToken cancellationToken)
     {
         var names = new TarNames.ListingNames(OutputEncoding);
-        (int exitCode, _, string stdErr) = await RunAsync("-t", [], cancellationToken, stdOutLines: ListingLines(names.OnLine))
-            .ConfigureAwait(false);
+        TarPrintedNames? printed = KeepsPrintedNames ? new TarPrintedNames() : null;
+        _printedNames = null;
+        (int exitCode, string stdErr) = await RunNameListingAsync(
+            printed is null ? names.OnLine : line => { names.OnLine(line); printed.Add(line); }, cancellationToken).ConfigureAwait(false);
+        if (exitCode == 0)
+            _printedNames = printed;
         return (exitCode, exitCode == 0 ? names.ToNames() : [], stdErr);
+    }
+
+    private async Task<(int ExitCode, string StdErr)> RunNameListingAsync(StdOutLineHandler onLine, CancellationToken cancellationToken)
+    {
+        NameListingRuns++;
+        (int exitCode, _, string stdErr) = await RunAsync("-t", [], cancellationToken, stdOutLines: ListingLines(onLine)).ConfigureAwait(false);
+        return (exitCode, stdErr);
     }
 
     // The run's StdOutLimit counts every byte first; this reader's own total never comes into play.
@@ -493,22 +517,20 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         if (_utf8Headers is null)
             await ListNamesAsync(cancellationToken).ConfigureAwait(false);
-        if (_listedNameBytes is null)
+        if (_printedNames is null)
         {
-            // A listing that fails gives no printed bytes: every name is then refused below.
-            var printed = new TarNames.ListedNameBytes(OutputEncoding);
-            (int exitCode, _, _) = await RunAsync("-t", [], cancellationToken, stdOutLines: ListingLines(printed.OnLine)).ConfigureAwait(false);
-            _listedNameBytes = exitCode == 0 ? printed.ToDictionary() : [];
+            // A scope that did not keep its listing's lines reads them now (T-F539's way); a listing
+            // that fails gives none, and every name is then refused below.
+            var printed = new TarPrintedNames();
+            (int exitCode, _) = await RunNameListingAsync(printed.Add, cancellationToken).ConfigureAwait(false);
+            _printedNames = exitCode == 0 ? printed : new TarPrintedNames();
         }
-        Dictionary<string, byte[]?> listed = _listedNameBytes;
-        Dictionary<string, byte[]?> byText = _listedByText ??= TarNames.IndexByText(listed, CommandLinePage);
-        foreach (string name in names)
-        {
-            string key = name.TrimEnd('/');
-            if (TarCommandLineEncoding.Encode(key, CommandLinePage) is not { } sent
-                || !TarNames.ReachesTheListedEntry(key, listed, byText, CommandLinePage, sent))
-                throw TarArgumentEncodingException.ListedNameUntrusted(EntryDiskName.StripLeadingDotSlash(name), CommandLinePage);
-        }
+        string[] shown = [.. names];
+        (string Key, byte[]? Sent)[] selection = [.. shown.Select(name => name.TrimEnd('/'))
+            .Select(key => (key, TarCommandLineEncoding.Encode(key, CommandLinePage)))];
+        int unreached = TarNames.FirstUnreached(_printedNames, OutputEncoding, CommandLinePage, selection);
+        if (unreached >= 0)
+            throw TarArgumentEncodingException.ListedNameUntrusted(EntryDiskName.StripLeadingDotSlash(shown[unreached]), CommandLinePage);
     }
 
     // The list in the quarantine, readable by the AppContainer, in the code page tar.exe reads

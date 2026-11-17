@@ -484,7 +484,8 @@ public sealed class TarSandboxedService : ITarService
         // validated regardless of what subset the caller eventually asks tar.exe to extract).
         // T-F307: each listing pass decompresses the whole archive, so it gets its own phase.
         progress?.Report(new ProgressReport { Percent = 0, Phase = ProgressPhase.CheckingArchive });
-        ReaderCatalog catalog = await reader.ScanAsync(cancellationToken).ConfigureAwait(false);
+        // T-F550: a filter alone sends tar.exe no names (the move phase leaves out what fails it).
+        ReaderCatalog catalog = await reader.ScanAsync(selectedEntryPaths is { Count: > 0 }, cancellationToken).ConfigureAwait(false);
         long declaredUncompressedSize = catalog.TotalDeclaredSize;
 
         // T-F118: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical algorithm
