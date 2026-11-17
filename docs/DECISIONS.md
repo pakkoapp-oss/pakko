@@ -15058,6 +15058,13 @@ by Microsoft, is let through by CFA and is not retried.
   next to the destination only on another volume than `%TEMP%`'s. Not reproduced; the emulation is the
   evidence.
 
+**On the device.** Dev package 1.10.0.37 (AOT) on the host, destination on D: (ReFS): a tar merged into a
+folder with its own entry gives its file that entry and the top file none; a CAB through the helper next to
+the destination leaves no root there or under %TEMP%. On PakkoW10, an AOT `pakko`: a ZIP and a tar merged
+into an existing folder on an exFAT volume and on a UNC share (`\\localhost\...`) exit 0 with nothing
+left (T-F532's unread folder counts as different, so this was the case to check), and on NTFS the file
+takes the folder's entry. The sandbox and helper tests pass on 3.5.2 (116 of 116).
+
 ## Batch 5j - tar.exe's listings: numeric owners and the first -t's lines (T-F551, T-F550; 2026-11-17)
 
 **`-tv --numeric-owner` (T-F551, and a P2).** tar.exe prints an owner and a group name as they are.
