@@ -449,14 +449,17 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         // leaves the files before it), next to the destination: the caller may run it again under %TEMP%.
         if (mode == ArchiveHelperMode.Extract && exit == ArchiveHelperExit.Write && _scope.NearDestination
             && QuarantineFiles.FolderEmpty(_scope.OutputDirectory!))
-            throw new QuarantineRefusedException();
-        string detail = limitHit.Length > 0 ? limitHit : output.Failure?.Message ?? "exit " + ((int)exit).ToString(CultureInfo.InvariantCulture);
+            throw new QuarantineRefusedException(CoreMessages.Text(MessageCode.TarExtractionFailed, CoreText.Raw(Detail(exit, limitHit, output))));
+        string detail = Detail(exit, limitHit, output);
         if (IsLikelyEncryptionFailure(detail))
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
         throw new CoreTextIOException(mode == ArchiveHelperMode.Extract
             ? CoreMessages.Text(MessageCode.TarExtractionFailed, CoreText.Raw(detail))
             : CoreMessages.Text(MessageCode.CannotReadArchive, detail));
     }
+
+    private static string Detail(ArchiveHelperExit exit, string limitHit, ArchiveHelperOutput output) =>
+        limitHit.Length > 0 ? limitHit : output.Failure?.Message ?? "exit " + ((int)exit).ToString(CultureInfo.InvariantCulture);
 
     private void EnsureListingAndReadsAgree(Entry[] entries, int[] files, ArchiveHelperOutput output)
     {
@@ -656,5 +659,6 @@ internal static class HelperFormats
         capabilities.TryGetValue(name, out int? rc) && rc == ArchiveOk;
 }
 
-/// <summary>T-F526: the helper could write nothing into a quarantine next to the destination.</summary>
-internal sealed class QuarantineRefusedException() : IOException("The archive helper could write nothing next to the destination.");
+/// <summary>T-F526: the helper could write nothing into a quarantine next to the destination. Its text is
+/// the ordinary extraction failure, so a caller that does not run it again reports what it always did.</summary>
+internal sealed class QuarantineRefusedException(CoreText text) : CoreTextIOException(text);

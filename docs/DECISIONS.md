@@ -15028,17 +15028,24 @@ file the test owns needs fault injection, a seam only for that.
 **T-F526 - the helper retried under %TEMP%.** The retry is inside `HelperReader.ExtractAsync`, not in
 `ExtractSingleArchiveAsync`: the scan, the selection and the compression-bomb decision stand, and the
 antivirus scan's reader is always in %TEMP%. Condition: exit 6 (Write), the quarantine next to the
-destination, and nothing at all in `out`. Exit 6 covers both `CreateFileW` and `WriteFile`; CFA refuses
-each file the helper creates, so a run it stopped left nothing, while any other write failure leaves the
-files before it and is not retried. `TarSandboxScope.MoveQuarantineToTemp` makes a new root as the %TEMP%
+destination, and nothing at all in `out`. The helper writes only files, named by index, straight into
+`out` (`main.c`, `CREATE_NEW`), so "nothing" and "no file" are the same there. Exit 6 covers both
+`CreateFileW` and `WriteFile`; CFA refuses each file the helper creates, so a run it stopped left
+nothing, while any other write failure leaves the files before it and is not retried. The refusal
+carries the ordinary `TarExtractionFailed` text, so a caller that does not retry reports what it always
+did. The selection file is written for each run under the root that run uses, so a selection survives
+the move (tested with and without one). `TarSandboxScope.MoveQuarantineToTemp` makes a new root as the %TEMP%
 branch does, with the same sandbox, and removes the old one through `TempOwner.TryRemove`. tar.exe, signed
 by Microsoft, is let through by CFA and is not retried.
 - The test emulates CFA and does not reproduce it: a deny of creating files in `out`, for the user. A
   deny for the AppContainer's own SID did not stop the helper (measured); the user's side of the dual
   check did. Real CFA is measured on PakkoW10 only, as in T-F524.
-- A refusal after the first file (the negative case of the plan) has no test of its own: an ACL cannot
-  refuse a write to a file the same run just created with write access. The empty-`out` check is the
-  line that decides it.
+- A refusal after the first file is tested by a folder where the helper's second file goes: its
+  `CREATE_NEW` fails there after the first file landed, and the run fails next to the destination
+  instead of running again (red with the empty-`out` check removed).
+- Real CFA cannot reach this path on PakkoW10 as it stands: it has one volume, and the quarantine goes
+  next to the destination only on another volume than `%TEMP%`'s. Not reproduced; the emulation is the
+  evidence.
 
 ## Batch 5j - tar.exe's listings: numeric owners and the first -t's lines (T-F551, T-F550; 2026-11-17)
 

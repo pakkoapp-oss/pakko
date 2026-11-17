@@ -15513,7 +15513,8 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 
 - [x] **Status:** done 2026-11-17 (batch 5k). A helper extraction next to the destination that wrote
   nothing and exited 6 moves the scope's quarantine to %TEMP% and runs once more; the scan, the
-  selection and the bomb decision stand. Tested by an emulation (a deny on out's file creation), not by
+  selection and the bomb decision stand. Tested by an emulation (a deny on out's file creation; a
+  refusal after the first file is not retried), not by
   Controlled Folder Access itself (`docs/DECISIONS.md`, "Batch 5k").
 - **Graduated 2026-11-17:** batch 5k.
 - **As filed:**

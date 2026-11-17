@@ -128,7 +128,7 @@ internal interface ICoreTextSource
 /// An <see cref="IOException"/> Core throws with a user-visible message; caught and turned into an
 /// <see cref="ArchiveError"/> like any other I/O failure.
 /// </summary>
-internal sealed class CoreTextIOException(CoreText text, Exception? innerException = null) // NOSONAR: S3871 — internal, always caught and turned into an ArchiveError (same as SandboxSetupException)
+internal class CoreTextIOException(CoreText text, Exception? innerException = null) // NOSONAR: S3871 — internal, always caught and turned into an ArchiveError (same as SandboxSetupException)
     : IOException(text.English, innerException), ICoreTextSource
 {
     public CoreText Text { get; } = text;
