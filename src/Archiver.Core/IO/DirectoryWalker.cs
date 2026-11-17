@@ -67,10 +67,21 @@ public static class DirectoryWalker
     /// <param name="leaveOut">T-F410: true for an entry below the root to leave out. Called once per
     /// entry, in the folder's listing order, before the entry is entered (T-F511: the CLI's searches
     /// take a match there).</param>
-    public static IEnumerable<WalkEntry> Walk(string root, Func<FileSystemInfo, bool>? leaveOut = null)
+    public static IEnumerable<WalkEntry> Walk(string root, Func<FileSystemInfo, bool>? leaveOut = null) =>
+        Archiver.Core.Services.InputPaths.Problem(root) is null ? WalkFrom(root, leaveOut, asSpelled: false) : [];
+
+    /// <summary>T-F547: Pakko's own folder, walked by its literal <c>\\?\</c> path: every path below
+    /// stays literal, so a name Windows trims names that entry and no twin, and is entered as any
+    /// other (never <see cref="WalkEntryKind.TrimmedName"/>). Links are still never entered. Only for
+    /// the removal of Pakko's own folders (<see cref="TempOwner"/>); a root not written as
+    /// <c>\\?\</c>, or holding a NUL, walks nothing.</summary>
+    internal static IEnumerable<WalkEntry> WalkAsSpelled(string literalRoot) =>
+        literalRoot.StartsWith(@"\\?\", StringComparison.Ordinal) && !literalRoot.Contains('\0')
+            ? WalkFrom(literalRoot, null, asSpelled: true)
+            : [];
+
+    private static IEnumerable<WalkEntry> WalkFrom(string root, Func<FileSystemInfo, bool>? leaveOut, bool asSpelled)
     {
-        if (Archiver.Core.Services.InputPaths.Problem(root) is not null)
-            yield break;
         var rootDir = new DirectoryInfo(root);
         bool isDriveRoot = rootDir.Parent is null;
         var pending = new Stack<(DirectoryInfo Dir, bool IsReparsePoint)>();
@@ -99,22 +110,22 @@ public static class DirectoryWalker
             yield return new WalkEntry(WalkEntryKind.Directory, dir, IsEmptyDirectory: children.Length == 0);
 
             foreach (FileInfo file in children.OfType<FileInfo>().OrderBy(f => f.FullName, StringComparer.OrdinalIgnoreCase))
-                yield return new WalkEntry(KindOf(file, WalkEntryKind.File), file);
+                yield return new WalkEntry(KindOf(file, WalkEntryKind.File, asSpelled), file);
 
-            foreach (WalkEntry trimmed in PushSubfolders(children, pending))
+            foreach (WalkEntry trimmed in PushSubfolders(children, pending, asSpelled))
                 yield return trimmed;
         }
     }
 
     // The subfolders to walk go on the stack, first one on top; those with a name Windows trims are
     // returned instead, in order, and never entered.
-    private static List<WalkEntry> PushSubfolders(FileSystemInfo[] children, Stack<(DirectoryInfo Dir, bool IsReparsePoint)> pending)
+    private static List<WalkEntry> PushSubfolders(FileSystemInfo[] children, Stack<(DirectoryInfo Dir, bool IsReparsePoint)> pending, bool asSpelled)
     {
         DirectoryInfo[] subDirs = [.. children.OfType<DirectoryInfo>().OrderBy(d => d.FullName, StringComparer.OrdinalIgnoreCase)];
         var trimmed = new List<WalkEntry>();
         for (int i = subDirs.Length - 1; i >= 0; i--)
         {
-            WalkEntryKind kind = KindOf(subDirs[i], WalkEntryKind.Directory);
+            WalkEntryKind kind = KindOf(subDirs[i], WalkEntryKind.Directory, asSpelled);
             if (kind == WalkEntryKind.TrimmedName)
                 trimmed.Add(new WalkEntry(kind, subDirs[i]));
             else
@@ -125,11 +136,11 @@ public static class DirectoryWalker
     }
 
     // A link first: it is never entered or opened as what it points to, whatever its name.
-    private static WalkEntryKind KindOf(FileSystemInfo child, WalkEntryKind plain)
+    private static WalkEntryKind KindOf(FileSystemInfo child, WalkEntryKind plain, bool asSpelled)
     {
         if (IsReparsePoint(child))
             return WalkEntryKind.ReparsePoint;
-        return Archiver.Core.Services.InputPaths.OwnNameTrimmed(child.Name) ? WalkEntryKind.TrimmedName : plain;
+        return !asSpelled && Archiver.Core.Services.InputPaths.OwnNameTrimmed(child.Name) ? WalkEntryKind.TrimmedName : plain;
     }
 
     // T-F410: the children leaveOut keeps; leftOut gets the others, in the walk's order.

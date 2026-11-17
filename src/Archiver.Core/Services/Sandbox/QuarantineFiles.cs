@@ -72,7 +72,7 @@ internal static partial class QuarantineFiles
         List<string> folders = [];
         try
         {
-            foreach (FileSystemInfo item in new DirectoryInfo(Literal(dir)).EnumerateFileSystemInfos())
+            foreach (FileSystemInfo item in new DirectoryInfo(InputPaths.Literal(dir)).EnumerateFileSystemInfos())
             {
                 bool isLink = item.Attributes.HasFlag(FileAttributes.ReparsePoint);
                 bool isFolder = item is DirectoryInfo;
@@ -91,7 +91,7 @@ internal static partial class QuarantineFiles
         return (files, folders);
     }
 
-    public static FileInfo Info(string file) => new(Literal(file));
+    public static FileInfo Info(string file) => new(InputPaths.Literal(file));
 
     /// <summary>T-F474: opened as itself, never through a link, and shared for reading only: no other
     /// handle can be writing it. Throws <see cref="IOException"/> when it cannot be opened so, or is a link.</summary>
@@ -106,11 +106,11 @@ internal static partial class QuarantineFiles
         return new FileStream(handle, FileAccess.Read);
     }
 
-    public static bool FolderExists(string folder) => Directory.Exists(Literal(folder));
+    public static bool FolderExists(string folder) => Directory.Exists(InputPaths.Literal(folder));
 
-    public static DateTime FolderTime(string folder) => Directory.GetLastWriteTimeUtc(Literal(folder));
+    public static DateTime FolderTime(string folder) => Directory.GetLastWriteTimeUtc(InputPaths.Literal(folder));
 
-    public static void CreateFolder(string folder) => Directory.CreateDirectory(Literal(folder));
+    public static void CreateFolder(string folder) => Directory.CreateDirectory(InputPaths.Literal(folder));
 
     /// <summary>
     /// T-F474: moves a quarantined file out to <paramref name="destination"/>, a path Pakko chose,
@@ -178,7 +178,7 @@ internal static partial class QuarantineFiles
 
     private static SafeFileHandle OpenForSecurity(string path, bool isFolder)
     {
-        SafeFileHandle handle = CreateFile(Literal(path), ReadControl, FileShareAll, 0, OpenExisting, OpenReparsePoint | (isFolder ? BackupSemantics : 0), 0);
+        SafeFileHandle handle = CreateFile(InputPaths.Literal(path), ReadControl, FileShareAll, 0, OpenExisting, OpenReparsePoint | (isFolder ? BackupSemantics : 0), 0);
         if (!handle.IsInvalid)
             return handle;
         int error = Marshal.GetLastPInvokeError();
@@ -235,7 +235,7 @@ internal static partial class QuarantineFiles
     {
         if (Archiver.Core.IO.PathIdentity.IdentityOf(handle) is not { } identity)
             throw ErrorFor(Marshal.GetLastPInvokeError());
-        string source = Literal(file);
+        string source = InputPaths.Literal(file);
         if (!Archiver.Core.IO.PathIdentity.LeadsTo(source, identity))
             return false;
         File.Copy(source, destination, overwrite: true);
@@ -255,7 +255,7 @@ internal static partial class QuarantineFiles
 
     private static SafeFileHandle Open(string file, uint access)
     {
-        SafeFileHandle handle = CreateFile(Literal(file), access, FileShareRead, 0, OpenExisting, OpenReparsePoint, 0);
+        SafeFileHandle handle = CreateFile(InputPaths.Literal(file), access, FileShareRead, 0, OpenExisting, OpenReparsePoint, 0);
         if (!handle.IsInvalid)
             return handle;
         int error = Marshal.GetLastPInvokeError();
@@ -288,11 +288,4 @@ internal static partial class QuarantineFiles
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool SetFileInformationByHandle(SafeFileHandle file, int infoClass, ref byte info, uint size);
-
-    private static string Literal(string fullPath)
-    {
-        if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal))
-            return fullPath;
-        return fullPath.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + fullPath[2..] : @"\\?\" + fullPath;
-    }
 }

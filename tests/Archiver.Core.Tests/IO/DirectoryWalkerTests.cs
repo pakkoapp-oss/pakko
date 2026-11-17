@@ -138,6 +138,40 @@ public sealed class DirectoryWalkerTests : IDisposable
         }
     }
 
+    // T-F547: Pakko's own folder walked by its \\?\ path: every path stays literal, so a name Windows
+    // trims names that entry and no twin, and it is entered as any other.
+    [Fact]
+    public void WalkAsSpelled_NamesWindowsTrims_EnteredByTheirLiteralPaths()
+    {
+        string root = @"\\?\" + Path.Combine(_temp.Path, "out.");
+        Directory.CreateDirectory(Path.Combine(root, "e "));
+        File.WriteAllText(Path.Combine(root, "a.txt."), "dotted");
+        File.WriteAllText(Path.Combine(root, "e ", "e.txt"), "e");
+        Directory.CreateDirectory(Path.Combine(_temp.Path, "out"));
+        File.WriteAllText(Path.Combine(_temp.Path, "out", "twin.txt"), "twin");
+        try
+        {
+            List<WalkEntry> walked = [.. DirectoryWalker.WalkAsSpelled(root)];
+
+            walked.Select(e => $"{e.Kind}:{e.Info.FullName[root.Length..].Replace('\\', '/')}").Should().Equal(
+                "Directory:", "File:/a.txt.", "Directory:/e ", "File:/e /e.txt");
+            walked.Should().OnlyContain(e => e.Info.FullName.StartsWith(root, StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    // T-F547: only a literal root; a plain one goes through Walk's checks.
+    [Fact]
+    public void WalkAsSpelled_PlainRoot_WalksNothing()
+    {
+        Directory.CreateDirectory(Path.Combine(_temp.Path, "plain"));
+
+        DirectoryWalker.WalkAsSpelled(Path.Combine(_temp.Path, "plain")).Should().BeEmpty();
+    }
+
     [Fact]
     public void Walk_FolderHoldingOnlyATrimmedName_IsNotEmpty()
     {

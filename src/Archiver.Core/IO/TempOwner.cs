@@ -112,15 +112,18 @@ public static class TempOwner
     /// T-F511: removes a temporary file or folder Pakko named: each link on its own, never its target,
     /// and a read-only file too. Best-effort: false when something in it is held, for a later sweep.
     /// A path Windows cannot open as spelled is refused: a name it trims would remove the twin.
-    /// T-F533: a literal path is opened as spelled, so no part of it is trimmed.
+    /// T-F533: a literal path is opened as spelled, so no part of it is trimmed. T-F547: the folder is
+    /// removed by literal paths throughout, so a name Windows trims inside it is reached as itself.
     /// </summary>
     public static bool TryRemove(string path)
     {
-        if (!IsLiteral(path) && InputPaths.Problem(path) is not null)
+        if (IsLiteral(path) ? path.Contains('\0') : InputPaths.Problem(path) is not null)
             return false;
         try
         {
-            FileSystemInfo entry = Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path);
+            // After the check: a plain path Windows would trim is the twin's by GetFullPath.
+            string literal = InputPaths.Literal(Path.GetFullPath(path));
+            FileSystemInfo entry = Directory.Exists(literal) ? new DirectoryInfo(literal) : new FileInfo(literal);
             if (entry.Exists)
                 Remove(entry);
             return true;
@@ -190,22 +193,25 @@ public static class TempOwner
     }
 
     // Links first, each on its own (deleting a link never touches its target); the tree goes only
-    // once none is left, so the recursive delete cannot reach the user's files.
+    // once none is left, so the recursive delete cannot reach the user's files. T-F547: a folder is
+    // walked by its literal path (TryRemove's, or the sweep's listing below a checked %TEMP% or
+    // destination folder), one folder listed at a time as it is walked.
     private static void Remove(FileSystemInfo entry)
     {
-        if (entry is FileInfo file)
+        string literal = InputPaths.Literal(entry.FullName);
+        if (entry is FileInfo)
         {
-            file.Attributes &= ~FileAttributes.ReadOnly;
-            file.Delete();
+            File.SetAttributes(literal, entry.Attributes & ~FileAttributes.ReadOnly);
+            File.Delete(literal);
             return;
         }
         if ((entry.Attributes & FileAttributes.ReparsePoint) != 0)
         {
-            Directory.Delete(entry.FullName, recursive: false);
+            Directory.Delete(literal, recursive: false);
             return;
         }
 
-        foreach (WalkEntry walked in DirectoryWalker.Walk(entry.FullName).ToList())
+        foreach (WalkEntry walked in DirectoryWalker.WalkAsSpelled(literal))
         {
             if (walked.Kind == WalkEntryKind.ReparsePoint)
             {
@@ -219,7 +225,7 @@ public static class TempOwner
                 walked.Info.Attributes &= ~FileAttributes.ReadOnly;
             }
         }
-        Directory.Delete(entry.FullName, recursive: true);
+        Directory.Delete(literal, recursive: true);
     }
 
     private readonly record struct Owner(string? Machine, int? Pid, long? StartTicks);

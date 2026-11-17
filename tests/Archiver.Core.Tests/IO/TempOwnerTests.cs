@@ -259,6 +259,53 @@ public sealed class TempOwnerTests : IDisposable
         Directory.Delete(literalDestination);
     }
 
+    // T-F547: names Windows trims inside Pakko's own folder, read-only: the flag was cleared through a
+    // normalized path and "d " was never entered, so the recursive delete stopped and the folder stayed.
+    [Fact]
+    public void TryRemove_ReadOnlyNamesWindowsTrimsInside_Removed()
+    {
+        string folder = Dir("staging");
+        string literal = @"\\?\" + folder;
+        Directory.CreateDirectory(Path.Combine(literal, "d "));
+        foreach (string name in new[] { "a.txt.", "b.txt ", Path.Combine("d ", "x.txt") })
+        {
+            string file = Path.Combine(literal, name);
+            File.WriteAllText(file, "x");
+            File.SetAttributes(file, FileAttributes.ReadOnly);
+        }
+
+        TempOwner.TryRemove(folder).Should().BeTrue();
+
+        Directory.Exists(literal).Should().BeFalse();
+    }
+
+    // T-F549: a literal root Windows would trim ("out." mid-path) was walked as nothing, so its
+    // read-only file was never cleared and the recursive delete stopped.
+    [Fact]
+    public void TryRemove_LiteralRootWindowsWouldTrim_ReadOnlyFileInside_Removed()
+    {
+        string literalDestination = @"\\?\" + Path.Combine(_temp.Path, "out.");
+        string root = Path.Combine(literalDestination, ".pakko-root");
+        Directory.CreateDirectory(Path.Combine(root, "sub"));
+        string file = Path.Combine(root, "sub", "staged.txt");
+        File.WriteAllText(file, "x");
+        File.SetAttributes(file, FileAttributes.ReadOnly);
+
+        TempOwner.TryRemove(root).Should().BeTrue();
+
+        Directory.Exists(root).Should().BeFalse();
+        Directory.Delete(literalDestination);
+    }
+
+    // T-F549: a NUL reached new FileInfo and threw ArgumentException out of a Core method.
+    [Fact]
+    public void TryRemove_LiteralPathWithNul_RefusedWithoutThrowing()
+    {
+        string path = @"\\?\" + Path.Combine(_temp.Path, "a\0b");
+
+        TempOwner.TryRemove(path).Should().BeFalse();
+    }
+
     // T-F533: the literal exception is only for \\?\; written plainly the same name still reaches the twin.
     [Fact]
     public void TryRemove_PlainPathWindowsWouldTrim_StillRefused()
