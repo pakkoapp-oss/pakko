@@ -682,9 +682,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         private static readonly System.Buffers.SearchValues<char> ModeTypes = System.Buffers.SearchValues.Create("-dlhcbps");
         private static readonly System.Buffers.SearchValues<char> ModePermissions = System.Buffers.SearchValues.Create("-rwxsStT");
 
-        // strmode's ten characters, then a space: "-rw-r--r-- ".
+        // strmode's ten characters, then a space, or "+" for an entry with an ACL (3.8.9 and 3.5.2): "-rw-r--r--+".
         private static bool StartsWithAMode(string line) =>
-            line.Length > 10 && ModeTypes.Contains(line[0]) && !line.AsSpan(1, 9).ContainsAnyExcept(ModePermissions) && line[10] == ' ';
+            line.Length > 10 && ModeTypes.Contains(line[0]) && !line.AsSpan(1, 9).ContainsAnyExcept(ModePermissions) && line[10] is ' ' or '+';
     }
 
     // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test, a filter or
