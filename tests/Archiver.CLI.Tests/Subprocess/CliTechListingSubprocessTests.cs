@@ -31,6 +31,21 @@ public sealed class CliTechListingSubprocessTests
         lines.Should().Contain(["CRC = 3610A686", "Encrypted = -", "Folder = +"]);
     }
 
+    // T-F545: -slt read the archive's size before listing, so a missing archive showed .NET's
+    // FileNotFoundException text, not Core's localized listing error, which plain l shows.
+    [Fact]
+    public void Slt_OnAMissingArchive_ShowsTheListingsOwnError()
+    {
+        string missing = Path.Combine(CliFixtureFiles.CreateScratchDir(), "gone.zip");
+
+        (int sltExit, string sltOut, string sltErr) = CliProcessRunner.Run("l", "-slt", missing);
+        (int plainExit, _, string plainErr) = CliProcessRunner.Run("l", missing);
+
+        sltExit.Should().Be(plainExit);
+        sltErr.Should().Be(plainErr);
+        sltOut.Should().NotContain("Physical Size");
+    }
+
     [Fact]
     public void Slt_WithBa_PrintsOnlyTheEntryBlocks()
     {

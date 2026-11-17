@@ -97,6 +97,8 @@ public interface ITarService
     /// throws - it reaches the caller as it was thrown, and the listing stops - and
     /// <see cref="OperationCanceledException"/> on cancellation.
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="onEntry"/> is null: a caller's bug, not an
+    /// archive's (T-F545).</exception>
     Task<ArchiveListSummary> ListEntriesAsync(
         string archivePath,
         Action<ArchiveEntryInfo> onEntry,

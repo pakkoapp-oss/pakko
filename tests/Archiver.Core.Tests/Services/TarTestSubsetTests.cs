@@ -51,6 +51,28 @@ public sealed class TarTestSubsetTests
         subset.NothingToRead.Should().BeTrue();
     }
 
+    // T-F545: a declared size is the archive's to state (a sparse entry's can be any long); the sum
+    // wrapped past long.MaxValue to a negative total, and LINQ's checked Sum threw out of Core.
+    private static readonly TarCatalog Huge = new(long.MaxValue, ["a.txt", "b.txt", "c.txt"], [long.MaxValue, long.MaxValue, 1]);
+
+    [Fact]
+    public void Of_SizesPastTheLargestLong_SaturateThere()
+    {
+        TarExeReader.TestSubset.Of(Huge, (name, _) => name != "c.txt").DeclaredSize.Should().Be(long.MaxValue);
+    }
+
+    [Fact]
+    public void DeclaredSizeOf_SizesPastTheLargestLong_SaturateThere()
+    {
+        TarExeReader.DeclaredSizeOf(Huge, ["a.txt", "b.txt"]).Should().Be(long.MaxValue);
+    }
+
+    [Fact]
+    public void ListingSize_WithASign_IsNoSize()
+    {
+        TarSandboxedService.ParseTarListingSize(["-rw-r--r--", "0", "0", "0", "-5"]).Should().Be(0);
+    }
+
     [Fact]
     public void Of_IsNotAskedForTheArchiveRoot()
     {

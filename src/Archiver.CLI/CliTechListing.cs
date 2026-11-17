@@ -17,14 +17,14 @@ public static class CliTechListing
     private const char ReplaceChar = '_';
 
     /// <summary>The lines before the first entry of <paramref name="archivePath"/>.</summary>
-    public static IReadOnlyList<string> ArchiveHeader(string archivePath, ArchiveFormat format, long physicalSize, bool terminal)
+    public static IReadOnlyList<string> ArchiveHeader(string archivePath, ArchiveFormat format, long? physicalSize, bool terminal)
     {
         string path = ForConsole(archivePath, terminal);
         return
         [
             "", "Listing archive: " + path, "",
             "--", "Path = " + path, "Type = " + CliArchiveTypeExclusion.TypeName(format),
-            "Physical Size = " + physicalSize.ToString(CultureInfo.InvariantCulture),
+            .. physicalSize is { } size ? (string[])["Physical Size = " + size.ToString(CultureInfo.InvariantCulture)] : [],
             "", "----------",
         ];
     }

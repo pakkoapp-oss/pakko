@@ -37,6 +37,19 @@ public sealed class CliListingPrinterTests
         summary.Success.Should().BeFalse();
     }
 
+    // T-F545: -slt's block reads the archive's size; a listing that failed before its first row
+    // (a missing archive) must not read it at all.
+    [Fact]
+    public async Task NoRow_AFailure_NeverMakesTheHeader()
+    {
+        int made = 0;
+        using var output = new StringWriter();
+
+        await CliListingPrinter.PrintAsync(Fails(), () => { made++; return Header; }, _ => true, e => [e.Path], output);
+
+        made.Should().Be(0);
+    }
+
     [Fact]
     public async Task AFailureAfterRows_LeavesThemPrinted()
     {
@@ -69,7 +82,7 @@ public sealed class CliListingPrinterTests
     {
         using var output = new StringWriter { NewLine = "\n" };
         (ArchiveListSummary summary, long rows) = await CliListingPrinter.PrintAsync(
-            list, withHeader ? Header : null, includes ?? (_ => true), e => [e.Path], output);
+            list, withHeader ? () => Header : null, includes ?? (_ => true), e => [e.Path], output);
         return (output.ToString(), summary, rows);
     }
 

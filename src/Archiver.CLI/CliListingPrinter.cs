@@ -11,13 +11,14 @@ namespace Archiver.CLI;
 internal static class CliListingPrinter
 {
     /// <param name="list">The streamed listing, given the callback that prints a row.</param>
-    /// <param name="header">The lines before the first row; null for none (-ba).</param>
+    /// <param name="header">Makes the lines before the first row, when they are printed (T-F545:
+    /// -slt reads the archive's size only once the listing has opened it); null for none (-ba).</param>
     /// <param name="includes">-i/-x: whether an entry is a row at all.</param>
     /// <param name="rowLines">An entry's lines: one row, or its -slt block.</param>
     /// <returns>How the listing ended, and the rows printed.</returns>
     public static async Task<(ArchiveListSummary Summary, long Printed)> PrintAsync(
         Func<Action<ArchiveEntryInfo>, Task<ArchiveListSummary>> list,
-        IReadOnlyList<string>? header,
+        Func<IReadOnlyList<string>>? header,
         Func<ArchiveEntryInfo, bool> includes,
         Func<ArchiveEntryInfo, IReadOnlyList<string>> rowLines,
         TextWriter output)
@@ -29,7 +30,7 @@ internal static class CliListingPrinter
             if (!headerDue)
                 return;
             headerDue = false;
-            foreach (string line in header!)
+            foreach (string line in header!())
                 output.WriteLine(line);
         }
 
