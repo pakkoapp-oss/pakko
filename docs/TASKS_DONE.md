@@ -15365,3 +15365,62 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
       every copy of a duplicate name, the old dictionary the last copy's size: progress and test totals
       only. `ThrowIfNull(onEntry)` beside interface docs saying a listing throws nothing but the callback's
       exception and cancellation.
+
+### T-F552 - Batch 5h's reviewer's P3s: a \??\ root, the literal-prefix guard, a folder swapped during the walk (P3, 2026-11-17)
+
+- [x] **Status:** done 2026-11-17 (batch 5i). (1) `InputPaths.Literal` maps `\??\` to `\\?\` and
+  `TempOwner` takes it as literal (`TempOwnerTests.TryRemove_NtPrefixedPath_RemovesTheFolder`, red
+  before). (2) The guard sees any literal holding the prefix, verbatim, interpolated, escaped or in
+  `string.Concat`, except a `StartsWith` test and a volume GUID path
+  (`LiteralPrefixBuilt_SeesEverySpelling`, red on the old pattern). (3) Accepted, no code
+  (`docs/DECISIONS.md`, "Batch 5i").
+- **Graduated 2026-11-17:** batch 5i.
+- **As filed:**
+  - [ ] **Status:** open, batch 5i of this wave. The fresh reviewer of batch 5h (2026-11-17) found no P1 or P2; one
+    P3 was fixed in the batch (an entry with an ACL prints "-rw-r--r--+", measured on 3.8.9 and 3.5.2,
+    and failed a valid listing whose names tar.exe escapes: `TarStreamedListingTests`). Beside that:
+    - `TempOwner.TryRemove(@"\??\C:\t\pakko-x")`: `IsLiteral` sees no `\\?\`, `InputPaths.Problem` accepts it
+      (.NET treats `\??\` as extended), `InputPaths.Literal` makes `\\?\\??\C:\...`; nothing exists there,
+      so it returns true and the folder stays. `WorkRoot` and `QuarantineFiles` had the same form before.
+      Map `\??\` in `Literal` (or refuse it in `Problem`), and check whether a typed path reaches a work root.
+    - `DirectoryWalkerOwnerTests.LiteralPathPrefix_IsBuiltOnlyByInputPaths` catches `@"\\?\" +` only: an
+      interpolated, `string.Concat` or non-verbatim copy passes it.
+    - A folder swapped for a junction between its parent's listing and its own (`DirectoryWalker`) lets
+      `TempOwner`'s walk delete links and clear read-only inside the junction's target; the old `ToList`
+      had the same window, the lazy walk makes it longer. Needs a second process writing into Pakko's own
+      folder; open each folder by handle and check it is no link before listing it.
+
+### T-F457 — Read-only formats: leftovers from T-F442's fresh review (P3)
+
+- [x] **Status:** done 2026-11-17 (batch 5i): the last item. The Explorer menu shows a `.tlz` while
+  `lzma` or `lzip` is allowed and read by this tar.exe, as Core decides a `.tlz` by its bytes
+  (`MenuPolicy.TlzIsShownWhileLzmaOrLzipIsUsable`, red before); the device check is `POL-010`, in the
+  release batch.
+- **Graduated 2026-11-17:** batch 5i.
+- **As filed:**
+  - [ ] **Status:** open. Found 2026-11-06 by the fresh read-only review of T-F442; the two medium
+    findings (a pre-T-F442 snapshot list hid the new formats in the menu; the cut-ISO check left the
+    handle open on a read error) were fixed in T-F442's docs PR. Left, each low:
+    1. An ISO inside a wrapper (`win.iso.gz`, `.cpio.Z`, `.cpio.lz`) reaches tar.exe as gzip/compress/
+       lzip: no UDF refusal, no cut check, and `BlockedFormats=iso`/`cpio`/`ar` does not see it. Decide:
+       document (policy names the outer format) or look inside.
+       Done 2026-11-08 (`docs/DECISIONS.md`, "T-F457"; both builds measured): a gzip is looked into, and
+       an ISO or UDF image comes out as the `.iso` file, judged when opened (smoke `CLI-045`). The other
+       wrappers (no .NET decoder) and the outer policy name are documented in `docs/POLICIES.md`.
+    2. The cut check refuses an image whose declared volume is a little longer than the file (a TAO
+       CD-R dump missing the run-out sectors) that tar.exe reads in full. Measure a real one; maybe a
+       tolerance.
+       Done 2026-11-08: swept at every sector on both builds. Only a file under 24 sectors (libarchive
+       does not bid; read as an empty tar, exit 0) or one ending before its root directory is refused.
+       tar.exe reads the rest in full or fails by itself.
+    3. Fixed 2026-11-06 (stream I): T-F398's name fallback takes `.tlz` too, so Slackware's tar.lzma
+       `.tlz` is detected as LZMA and extracts (smoke `CLI-045`). Left: the menu still names `.tlz`
+       `lzip` for `BlockedFormats`, so `BlockedFormats=lzip` hides a tar.lzma `.tlz` (C++, low).
+    4. Fixed 2026-11-06 (stream I): `-stxudf` is a known type; a UDF image is `udf`, as Pakko detects
+       it, so `-stxiso` leaves it alone (`docs/CLI.md`; smoke `CLI-045`).
+    5. TOCTOU between `Detect(path)` and the sandbox scope reopening the path (older than T-F442): a file
+       swapped in between passes `BlockedFormats`/the UDF refusal. Needs write access to the file.
+       Decided 2026-11-08: accepted, no code (`docs/DECISIONS.md`, "T-F457", item 5): a same-user
+       process is outside the threat model, and a wrapper already passes the policy without a race.
+       Left in T-F457: item 3's menu name for `.tlz` (C++, low).
+  - **Reported by:** the agent, 2026-11-06.
