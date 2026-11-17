@@ -14983,6 +14983,27 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 5i - literal paths and the menu's .tlz (T-F552, T-F457; 2026-11-17)
+
+**A folder swapped for a junction during `TempOwner`'s walk is accepted, no code.** The walk lists
+a folder after its parent's listing called it a plain folder; a process that renames it and puts a
+junction in its place in between makes the walk delete the links and clear read-only inside the
+junction's target (the final recursive delete removes the junction itself, not its target). It needs
+a second process writing into Pakko's own folder at that moment. Every process Pakko starts that
+writes into such a folder (tar.exe writing an archive into a `WorkRoot`, a sandboxed run) has ended
+before the folder is removed: the run is awaited inside the `using`, and a sandboxed run's job kills
+what is left when it closes. That leaves a same-user process, which is outside the threat model (`SECURITY.md`; the same
+call as T-F457's item 5). Closing it would mean holding a handle on every folder of the path while
+listing, for a gain only against that process.
+
+**`\??\` is `\\?\`.** .NET's `Path.GetFullPath` and Windows' `CreateFile` both take a `\??\` path as
+the extended form, so `InputPaths.Literal` maps it rather than prefixing it again, and `TempOwner`
+takes it as spelled.
+
+**A `.tlz` in the Explorer menu is lzma or lzip.** Core decides a `.tlz` by its bytes (an lzip
+magic, else LZMA_Alone, T-F457 item 3); the menu reads the name only, so it shows the file while
+either format is allowed and read by this tar.exe.
+
 ## Batch 5h - the P3 tail (T-F547, T-F549, T-F545; 2026-11-17)
 
 **T-F547 is defensive.** Neither tar build sets the read-only attribute from mode 0444 (measured on
