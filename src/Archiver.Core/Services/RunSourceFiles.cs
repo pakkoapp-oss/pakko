@@ -23,7 +23,7 @@ internal sealed class RunSourceFiles(IReadOnlyList<string> sourcePaths)
             return false;
         // A source Windows cannot resolve is reported per item by the engine, and is no file here.
         _fullPaths ??= new HashSet<string>(
-            sourcePaths.Where(p => InputPaths.Problem(p) is null).Select(Path.GetFullPath), StringComparer.OrdinalIgnoreCase);
+            sourcePaths.Where(p => InputPaths.SpelledProblem(p) is null).Select(Path.GetFullPath), StringComparer.OrdinalIgnoreCase);
         string written = Path.GetFullPath(destPath);
         if (_fullPaths.Contains(written))
             return true;

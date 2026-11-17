@@ -1316,7 +1316,7 @@ public sealed class TarSandboxedService : ITarService
         // Two sources stay two for a single-file format, whatever happens to one of them.
         if (SingleFileRefusal(options) is { } singleFile)
             return new ArchiveResult { Errors = [CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), singleFile)] };
-        (ArchiveOptions kept, ArchiveResult? refused) = TrimmedSourceNames.Split(options);
+        (ArchiveOptions kept, ArchiveResult? refused) = TrimmedSourceNames.Split(options, spelledAllowed: false);
         if (refused is null)
             return await CompressKeptSourcesAsync(options, progress, cancellationToken).ConfigureAwait(false);
         if (kept.SourcePaths.Count == 0)

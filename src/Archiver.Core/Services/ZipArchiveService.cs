@@ -72,8 +72,9 @@ public sealed class ZipArchiveService : IArchiveService
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        // T-F509: a source whose name Windows trims is refused before anything reads it.
-        (ArchiveOptions kept, ArchiveResult? refused) = TrimmedSourceNames.Split(options);
+        // T-F509: a source whose name Windows trims is refused before anything reads it; T-F531: unless
+        // written as \\?\, which names the file itself.
+        (ArchiveOptions kept, ArchiveResult? refused) = TrimmedSourceNames.Split(options, spelledAllowed: true);
         if (refused is null)
             return await ArchiveKeptSourcesAsync(options, progress, cancellationToken).ConfigureAwait(false);
         if (kept.SourcePaths.Count == 0)
