@@ -1017,7 +1017,7 @@ Add-SmokeStep 'CLI-070' {
     } finally { $archive.Dispose() }
     Assert-Smoke (($entries -join ',') -ceq 'a.txt =SPACED') "archive entries: $($entries -join ',')"
     $tgz = Join-Path $folder 'lt.tar.gz'
-    $tar = Invoke-Pakko @('a', '-sdel', $tgz, $named)
+    $tar = Invoke-Pakko @('a', '-ttar.gz', '-sdel', $tgz, $named)
     Assert-Smoke ($tar.ExitCode -eq 2) "pakko a -sdel tar.gz: exit $($tar.ExitCode) $($tar.Text)"
     Assert-Smoke ($tar.Text -match 'ends in a space or a dot') "no refusal for tar.gz: $($tar.Text)"
     Assert-Smoke ([System.IO.File]::ReadAllText($named) -eq 'SPACED') 'the spaced file changed or went'
