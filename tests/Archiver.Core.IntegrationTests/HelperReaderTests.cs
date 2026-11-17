@@ -1049,28 +1049,59 @@ public sealed class HelperReaderTests : IDisposable
     // written). Emulated here by a deny of creating files in out\ next to the destination, for the user
     // (an AppContainer is checked as the user too; a deny for its own SID did not stop it, measured):
     // the extraction is run again once with the quarantine under %TEMP%, and nothing stays next to it.
-    [Fact]
-    public async Task Extract_TheHelperRefusedEveryWriteNextToTheDestination_RunsAgainInTemp()
+    // A selection too (an App selection, pakko x with names): the selection file is written for each run,
+    // under the root the run uses.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Extract_TheHelperRefusedEveryWriteNextToTheDestination_RunsAgainInTemp(bool selected)
     {
-        string archive = Tar(("a.txt", "A"), ("sub/b.txt", "B"));
+        string archive = Tar(("a.txt", "A"), ("b.txt", "B"), ("c.txt", "C"));
         using ISandboxedArchiveReader reader = await HelperReader.OpenAsync(
             archive, needsOutputDir: true, null, Setup.Value, CancellationToken.None, nearFolder: _temp.Path);
         string root = Directory.GetDirectories(_temp.Path, QuarantineLocation.RootPrefix + "*").Should().ContainSingle().Subject;
-        var outInfo = new DirectoryInfo(Path.Combine(root, "out"));
-        System.Security.AccessControl.DirectorySecurity security = outInfo.GetAccessControl();
-        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
-            System.Security.Principal.WindowsIdentity.GetCurrent().User!,
-            System.Security.AccessControl.FileSystemRights.CreateFiles, System.Security.AccessControl.AccessControlType.Deny));
-        outInfo.SetAccessControl(security);
+        DenyCreatingFiles(Path.Combine(root, "out"));
         await reader.ScanAsync(CancellationToken.None);
-        await reader.SelectForExtractAsync(null, null, CancellationToken.None);
+        await reader.SelectForExtractAsync(selected ? ["b.txt", "c.txt"] : null, null, CancellationToken.None);
 
         IQuarantinedEntries quarantine = await reader.ExtractAsync(null, [], CancellationToken.None);
 
         string[] files = [.. quarantine.Files().Select(f => f.Path)];
-        files.Should().HaveCount(2);
+        files.Should().HaveCount(selected ? 2 : 3);
         files.Should().OnlyContain(f => f.StartsWith(Path.Combine(Path.GetTempPath(), "PakkoTarSandbox"), StringComparison.OrdinalIgnoreCase));
+        files.Select(File.ReadAllText).Should().BeEquivalentTo(selected ? ["B", "C"] : ["A", "B", "C"]);
         Directory.Exists(root).Should().BeFalse();
+    }
+
+    // Refused after a file was written: the helper's copy wrote into out, so it is not the refusal CFA
+    // makes, and the run is not repeated over a half-written out. A folder where the second file goes
+    // makes CREATE_NEW fail there (the helper names its files by index).
+    [Fact]
+    public async Task Extract_TheHelperRefusedAfterItsFirstFile_FailsAndStaysNextToTheDestination()
+    {
+        string archive = Tar(("a.txt", "A"), ("b.txt", "B"), ("c.txt", "C"));
+        using ISandboxedArchiveReader reader = await HelperReader.OpenAsync(
+            archive, needsOutputDir: true, null, Setup.Value, CancellationToken.None, nearFolder: _temp.Path);
+        string root = Directory.GetDirectories(_temp.Path, QuarantineLocation.RootPrefix + "*").Should().ContainSingle().Subject;
+        Directory.CreateDirectory(Path.Combine(root, "out", "1"));
+        await reader.ScanAsync(CancellationToken.None);
+        await reader.SelectForExtractAsync(null, null, CancellationToken.None);
+
+        Func<Task> extract = () => reader.ExtractAsync(null, [], CancellationToken.None);
+
+        (await extract.Should().ThrowAsync<CoreTextIOException>()).Which.Text.Code.Should().Be(MessageCode.TarExtractionFailed);
+        File.ReadAllText(Path.Combine(root, "out", "0")).Should().Be("A");
+    }
+
+    private static void DenyCreatingFiles(string folder)
+    {
+        // The user's side of the AppContainer's access check: a deny for the sandbox's own SID did not stop it (measured).
+        var info = new DirectoryInfo(folder);
+        System.Security.AccessControl.DirectorySecurity security = info.GetAccessControl();
+        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+            System.Security.Principal.WindowsIdentity.GetCurrent().User!,
+            System.Security.AccessControl.FileSystemRights.CreateFiles, System.Security.AccessControl.AccessControlType.Deny));
+        info.SetAccessControl(security);
     }
 
     // The sandbox's entry comes off a file deeper than MAX_PATH as well: the move does not refuse it.
