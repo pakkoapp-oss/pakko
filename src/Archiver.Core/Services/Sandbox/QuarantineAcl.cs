@@ -617,15 +617,15 @@ internal static partial class QuarantineAcl
         [LibraryImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool GetKernelObjectSecurity(
-            Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint securityInformation, byte[]? securityDescriptor, uint length, out uint lengthNeeded);
+            Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint securityInformation, [Out] byte[]? securityDescriptor, uint length, out uint lengthNeeded);
 
         [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static partial bool SetFileSecurityW(string fileName, uint securityInformation, byte[] securityDescriptor);
+        public static partial bool SetFileSecurityW(string fileName, uint securityInformation, [In] byte[] securityDescriptor);
 
         [LibraryImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool SetKernelObjectSecurity(
-            Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint securityInformation, byte[] securityDescriptor);
+            Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint securityInformation, [In] byte[] securityDescriptor);
     }
 }

@@ -190,9 +190,7 @@ internal sealed class ExtractionStaging : IDisposable
     private List<string> MergeFiles(string actualDest, List<string> files, Action<string>? committed)
     {
         var lockedRelativePaths = new List<string>();
-        string? stagingGives = null;
-        string? lastFolder = null;
-        bool lastDiffers = false;
+        var entries = new FolderEntries(Path);
         foreach (string file in files)
         {
             string relative = System.IO.Path.GetRelativePath(Path, file);
@@ -214,19 +212,31 @@ internal sealed class ExtractionStaging : IDisposable
                 (Directory.Exists(finalFile) ? _blockedByFolder : lockedRelativePaths).Add(relative);
                 continue;
             }
-            string folder = System.IO.Path.GetDirectoryName(finalFile)!;
-            if (!string.Equals(folder, lastFolder, StringComparison.OrdinalIgnoreCase))
-            {
-                lastFolder = folder;
-                stagingGives ??= QuarantineAcl.FileInheritableEntries(InputPaths.Literal(Path)) ?? "";
-                // Unread is not the same: the file then takes its folder's entries all the same.
-                lastDiffers = QuarantineAcl.FileInheritableEntries(InputPaths.Literal(folder)) is not { } folderGives || folderGives != stagingGives;
-            }
-            if (lastDiffers && !TryInheritOnly(InputPaths.Literal(finalFile)))
+            if (entries.Differ(System.IO.Path.GetDirectoryName(finalFile)!) && !TryInheritOnly(InputPaths.Literal(finalFile)))
                 _permissionsNotApplied.Add(relative);
             committed?.Invoke(finalFile);
         }
         return lockedRelativePaths;
+    }
+
+    // T-F532: whether a folder passes down other entries to its files than staging does; the last
+    // folder's verdict is kept, staging's entries are read once.
+    private sealed class FolderEntries(string staging)
+    {
+        private string? _stagingGives;
+        private string? _lastFolder;
+        private bool _lastDiffers;
+
+        public bool Differ(string folder)
+        {
+            if (string.Equals(folder, _lastFolder, StringComparison.OrdinalIgnoreCase))
+                return _lastDiffers;
+            _lastFolder = folder;
+            _stagingGives ??= QuarantineAcl.FileInheritableEntries(InputPaths.Literal(staging)) ?? "";
+            // Unread is not the same: the file then takes its folder's entries all the same.
+            _lastDiffers = QuarantineAcl.FileInheritableEntries(InputPaths.Literal(folder)) is not { } folderGives || folderGives != _stagingGives;
+            return _lastDiffers;
+        }
     }
 
     // T-F532: not swallowed - the file would keep staging's entries in a folder that may give fewer.

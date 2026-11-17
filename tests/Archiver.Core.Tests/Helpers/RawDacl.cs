@@ -71,15 +71,15 @@ internal static partial class RawDacl
 
     [LibraryImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetKernelObjectSecurity(SafeFileHandle handle, uint information, byte[]? descriptor, uint length, out uint needed);
+    private static partial bool GetKernelObjectSecurity(SafeFileHandle handle, uint information, [Out] byte[]? descriptor, uint length, out uint needed);
 
     [LibraryImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool SetKernelObjectSecurity(SafeFileHandle handle, uint information, byte[] descriptor);
+    private static partial bool SetKernelObjectSecurity(SafeFileHandle handle, uint information, [In] byte[] descriptor);
 
     [LibraryImport("advapi32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool ConvertSecurityDescriptorToStringSecurityDescriptorW(byte[] descriptor, uint revision, uint information, out IntPtr text, out uint length);
+    private static partial bool ConvertSecurityDescriptorToStringSecurityDescriptorW([In] byte[] descriptor, uint revision, uint information, out IntPtr text, out uint length);
 
     [LibraryImport("advapi32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]

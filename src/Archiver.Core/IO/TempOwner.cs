@@ -118,7 +118,7 @@ public static class TempOwner
     /// T-F533: a literal path is opened as spelled, so no part of it is trimmed. T-F547: the folder is
     /// removed by literal paths throughout, so a name Windows trims inside it is reached as itself.
     /// </summary>
-    public static bool TryRemove(string path) => Remove(path, takeBack: false);
+    public static bool TryRemove(string path) => TryRemoveEntry(path, takeBack: false);
 
     /// <summary>
     /// T-F527: <see cref="TryRemove(string)"/> for a sandbox quarantine root, which only the user and the
@@ -126,9 +126,9 @@ public static class TempOwner
     /// taken back by its owner and removed. Never for a folder another principal can write to, where a
     /// planted entry could steer the walk.
     /// </summary>
-    internal static bool TryRemoveQuarantine(string path) => Remove(path, takeBack: true);
+    internal static bool TryRemoveQuarantine(string path) => TryRemoveEntry(path, takeBack: true);
 
-    private static bool Remove(string path, bool takeBack)
+    private static bool TryRemoveEntry(string path, bool takeBack)
     {
         if (IsLiteral(path) ? path.Contains('\0') : InputPaths.Problem(path) is not null)
             return false;
