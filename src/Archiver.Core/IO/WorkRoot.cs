@@ -135,7 +135,7 @@ public sealed partial class WorkRoot : IDisposable
             if (parent is null || !QuarantineAcl.GivesChildrenOnly(parent))
                 return;
             if (root is not null && string.Equals(Path.GetDirectoryName(root), parent, StringComparison.OrdinalIgnoreCase))
-                QuarantineAcl.CopyFolderDacl(root, full);
+                QuarantineAcl.CopyFolderDacl(Archiver.Core.Services.InputPaths.Literal(root), Archiver.Core.Services.InputPaths.Literal(full));
             else
                 QuarantineAcl.InheritOnly(full);
         }

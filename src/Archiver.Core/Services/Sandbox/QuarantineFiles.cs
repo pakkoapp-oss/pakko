@@ -112,6 +112,8 @@ internal static partial class QuarantineFiles
 
     public static void CreateFolder(string folder) => Directory.CreateDirectory(InputPaths.Literal(folder));
 
+    public static bool FolderEmpty(string folder) => !Directory.EnumerateFileSystemEntries(InputPaths.Literal(folder)).Any();
+
     /// <summary>
     /// T-F474: moves a quarantined file out to <paramref name="destination"/>, a path Pakko chose,
     /// replacing what is there, through one handle that also asks whether it may: no link, one name,

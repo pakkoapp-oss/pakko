@@ -122,7 +122,7 @@ internal static partial class QuarantineAcl
             // Not through CreateFileW: it asks SYNCHRONIZE and FILE_READ_ATTRIBUTES too, which such a DACL
             // denies; SetFileSecurityW asks WRITE_DAC alone, and writes a junction's own DACL, never its
             // target's (measured).
-            if (!NativeMethods.SetFileSecurityW(InputPaths.Literal(Path.GetFullPath(path)), DACL_SECURITY_INFORMATION, descriptor))
+            if (!NativeMethods.SetFileSecurityW(path, DACL_SECURITY_INFORMATION, descriptor))
                 throw ErrorFor(Marshal.GetLastPInvokeError(), path);
         }
         finally
@@ -340,7 +340,7 @@ internal static partial class QuarantineAcl
         const uint BackupSemantics = 0x02000000;
         const uint OpenReparsePoint = 0x00200000;
         Microsoft.Win32.SafeHandles.SafeFileHandle handle = NativeMethods.CreateFileW(
-            InputPaths.Literal(Path.GetFullPath(path)), access, FileShareAll, 0, OpenExisting, BackupSemantics | OpenReparsePoint, 0);
+            path, access, FileShareAll, 0, OpenExisting, BackupSemantics | OpenReparsePoint, 0);
         if (!handle.IsInvalid)
             return handle;
         int error = Marshal.GetLastPInvokeError();
