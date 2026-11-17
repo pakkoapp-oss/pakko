@@ -439,6 +439,23 @@ public sealed class HelperReaderTests : IDisposable
         folder.Should().Throw<ArchiveHelperProtocolException>();
     }
 
+    // Batch 5i's reviewer: the rename's NT path was built from "\??\C:\..." as "\??\\??\C:\...", so
+    // every file of a tar extracted to such a destination failed; each spelling lands on the file.
+    [Theory]
+    [InlineData(@"\??\")]
+    [InlineData(@"\\?\")]
+    [InlineData("")]
+    public void TakeOut_ADestinationInEachSpelling_LandsOnTheFile(string prefix)
+    {
+        string file = Path.Combine(_temp.Path, "staged");
+        string dest = Path.Combine(_temp.Path, "dest.txt");
+        File.WriteAllText(file, "a");
+
+        QuarantineFiles.TakeOut(file, prefix + dest).Should().BeTrue();
+
+        File.ReadAllText(dest).Should().Be("a");
+    }
+
     // A named stream would move out with its file, unseen by the scan; a hard link would make two
     // destinations share one file's data. Refused, and the file stays where it was.
     [Fact]
