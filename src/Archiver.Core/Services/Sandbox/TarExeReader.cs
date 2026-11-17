@@ -48,7 +48,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         if (exitCode != 0)
             return CoreMessages.Summary(ListFailure(stdErr));
 
-        if (listing.Count != names.Length)
+        if (listing.Unpaired || listing.Count != names.Length)
             return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent)));
 
         return new ArchiveListSummary { Success = true, Count = listing.Passed };
@@ -505,7 +505,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
             sizes[i] = typeChar == '-' ? listing.Sizes[i] : -1;
             if (typeChar == '-')
-                totalDeclaredSize += sizes[i];
+                totalDeclaredSize = AddDeclared(totalDeclaredSize, sizes[i]);
         }
 
         // T-F05: the raw names (with tar's own trailing '/' on directory entries preserved) are
@@ -516,12 +516,25 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         return new TarCatalog(totalDeclaredSize, names, sizes);
     }
 
-    // T-F142: the files among a selection's members, each copy counted (a progress total).
-    private static long DeclaredSizeOf(TarCatalog catalog, List<string> members)
+    // T-F142: the files among a selection's members, each copy counted (a progress total): tar.exe
+    // writes every copy (the old dictionary counted the last one's size).
+    internal static long DeclaredSizeOf(TarCatalog catalog, List<string> members)
     {
         var selected = new HashSet<string>(members, StringComparer.Ordinal);
-        return catalog.Files().Where(f => selected.Contains(f.Name)).Sum(f => f.Size);
+        long total = 0;
+        foreach ((string name, long size) in catalog.Files())
+        {
+            if (selected.Contains(name))
+                total = AddDeclared(total, size);
+        }
+        return total;
     }
+
+    /// <summary>T-F545: a declared size is the archive's to state (a sparse entry's can be any long),
+    /// so a total saturates at <see cref="long.MaxValue"/>: past it, the largest archive - T-F94's
+    /// bomb check refuses it - never a wrapped small one, and no OverflowException out of Core.
+    /// Both are never negative (<see cref="TarSandboxedService.ParseTarListingSize(string[])"/>).</summary>
+    internal static long AddDeclared(long total, long size) => size > long.MaxValue - total ? long.MaxValue : total + size;
 
     // T-F05: expands a UI-selected set of archive-internal paths (ArchiveEntryInfo.Path's
     // convention — no trailing slash, even for folders) into the exact literal member names
@@ -603,13 +616,17 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
     // T-F540: each "-tv" line, as it arrives, made the entry it lists - "-t"'s name at its position
     // (T-F418: "-tv" is read by column only), its type, size and date - and passed on. A line past
-    // the names is counted, not passed on: the counts then disagree and the listing fails.
+    // the names is counted, not passed on: the counts then disagree and the listing fails. T-F545: a
+    // line is passed on only on its own evidence: an owner's newline, printed as it is (3.8.9 and
+    // 3.5.2 measured), split one entry's line in two, and every later name took the line before its
+    // own. From the first line without it, none is passed.
     private sealed class StreamedListing(string[] names, Encoding encoding, Action<ArchiveEntryInfo> onEntry)
     {
         private readonly DateTime _now = DateTime.Now;
         private readonly string[][] _months = TarListingDate.MonthFields(TarListingDate.UserMonthNames);
         public int Count { get; private set; }
         public long Passed { get; private set; }
+        public bool Unpaired { get; private set; }
 
         public void OnLine(ReadOnlySpan<byte> bytes)
         {
@@ -617,8 +634,13 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             if (line.Length == 0)
                 return;
             int at = Count++;
-            if (at >= names.Length)
+            if (at >= names.Length || Unpaired)
                 return;
+            if (!NamesItsEntry(line, names[at]))
+            {
+                Unpaired = true;
+                return;
+            }
             // T-F196: `tar -C dir .` archives prefix every member "./" and start with a bare "./"
             // - shown verbatim, the Archive Browser's root was a lone folder named ".". List the
             // same paths the plain archive would; ExpandSelection maps them back for extraction.
@@ -637,6 +659,32 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             });
             Passed++;
         }
+
+        // "-tv" prints the name in the bytes "-t" did (measured on both builds): it ends the line, and a
+        // link's target follows it (" -> " for a symlink, " link to " for a hard link). A name tar.exe
+        // may have escaped ("\\", "\001", an unprintable byte in the page) is held unescaped here, and
+        // escaping again is the C runtime's choice (TarListingName): such a line needs to start as an
+        // entry's own line does, with its mode, which the rest of a split line does not.
+        private static bool NamesItsEntry(string line, string name)
+        {
+            if (EndsWithName(line, name)
+                || (line[0] == 'l' && line.Contains(" " + name + " -> ", StringComparison.Ordinal))
+                || (line[0] == 'h' && line.Contains(" " + name + " link to ", StringComparison.Ordinal)))
+                return true;
+            return MayBePrintedEscaped(name) && StartsWithAMode(line);
+        }
+
+        private static bool EndsWithName(string line, string name) =>
+            line.Length > name.Length && line[^(name.Length + 1)] == ' ' && line.AsSpan().EndsWith(name, StringComparison.Ordinal);
+
+        private static bool MayBePrintedEscaped(string name) => name.AsSpan().ContainsAnyExceptInRange(' ', '~') || name.Contains('\\');
+
+        private static readonly System.Buffers.SearchValues<char> ModeTypes = System.Buffers.SearchValues.Create("-dlhcbps");
+        private static readonly System.Buffers.SearchValues<char> ModePermissions = System.Buffers.SearchValues.Create("-rwxsStT");
+
+        // strmode's ten characters, then a space: "-rw-r--r-- ".
+        private static bool StartsWithAMode(string line) =>
+            line.Length > 10 && ModeTypes.Contains(line[0]) && !line.AsSpan(1, 9).ContainsAnyExcept(ModePermissions) && line[10] == ' ';
     }
 
     // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test, a filter or
@@ -693,7 +741,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
                     continue;
                 (passes ? passedFiles : leftOutFiles).Add(name);
                 if (passes && catalog.IsFile(i))
-                    size += catalog.SizeOf(i);
+                    size = AddDeclared(size, catalog.SizeOf(i));
             }
             if (passedFiles.Count == 0)
                 return new TestSubset(0, null, null) { NothingToRead = true };

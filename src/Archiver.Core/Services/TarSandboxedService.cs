@@ -2192,8 +2192,9 @@ public sealed class TarSandboxedService : ITarService
     // DECISIONS.md's T-F90 entry.
     internal static long ParseTarListingSize(string line) => ParseTarListingSize(TarListingDate.Fields(line));
 
+    // T-F545: digits only - a sign would make a size negative and a total smaller than its parts.
     internal static long ParseTarListingSize(string[] fields) =>
-        fields.Length > 4 && long.TryParse(fields[4], out long size) ? size : 0;
+        fields.Length > 4 && long.TryParse(fields[4], NumberStyles.None, CultureInfo.InvariantCulture, out long size) ? size : 0;
 
     // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".
     internal static string[] SplitLines(string text)

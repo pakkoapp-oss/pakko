@@ -902,11 +902,9 @@ static async Task<bool> PrintArchiveListingAsync(
     bool terminal = !Console.IsOutputRedirected;
     ArchiveFormat format = ArchiveFormatDetector.Detect(archivePath);
     string shownName = report.StdinPath is not null ? "(stdin)" : archivePath;
-    IReadOnlyList<string>? header = layout.Header
-        ? await ListingHeaderAsync(archivePath, shownName, format, layout.Technical, terminal).ConfigureAwait(false)
+    Func<IReadOnlyList<string>>? header = layout.Header
+        ? () => ListingHeader(archivePath, shownName, format, layout.Technical, terminal)
         : null;
-    if (layout.Header && header is null)
-        return false;
 
     // T-F540: each row printed as the listing reads it, the header before the first; T-F410: the
     // names after the archive, -i and -x pick the rows, as 7-Zip's l.
@@ -935,29 +933,24 @@ static IReadOnlyList<string> ListingRows(ArchiveEntryInfo entry, bool technical,
         ? CliTechListing.EntryBlock(entry, format, terminal)
         : [CliEntryFormatter.FormatRow(entry with { Path = CliTechListing.ForConsole(entry.Path, terminal) })];
 
-// The column header, or -slt's archive block, made before the listing (T-F540: printed with its
-// first row). Null when the archive's size cannot be read (T-F440: split out of
-// PrintArchiveListingAsync, S3776).
-static async Task<IReadOnlyList<string>?> ListingHeaderAsync(
-    string archivePath, string shownName, ArchiveFormat format, bool technical, bool terminal)
-{
-    long physicalSize = 0;
-    if (technical)
-    {
-        try
-        {
-            physicalSize = new FileInfo(archivePath).Length;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Gone or locked since it was named: this run's error.
-            await Console.Error.WriteLineAsync($"pakko: error: {shownName}: {ex.Message}").ConfigureAwait(false);
-            return null;
-        }
-    }
-    return technical
-        ? CliTechListing.ArchiveHeader(shownName, format, physicalSize, terminal)
+// The column header, or -slt's archive block, made as its first row is printed (T-F540), after
+// Core opened the archive: a missing or locked one is the listing's own localized error (T-F545).
+static IReadOnlyList<string> ListingHeader(string archivePath, string shownName, ArchiveFormat format, bool technical, bool terminal) =>
+    technical
+        ? CliTechListing.ArchiveHeader(shownName, format, ArchiveLength(archivePath), terminal)
         : [CliEntryFormatter.Header];
+
+// Null when the size cannot be read even after the listing read the archive: -slt leaves it out.
+static long? ArchiveLength(string archivePath)
+{
+    try
+    {
+        return new FileInfo(archivePath).Length;
+    }
+    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+    {
+        return null; // gone since the listing read it: the block says nothing it does not know
+    }
 }
 
 // -------------------------------------------------------------------------
