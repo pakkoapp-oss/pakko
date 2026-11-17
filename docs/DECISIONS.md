@@ -15000,9 +15000,13 @@ and `-tv`; a symlink's tail is "name -> target", a hard link's "name link to tar
 when its line ends with " " + the `-t` name, or holds " name -> " (type l) or " name link to " (type
 h); a name Pakko unescaped (`TarListingName.Unescape`) cannot be compared to the printed tail, so for
 a name with a control character or a backslash the line must at least start with a mode. The first
-line that fails stops the rows; the count check then fails the listing. Residual: an owner crafted to
-end in " first.txt" makes its first half pass for that entry, with size 0, before the listing fails
-on the next line; the row is wrong only in its size and the listing ends in an error, as before.
+line that fails stops the rows; the count check then fails the listing. Residual, T-F551: the check
+narrows the shift, it does not close it. A shifted half still passes when it ends with the next name
+(an owner crafted to end in " first.txt"; duplicate names; a later name that is a space-separated
+suffix of an earlier one, "z b.txt" then "b.txt"), and the mode-only fallback passes any half that
+starts with a mode (an owner "x\n-rw-r--r-- 0 y") for names with a backslash or a control
+character. Every such listing still ends in exit 2 on the count check. The closing fix compares the
+printed tail with the name escaped again by the rules measured identical on both builds.
 
 **The helper is unchanged.** A format without a charset (T-F418's check) fails after the rows before
 the nameless entry: each of those rows is that entry's own data, as 7-Zip lists up to an error.

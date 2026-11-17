@@ -15335,7 +15335,8 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 - [x] **Status:** done 2026-11-17 (batch 5h), item by item. (1) A streamed tar row passes only on
   its own `-tv` line's evidence (it ends with the `-t` name, a link's target after it, or starts with a
   mode for a name tar.exe may have escaped); from the first line that has none, no row: an owner's
-  newline, printed as it is by 3.8.9 and 3.5.2, no longer shifts every later row
+  newline, printed as it is by 3.8.9 and 3.5.2, no longer shifts every later row in the common case
+  (crafted owners and suffix names still can, until the listing fails: T-F551)
   (`TarStreamedListingTests`, smoke `CLI-068`). The helper is unchanged: each row there is its own
   entry's. (2) Done with T-F543. (3) `pakko l -slt` makes its header with the first row, after Core
   opened the archive: a missing archive shows the listing's own error; a size still unreadable is left
