@@ -364,13 +364,16 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <summary>
     /// T-F529: "-tv" handed over a line at a time (without its '\n'), never held as one text: at
     /// 1,000,000 entries the text and its lines were 300 MB of a list's peak. The header charset is
-    /// the plain listing's, run first when nothing ran yet.
+    /// the plain listing's, run first when nothing ran yet. Batch 5j: "--numeric-owner" prints the
+    /// owner and group as numbers (3.8.9 and 3.5.2, every format, measured): as names, tar.exe prints
+    /// them as they are, so a space moved the size and date columns (T-F94's total read 0) and a
+    /// newline split an entry's line in two (T-F551).
     /// </summary>
     public async Task<(int ExitCode, string StdErr)> ListVerboseAsync(StdOutLineHandler onLine, CancellationToken cancellationToken)
     {
         if (_utf8Headers is null)
             await ListNamesAsync(cancellationToken).ConfigureAwait(false);
-        (int exitCode, _, string stdErr) = await RunAsync("-tv", [], cancellationToken, stdOutLines: ListingLines(onLine)).ConfigureAwait(false);
+        (int exitCode, _, string stdErr) = await RunAsync("-tv", ["--numeric-owner"], cancellationToken, stdOutLines: ListingLines(onLine)).ConfigureAwait(false);
         return (exitCode, stdErr);
     }
 
