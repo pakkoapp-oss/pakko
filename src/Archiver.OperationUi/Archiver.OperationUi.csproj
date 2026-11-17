@@ -32,7 +32,7 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
     <!-- T-F363: the 2.x metapackage publishes Windows ML's onnxruntime/DirectML DLLs (16 MB); Pakko never calls them. -->
-    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.5.96" ExcludeAssets="native" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Archiver.OperationUi.Core\Archiver.OperationUi.Core.csproj" />

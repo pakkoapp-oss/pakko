@@ -16,9 +16,9 @@
       },
       "Microsoft.Windows.AI.MachineLearning": {
         "type": "Direct",
-        "requested": "[2.1.74, )",
-        "resolved": "2.1.74",
-        "contentHash": "/Z1yAQ0J53eD1RrOl5anTDS0UQOgneERY//hLljwGcWeUX9ynCvOl5qUxAsfWvwsZZGcvV4WKjAvnAtA6N5i+w==",
+        "requested": "[2.5.96, )",
+        "resolved": "2.5.96",
+        "contentHash": "nEigqZy0jJu0G0qTcqjOXJ1LtooPJvHt+w3NxrSInAmIYHiMqtUX9oRIVBllqZWR2omOYrwYRfMmvaYpgP3U0A==",
         "dependencies": {
           "System.Numerics.Tensors": "9.0.0"
         }
@@ -162,6 +162,45 @@
         "type": "Project"
       }
     },
+    "net11.0-windows10.0.17763/linux-x64": {
+      "Microsoft.DotNet.ILCompiler": {
+        "type": "Direct",
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "lw6gUL92db6XPwYsQwaGwrJxgRM0X0qQKl0QkwuZIACMtgH0eFu6jmq6W+/L8qTxQZwggfV/dGjICyMqVHdehg==",
+        "dependencies": {
+          "runtime.linux-x64.Microsoft.DotNet.ILCompiler": "11.0.0"
+        }
+      },
+      "Microsoft.Windows.AI.MachineLearning": {
+        "type": "Direct",
+        "requested": "[2.5.96, )",
+        "resolved": "2.5.96",
+        "contentHash": "nEigqZy0jJu0G0qTcqjOXJ1LtooPJvHt+w3NxrSInAmIYHiMqtUX9oRIVBllqZWR2omOYrwYRfMmvaYpgP3U0A==",
+        "dependencies": {
+          "System.Numerics.Tensors": "9.0.0"
+        }
+      },
+      "Microsoft.Web.WebView2": {
+        "type": "Transitive",
+        "resolved": "1.0.3719.77",
+        "contentHash": "t+ucyKw5NTwMjsUrDF6R9Lk40lpcKQD1/HgyGFxl49tdA4h9dKlsj6FYGEmDRpFNfnTpENuTypMcdbrlkqBdDA=="
+      },
+      "Microsoft.WindowsAppSDK.Foundation": {
+        "type": "Transitive",
+        "resolved": "2.3.12",
+        "contentHash": "UflrNbXoZmHPt8lLGDk4gQ+yoGfQlCHd3TVTy7YwCMZ/aVGWAiLDqGCEjtWmNsI8ySy6imx3ZlenKfd2/VMPEg==",
+        "dependencies": {
+          "Microsoft.WindowsAppSDK.Base": "2.0.4",
+          "Microsoft.WindowsAppSDK.InteractiveExperiences": "2.1.8"
+        }
+      },
+      "runtime.linux-x64.Microsoft.DotNet.ILCompiler": {
+        "type": "Transitive",
+        "resolved": "11.0.0",
+        "contentHash": "HMCCGxJ1Q41NF31M+yWB7h0OAWr0XpiS8ZYMOi/V5IU/864Yi00rLq3M1K3AhE2+q86YJA4V9KZ28NXE+Q/uxA=="
+      }
+    },
     "net11.0-windows10.0.17763/win-arm64": {
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",
@@ -174,9 +213,9 @@
       },
       "Microsoft.Windows.AI.MachineLearning": {
         "type": "Direct",
-        "requested": "[2.1.74, )",
-        "resolved": "2.1.74",
-        "contentHash": "/Z1yAQ0J53eD1RrOl5anTDS0UQOgneERY//hLljwGcWeUX9ynCvOl5qUxAsfWvwsZZGcvV4WKjAvnAtA6N5i+w==",
+        "requested": "[2.5.96, )",
+        "resolved": "2.5.96",
+        "contentHash": "nEigqZy0jJu0G0qTcqjOXJ1LtooPJvHt+w3NxrSInAmIYHiMqtUX9oRIVBllqZWR2omOYrwYRfMmvaYpgP3U0A==",
         "dependencies": {
           "System.Numerics.Tensors": "9.0.0"
         }
@@ -213,9 +252,9 @@
       },
       "Microsoft.Windows.AI.MachineLearning": {
         "type": "Direct",
-        "requested": "[2.1.74, )",
-        "resolved": "2.1.74",
-        "contentHash": "/Z1yAQ0J53eD1RrOl5anTDS0UQOgneERY//hLljwGcWeUX9ynCvOl5qUxAsfWvwsZZGcvV4WKjAvnAtA6N5i+w==",
+        "requested": "[2.5.96, )",
+        "resolved": "2.5.96",
+        "contentHash": "nEigqZy0jJu0G0qTcqjOXJ1LtooPJvHt+w3NxrSInAmIYHiMqtUX9oRIVBllqZWR2omOYrwYRfMmvaYpgP3U0A==",
         "dependencies": {
           "System.Numerics.Tensors": "9.0.0"
         }
@@ -252,9 +291,9 @@
       },
       "Microsoft.Windows.AI.MachineLearning": {
         "type": "Direct",
-        "requested": "[2.1.74, )",
-        "resolved": "2.1.74",
-        "contentHash": "/Z1yAQ0J53eD1RrOl5anTDS0UQOgneERY//hLljwGcWeUX9ynCvOl5qUxAsfWvwsZZGcvV4WKjAvnAtA6N5i+w==",
+        "requested": "[2.5.96, )",
+        "resolved": "2.5.96",
+        "contentHash": "nEigqZy0jJu0G0qTcqjOXJ1LtooPJvHt+w3NxrSInAmIYHiMqtUX9oRIVBllqZWR2omOYrwYRfMmvaYpgP3U0A==",
         "dependencies": {
           "System.Numerics.Tensors": "9.0.0"
         }
