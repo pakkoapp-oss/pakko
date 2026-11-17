@@ -223,6 +223,8 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         _ = Archiver.Core.IO.PathIdentity.SelfAndAncestors(path);
         _ = Archiver.Core.IO.PathIdentity.FinalPathOfItself(path);
         _ = SourceKey.Of(path);
+        _ = InputPaths.SamePlainPath(path);
+        _ = InputPaths.SamePlainPath(@"\\?\" + path);
         return Task.CompletedTask;
     });
 
@@ -490,6 +492,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["PathIdentity.SelfAndAncestors"] = [nameof(PathIdentity_Path)],
         ["PathIdentity.FinalPathOfItself"] = [nameof(PathIdentity_Path)],
         ["SourceKey.Of"] = [nameof(PathIdentity_Path)],
+        ["InputPaths.SamePlainPath"] = [nameof(PathIdentity_Path)],
         ["TempOwner.SweepStaleInTemp"] = [nameof(TempOwner_Path)],
         ["DirectoryWalker.Walk"] = [nameof(DirectoryWalker_Path)],
         ["DirectoryWalker.RelativePath"] = [nameof(DirectoryWalker_Path)],

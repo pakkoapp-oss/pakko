@@ -15,6 +15,11 @@ public interface ISourceSnapshot
     /// <summary>Whether <paramref name="source"/> holds a link (junction, symbolic link) below it;
     /// such a folder is recycled whole, never deleted permanently.</summary>
     bool HoldsLink(string source);
+
+    /// <summary>T-F531: whether <paramref name="source"/> is, or holds, a name Windows trims ("a.txt ").
+    /// ZIP archives it by its <c>\\?\</c> path, but Pakko's own extraction cannot give the name back:
+    /// such a source is never deleted.</summary>
+    bool HoldsTrimmedName(string source);
 }
 
 /// <summary>
@@ -27,7 +32,7 @@ public interface ISourceSnapshot
 /// </summary>
 public sealed class SourceSnapshot : ISourceSnapshot
 {
-    private sealed record Listing(HashSet<string> Entries, bool HoldsLink, bool Unreadable);
+    private sealed record Listing(HashSet<string> Entries, bool HoldsLink, bool Unreadable, bool HoldsTrimmedName = false);
 
     // T-F515: with case, as Core reports a source in the spelling it was given.
     private readonly Dictionary<string, Listing> _sources = [with(StringComparer.Ordinal)];
@@ -59,6 +64,10 @@ public sealed class SourceSnapshot : ISourceSnapshot
     public bool HoldsLink(string source) =>
         Key(source) is not { } key || !_sources.TryGetValue(key, out Listing? then) || then.HoldsLink;
 
+    /// <inheritdoc/>
+    public bool HoldsTrimmedName(string source) =>
+        InputPaths.NameTrimmed(source) || (Key(source) is { } key && _sources.TryGetValue(key, out Listing? then) && then.HoldsTrimmedName);
+
     // T-F511: Core's one source key, for Take and the lookups; a source with none is never listed.
     private static string? Key(string path) => SourceKey.Of(path);
 
@@ -78,7 +87,6 @@ public sealed class SourceSnapshot : ISourceSnapshot
             entries.Add("d|" + folder);
         foreach (string link in tree.Links)
             entries.Add("l|" + link);
-        // T-F509: by its plain path "a.txt " is its twin; such a source is not known well enough to delete.
-        return new Listing(entries, HoldsLink: tree.Links.Count > 0, tree.Unreadable || tree.TrimmedNames.Count > 0);
+        return new Listing(entries, HoldsLink: tree.Links.Count > 0, tree.Unreadable, HoldsTrimmedName: tree.TrimmedNames.Count > 0);
     }
 }

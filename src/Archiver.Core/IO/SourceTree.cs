@@ -14,8 +14,10 @@ public sealed record SourceListing(
     bool Exists, bool IsLink, IReadOnlyList<SourceFileStamp> Files, IReadOnlyList<string> Folders,
     IReadOnlyList<string> Links, bool Unreadable)
 {
-    /// <summary>T-F509: names below the source Windows trims ("a.txt "): by its plain path each is its
-    /// twin's, so deleting the source by its listing would take the twin and keep the file.</summary>
+    /// <summary>T-F509/T-F531: the source itself and the names below it that Windows trims ("a.txt "),
+    /// by their <c>\\?\</c> paths, as <see cref="Files"/> and <see cref="Folders"/> list them. ZIP
+    /// archives them, but Pakko's own extraction cannot give such a name back, so the archive would be
+    /// the only copy: a source holding one is never deleted.</summary>
     public IReadOnlyList<string> TrimmedNames { get; init; } = [];
 }
 
@@ -31,12 +33,14 @@ public static class SourceTree
 
     /// <summary>Lists <paramref name="fullPath"/>; never throws for an I/O failure, which is
     /// <see cref="SourceListing.Unreadable"/> instead. A drive root's own Hidden+System entries are left out, as in
-    /// every walk (<see cref="DirectoryWalker"/>, T-F345).</summary>
+    /// every walk (<see cref="DirectoryWalker"/>, T-F345). A name Windows trims is listed by its
+    /// <c>\\?\</c> path, as ZIP reads it (T-F531); written so, the source may be one itself.</summary>
     public static SourceListing List(string fullPath)
     {
         // T-F406: a path Windows cannot parse is checked at the entry, never caught as an ArgumentException.
-        if (Archiver.Core.Services.InputPaths.Problem(fullPath) is not null)
+        if (Archiver.Core.Services.InputPaths.SpelledProblem(fullPath) is not null)
             return Missing;
+        List<string> trimmed = Archiver.Core.Services.InputPaths.NameTrimmed(fullPath) ? [fullPath] : [];
         try
         {
             var file = new FileInfo(fullPath);
@@ -45,15 +49,19 @@ public static class SourceTree
             if ((file.Attributes & FileAttributes.ReparsePoint) != 0)
                 return new SourceListing(true, true, [], [], [], false);
             if ((file.Attributes & FileAttributes.Directory) == 0)
-                return new SourceListing(true, false, [StampOf(file)], [], [], false);
+                return new SourceListing(true, false, [StampOf(file)], [], [], false) { TrimmedNames = trimmed };
 
             var files = new List<SourceFileStamp>();
             var folders = new List<string>();
             var links = new List<string>();
-            var trimmed = new List<string>();
             bool unreadable = false;
-            foreach (WalkEntry entry in DirectoryWalker.Walk(fullPath))
+            bool below = false;
+            foreach (WalkEntry entry in DirectoryWalker.Walk(fullPath, spelledBelow: true))
             {
+                // The source's own entry comes first; it was judged by its whole path above.
+                if (below && Archiver.Core.Services.InputPaths.OwnNameTrimmed(entry.Info.Name))
+                    trimmed.Add(entry.Info.FullName);
+                below = true;
                 switch (entry.Kind)
                 {
                     case WalkEntryKind.Directory:
@@ -69,10 +77,8 @@ public static class SourceTree
                         unreadable = true;
                         break;
                     case WalkEntryKind.TrimmedName:
-                        trimmed.Add(entry.Info.FullName);
-                        break;
                     case WalkEntryKind.LeftOut:
-                        break; // no filter is given here
+                        break; // never in a spelled walk; no filter is given here
                 }
             }
             return new SourceListing(true, false, files, folders, links, unreadable) { TrimmedNames = trimmed };

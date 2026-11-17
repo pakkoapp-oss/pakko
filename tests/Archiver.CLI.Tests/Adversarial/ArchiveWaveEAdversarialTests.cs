@@ -155,6 +155,24 @@ public sealed class ArchiveWaveEAdversarialTests : IDisposable
         File.GetLastWriteTimeUtc(_scratch.Inside("o.zip")).Should().Be(Utc(expected));
     }
 
+    // T-F531: a name Windows trims in the folder is archived by its \\?\ path, so its time counts too.
+    [Fact]
+    public void Stl_NewestFileWithANameWindowsTrims_Counts()
+    {
+        SetTimes(Utc(2001), Utc(2002), Utc(2003), Utc(2004), Utc(2005));
+        string spaced = @"\\?\" + _scratch.Inside("src") + @"\a.txt ";
+        File.WriteAllText(spaced, "SPACED");
+        File.SetLastWriteTimeUtc(spaced, Utc(2097));
+        Directory.SetLastWriteTimeUtc(_scratch.Inside("src"), Utc(2005));
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-stl", "o.zip", "src");
+
+        exitCode.Should().Be(0, stdErr);
+        EntryNames(_scratch.Inside("o.zip")).Should().Contain("src/a.txt ");
+        File.GetLastWriteTimeUtc(_scratch.Inside("o.zip")).Should().Be(Utc(2097));
+        File.Delete(spaced);
+    }
+
     // CLI.md: "what a filter leaves out ... do not count".
     [Fact]
     public void Stl_NewestFileLeftOutByAFilter_DoesNotCount()

@@ -13,6 +13,8 @@ internal sealed class AllUnchangedSnapshot : ISourceSnapshot
     public bool Unchanged(string source) => true;
 
     public bool HoldsLink(string source) => false;
+
+    public bool HoldsTrimmedName(string source) => false;
 }
 
 public sealed class SourceRecyclerTests
@@ -356,10 +358,27 @@ public sealed class SourceRecyclerTests
         result.Kept.Should().Equal(new KeptSource(@"C:\w\a", KeepReason.OutputMissing), new KeptSource(@"C:\w\b", KeepReason.OutputMissing));
     }
 
-    private sealed class ChangedSnapshot(string changed, string withLink) : ISourceSnapshot
+    private sealed class ChangedSnapshot(string changed, string withLink, string? withTrimmedName = null) : ISourceSnapshot
     {
         public bool Unchanged(string source) => source != changed;
         public bool HoldsLink(string source) => source == withLink;
+        public bool HoldsTrimmedName(string source) => source == withTrimmedName;
+    }
+
+    // T-F531: ZIP archived the folder in full, but Pakko's own extraction cannot give a name Windows
+    // trims back: the archive would be the only copy. Kept, as not safe to delete, never "changed".
+    [Fact]
+    public async Task DeleteAsync_SourceHoldingANameWindowsTrims_IsKeptAsNotSafeToDelete()
+    {
+        _ops.Add(@"C:\tw", @"C:\tw", isFixed: true);
+        _ops.Add(@"C:\ok", @"C:\ok", isFixed: true);
+
+        RecycleResult result = await new SourceRecycler(_ops).DeleteAsync(
+            [@"C:\tw", @"C:\ok"], new ChangedSnapshot("none", "none", withTrimmedName: @"C:\tw"), _ => Task.FromResult(true));
+
+        result.Kept.Should().Equal(new KeptSource(@"C:\tw", KeepReason.NotSafeToDelete));
+        result.Deleted.Should().Equal(@"C:\ok");
+        _ops.RecycleCalls.Should().ContainSingle().Which.Should().Equal(@"C:\ok");
     }
 
     [Fact]

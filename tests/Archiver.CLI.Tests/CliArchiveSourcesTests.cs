@@ -366,25 +366,49 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
     }
 
     // T-F511 review: a folder Windows trims, met by a recursive search, was left out in silence (exit
-    // 0, its files not archived). Before the walk moved to DirectoryWalker, listing it failed and
-    // was a warning; it is one again.
+    // 0, its files not archived), then a warning. T-F531: the search enters it by its \\?\ path and
+    // takes what is in it in that spelling, which ZIP archives (tar refuses it, with why).
     [Fact]
-    public void Search_FolderWithANameWindowsTrims_NoTwin_IsAProblem()
+    public void Search_FolderWithANameWindowsTrims_NoTwin_IsEnteredAsSpelled()
     {
         string dotted = Path.Combine(_temp.Path, "d.");
         Directory.CreateDirectory(@"\\?\" + dotted);
         File.WriteAllText(@"\\?\" + Path.Combine(dotted, "f.txt"), "inside d.");
+        File.WriteAllText(@"\\?\" + Path.Combine(_temp.Path, "a.txt "), "spaced");
         try
         {
             CliArchiveSourceList list = Search([Mask("*.txt", CliRecursion.Recursive)]);
+            CliArchiveSourceList spaced = Search([Mask("a.txt*")]);
 
-            list.Sources.Should().NotContain(s => s.FullPath.EndsWith("f.txt", StringComparison.Ordinal));
-            list.Problems.Should().ContainSingle().Which.Should().Be(new CliSourceProblem(dotted, CliArchiveSources.NameTrimmed));
+            list.Sources.Select(s => s.FullPath).Should().Contain(@"\\?\" + Path.Combine(dotted, "f.txt"));
+            list.Problems.Should().BeEmpty();
+            spaced.Sources.Select(s => s.FullPath).Should().Equal(@"\\?\" + Path.Combine(_temp.Path, "a.txt "));
         }
         finally
         {
             File.Delete(@"\\?\" + Path.Combine(dotted, "f.txt"));
+            File.Delete(@"\\?\" + Path.Combine(_temp.Path, "a.txt "));
             Directory.Delete(@"\\?\" + dotted);
+        }
+    }
+
+    // T-F531: a file found by its \\?\ path under a folder taken whole by another mask is already in
+    // that folder; compared by its plain spelling where that names the same folder.
+    [Fact]
+    public void Search_LiteralFileUnderAFolderTakenWhole_IsTakenOnce()
+    {
+        string dotted = Path.Combine(Full("tw"), "d.");
+        Directory.CreateDirectory(@"\\?\" + dotted);
+        File.WriteAllText(@"\\?\" + Path.Combine(dotted, "f.txt"), "inside d.");
+        try
+        {
+            CliArchiveSourceList list = Search([Mask("tw"), Mask("*.txt", CliRecursion.Recursive)]);
+
+            list.Sources.Select(s => s.FullPath).Where(path => path.Contains("tw", StringComparison.Ordinal)).Should().Equal(Full("tw"));
+        }
+        finally
+        {
+            Directory.Delete(@"\\?\" + Full("tw"), recursive: true);
         }
     }
 

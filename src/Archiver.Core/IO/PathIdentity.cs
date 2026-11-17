@@ -17,7 +17,7 @@ public static partial class PathIdentity
     public readonly record struct Identity(ulong Volume, ulong Low, ulong High);
 
     /// <summary>What <see cref="Resolve"/> found: the identity and the final path, without the
-    /// long-path prefix.</summary>
+    /// long-path prefix unless the plain path names another file (T-F531, <see cref="Services.InputPaths.SamePlainPath"/>).</summary>
     public sealed record Resolved(Identity Id, string FinalPath);
 
     /// <summary>The identity and final path (without the \\?\ prefix) of an existing file or
@@ -29,7 +29,7 @@ public static partial class PathIdentity
             return null;
         if (IdentityOf(handle) is not { } identity)
             return null; // neither identity can be read: where it leads is unknown
-        return ReadFinalPath(handle) is { } finalPath ? new Resolved(identity, WithoutLongPathPrefix(finalPath)) : null;
+        return ReadFinalPath(handle) is { } finalPath ? new Resolved(identity, Services.InputPaths.SamePlainPath(finalPath)) : null;
     }
 
     /// <summary>The identity of what <paramref name="handle"/> has open; null when neither identity can be read.</summary>
@@ -57,7 +57,7 @@ public static partial class PathIdentity
         using SafeFileHandle handle = CreateFile(path, 0, FileShareAll, 0, OpenExisting, BackupSemantics | OpenReparsePoint, 0);
         if (handle.IsInvalid)
             return null;
-        return ReadFinalPath(handle) is { } finalPath ? WithoutLongPathPrefix(finalPath) : null;
+        return ReadFinalPath(handle) is { } finalPath ? Services.InputPaths.SamePlainPath(finalPath) : null;
     }
 
     /// <summary>T-F524: the volume <paramref name="folder"/> is on, asked of a handle to it (a junction or
@@ -194,13 +194,6 @@ public static partial class PathIdentity
         if (next != 0 || nameBytes != UnnamedDataStream.Length * 2)
             return false;
         return MemoryMarshal.Cast<byte, char>(buffer.Slice(StreamInfoNameOffset, (int)nameBytes)).SequenceEqual(UnnamedDataStream);
-    }
-
-    private static string WithoutLongPathPrefix(string path)
-    {
-        if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
-            return @"\\" + path[8..];
-        return path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path[4..] : path;
     }
 
     private const uint FileShareAll = 7;

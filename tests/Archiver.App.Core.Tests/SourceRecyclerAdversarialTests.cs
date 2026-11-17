@@ -586,6 +586,46 @@ public sealed class SourceRecyclerAdversarialTests : IDisposable
                 File.Delete(@"\\?\" + dotted);
         }
     }
+
+    // T-F531: ZIP archives "a." by its \\?\ path - a folder holding it, or the source written so -
+    // each under its own name. Pakko's own extraction cannot give such a name back, so the archive
+    // would be the only copy: the source is kept as not safe to delete, and nothing of it is touched.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EndToEnd_NameWindowsTrimsArchivedInFull_IsKeptAndNothingDeleted(bool literalSource)
+    {
+        string folder = Scratch(literalSource ? "lit" : "tw");
+        string plain = WriteFile(folder, "a", "plain a");
+        string dotted = @"\\?\" + Path.Combine(folder, "a.");
+        File.WriteAllText(dotted, "the dotted one");
+        string source = literalSource ? dotted : folder;
+        string dest = Scratch("dest-" + literalSource);
+        try
+        {
+            var snapshot = SourceSnapshot.Take([source]);
+            ArchiveResult archived = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [source],
+                DestinationFolder = dest,
+                ArchiveName = "dots",
+            });
+
+            RecycleResult result = await new SourceRecycler(_ops).DeleteAsync(archived.FullyProcessedSources, snapshot, Confirm(true));
+
+            archived.Errors.Should().BeEmpty();
+            archived.FullyProcessedSources.Should().Equal(source);
+            snapshot.HoldsTrimmedName(source).Should().BeTrue();
+            result.Kept.Should().Equal(new KeptSource(source, KeepReason.NotSafeToDelete));
+            File.ReadAllText(plain).Should().Be("plain a");
+            File.ReadAllText(dotted).Should().Be("the dotted one");
+        }
+        finally
+        {
+            if (File.Exists(dotted))
+                File.Delete(dotted);
+        }
+    }
 }
 
 /// <summary>SUBST of a free drive letter onto a scratch folder; the letter is removed again in Unmap.</summary>

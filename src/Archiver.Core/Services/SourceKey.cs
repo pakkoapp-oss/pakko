@@ -7,14 +7,16 @@ namespace Archiver.Core.Services;
 /// <see cref="SourcePathNormalizer"/>'s form, which this key maps onto the same string as the
 /// spelling given. A name Windows trims ("a.txt.") has no key: by its full path it is its twin
 /// "a.txt", and a source known by its twin's key could be listed or deleted as the twin (T-F509).
+/// Written as <c>\\?\</c> it names the file itself and is its own key (T-F531: ZIP archives it).
 /// </summary>
 public static class SourceKey
 {
-    /// <summary>The key of <paramref name="path"/>, or null when it has none: a name Windows trims,
-    /// or a path Windows cannot parse. A source with no key is never listed, so never deleted.</summary>
+    /// <summary>The key of <paramref name="path"/>, or null when it has none: a name Windows trims
+    /// not written as <c>\\?\</c>, or a path Windows cannot parse. A source with no key is never
+    /// listed, so never deleted.</summary>
     public static string? Of(string path)
     {
-        if (InputPaths.NameTrimmed(path))
+        if (InputPaths.NameTrimmed(path) && !path.StartsWith(@"\\?\", StringComparison.Ordinal))
             return null;
         try
         {

@@ -14,7 +14,8 @@ public readonly record struct FolderTotals(long Bytes, int Files)
     {
         long bytes = 0;
         int files = 0;
-        foreach (WalkEntry entry in DirectoryWalker.Walk(folder))
+        // T-F531: as ZIP walks it - a name Windows trims is archived, so it counts.
+        foreach (WalkEntry entry in DirectoryWalker.Walk(folder, spelledBelow: true))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (entry.Kind != WalkEntryKind.File)

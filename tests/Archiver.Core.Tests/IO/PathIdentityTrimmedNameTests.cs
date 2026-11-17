@@ -57,7 +57,7 @@ public sealed class PathIdentityTrimmedNameTests : IDisposable
         PathIdentity.Resolved file = PathIdentity.Resolve(@"\\?\" + _file)!;
         PathIdentity.Resolved folder = PathIdentity.Resolve(@"\\?\" + _folder)!;
 
-        file.FinalPath.Should().EndWith("a.txt ");
+        file.FinalPath.Should().StartWith(@"\\?\", "T-F531: without it the final path is the twin's").And.EndWith("a.txt ");
         file.Id.Should().NotBe(PathIdentity.Resolve(Path.Combine(_root, "a.txt"))!.Id);
         folder.FinalPath.Should().EndWith("d.");
         folder.Id.Should().NotBe(PathIdentity.Resolve(Path.Combine(_root, "d"))!.Id);
