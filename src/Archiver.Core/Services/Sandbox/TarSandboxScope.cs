@@ -142,10 +142,13 @@ internal sealed partial class TarSandboxScope : IDisposable
     }
 
     /// <summary>Null when this scope was created with needsOutputDir: false (listing only).</summary>
-    public string? OutputDirectory { get; }
+    public string? OutputDirectory { get; private set; }
 
     /// <summary>The operation-scoped quarantine directory (contains "out\" if present) — deleted whole by Dispose().</summary>
-    public string QuarantineRoot { get; }
+    public string QuarantineRoot { get; private set; }
+
+    /// <summary>T-F524: the quarantine is next to the destination, not under %TEMP%.</summary>
+    internal bool NearDestination { get; private set; }
 
     /// <summary>
     /// T-F441: tar.exe's output encoding, read once for this scope, so a listing's lines and the
@@ -161,8 +164,9 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     private TarSandboxScope( // NOSONAR: S107 — private, called once from CreateAsync with what it built; a parameter object would only rename the list
         SafeSidHandle sid, AppContainerProfile profile, string quarantineRoot, FileStream archive, string? outputDirectory,
-        System.Text.Encoding? outputEncoding, string? helperSource)
+        System.Text.Encoding? outputEncoding, string? helperSource, bool nearDestination)
     {
+        NearDestination = nearDestination;
         _profile = profile;
         _helperSource = helperSource;
         OutputEncoding = outputEncoding ?? TextBoundaries.TarExeOutput(_machine).Lenient;
@@ -237,12 +241,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             _ = StaleProfilesSwept.Value;
             if (nearFolder is null)
             {
-                Directory.CreateDirectory(SandboxParentDirectory);
-                // T-F263: a killed run's quarantine holds the archive's plaintext; the next one removes it.
-                // Older quarantines are named by a GUID alone, so only their age can tell.
-                TempOwner.SweepStale(SandboxParentDirectory, "", "", TempScope.LocalTemp(TimeSpan.FromDays(1)));
-                quarantineRoot = Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
-                Directory.CreateDirectory(quarantineRoot);
+                quarantineRoot = NewRootInTemp();
             }
             else
             {
@@ -268,7 +267,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 QuarantineAcl.GrantModify(outDir, sid);
             }
 
-            return Task.FromResult(new TarSandboxScope(sid, profile, quarantineRoot, archive, outDir, outputEncoding, helperSource));
+            return Task.FromResult(new TarSandboxScope(sid, profile, quarantineRoot, archive, outDir, outputEncoding, helperSource, nearFolder is not null));
         }
         catch (Exception ex)
         {
@@ -286,6 +285,49 @@ internal sealed partial class TarSandboxScope : IDisposable
                 throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
             throw;
         }
+    }
+
+    private static string NewRootInTemp()
+    {
+        Directory.CreateDirectory(SandboxParentDirectory);
+        // T-F263: a killed run's quarantine holds the archive's plaintext; the next one removes it.
+        // Older quarantines are named by a GUID alone, so only their age can tell.
+        TempOwner.SweepStale(SandboxParentDirectory, "", "", TempScope.LocalTemp(TimeSpan.FromDays(1)));
+        string root = Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
+        Directory.CreateDirectory(root);
+        return root;
+    }
+
+    /// <summary>
+    /// T-F526: moves a quarantine next to the destination, whose out folder the sandbox was refused every
+    /// write in (Controlled Folder Access, switched on by a channel <see cref="QuarantineLocation"/> cannot
+    /// read), to a new root under %TEMP%, as one made there: the same sandbox, traverse on the root, Modify
+    /// on a new out folder. The old root is removed. Only between runs: nothing of it is in use.
+    /// </summary>
+    internal void MoveQuarantineToTemp()
+    {
+        if (!NearDestination || OutputDirectory is null)
+            throw new InvalidOperationException("Only an extraction's quarantine next to its destination moves.");
+        string old = QuarantineRoot;
+        string root = NewRootInTemp();
+        string outDir = Path.Combine(root, OutputFolderName);
+        try
+        {
+            QuarantineAcl.GrantTraverseListReadAttributes(root, _sid);
+            Directory.CreateDirectory(outDir);
+            QuarantineAcl.GrantModify(outDir, _sid);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            _ = TempOwner.TryRemove(root); // best-effort: swept with %TEMP%'s quarantines
+            if (ex is InvalidOperationException)
+                throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
+            throw;
+        }
+        QuarantineRoot = root;
+        OutputDirectory = outDir;
+        NearDestination = false;
+        _ = TempOwner.TryRemove(old); // false: held, swept by the next scope there
     }
 
     // Read-only, sharing read only: no writer can change the archive and no one can rename or
