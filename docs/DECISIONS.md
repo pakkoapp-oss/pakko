@@ -15009,7 +15009,8 @@ have replaced the user's. That failure path has no test: forcing `SetNamedSecuri
 file the test owns needs fault injection, a seam only for that.
 
 **T-F527 - an entry its owner cannot delete, within a measured limit.**
-- What the sandbox creates is owned by the user, not the AppContainer SID (measured in
+- What the sandbox creates is owned by the token's default owner, not the AppContainer SID: the user,
+  or Administrators in an elevated token (PakkoW10's PowerShell Direct session; measured in
   `Dispose_AFolderOnlyTheSandboxMayEnter_IsRemovedWithTheRoot`). An owner keeps READ_CONTROL and
   WRITE_DAC whatever the DACL says, so `TempOwner`'s removal, refused, now writes each entry's DACL back
   to SYSTEM, Administrators and the user (`QuarantineAcl.GiveBackToOwner`) top-down and removes again.

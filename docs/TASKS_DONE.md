@@ -15494,7 +15494,7 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 
 ### T-F527 - A run can leave an entry its owner cannot delete, now next to the destination (P3, from T-F524's review)
 
-- [x] **Status:** done 2026-11-17 (batch 5k), within a measured limit. The user owns what the sandbox
+- [x] **Status:** done 2026-11-17 (batch 5k), within a measured limit. The token's default owner owns what the sandbox
   makes (measured), and an owner may write the DACL: `TempOwner`'s removal, refused, takes each entry
   back (`SetFileSecurityW`, a junction's own DACL, links never entered) and removes again; the scope
   removes its root through it. A folder whose DACL also has an OWNER RIGHTS entry stays: only an

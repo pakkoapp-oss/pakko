@@ -251,7 +251,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
             list.Should().Throw<UnauthorizedAccessException>("the folder lets the user nothing");
             new FileInfo(Path.Combine(scope.OutputDirectory!, "x", "g.txt")).GetAccessControl(AccessControlSections.Owner)
                 .GetOwner(typeof(System.Security.Principal.SecurityIdentifier))!.Value
-                .Should().Be(System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value, "what the sandbox makes is the user's");
+                .Should().Be(System.Security.Principal.WindowsIdentity.GetCurrent().Owner!.Value, "what the sandbox makes is the token's default owner: the user, or Administrators in an elevated token (PakkoW10)");
         }
         finally
         {
