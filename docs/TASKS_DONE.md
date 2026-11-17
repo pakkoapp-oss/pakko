@@ -15461,3 +15461,65 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     per name) and compare against them instead of a second run. It changes T-F465's check that a
     selection takes the entries listed, a security boundary: a plan of its own, advisor at both ends,
     tests on 3.8.9 and 3.5.2, and the same measurement on PakkoW10 first.
+
+### T-F532 - A merge takes the staging's inheritable entries, not its folder's (P3, from T-F528)
+
+- [x] **Status:** done 2026-11-17 (batch 5k). A merged file whose folder passes down other entries than
+  staging's (its own, one inherited from a folder above, one the destination gives its children only)
+  has its inheritance written again, decided once a folder by comparing the entries each folder passes
+  to a file (`QuarantineAcl.FileInheritableEntries`); a file whose inheritance cannot be written is
+  reported (Access denied). ZIP and tar alike (`ExtractionStagingPermissionsTests`, red before;
+  `docs/DECISIONS.md`, "Batch 5k").
+- **Graduated 2026-11-17:** batch 5k.
+- **As filed:**
+  - [ ] **Status:** open, batch 5k of this wave. Extracting into a folder that already exists, each file is renamed
+    from the staging, and a rename keeps its security descriptor: the file carries what the staging's
+    folder passed down, not what its own folder in the destination does, when the two differ (a
+    subfolder of the destination with entries of its own). The same before T-F528. Possible: write the
+    inheritance again for a file whose new folder has entries of its own, once per folder, not per
+    file. Found by T-F528's step 0 (`docs/DECISIONS.md`, "T-F528").
+
+### T-F534 - The fast path's re-inheritance has no cancel (P3, from T-F528)
+
+- [x] **Status:** done 2026-11-17 (batch 5k), with no walk to cancel: the parent's one-level entry
+  reaches the renamed folder alone, so only the folder is written, with the work root's DACL (a folder
+  made in the same parent) by `SetKernelObjectSecurity` and `SE_DACL_AUTO_INHERIT_REQ`. 20,000 files:
+  799 ms walk, 4 ms copy (`FastPathCommit_RewritesTheFolderOnly_NotItsTree`, red before).
+- **Graduated 2026-11-17:** batch 5k.
+- **As filed:**
+  - [ ] **Status:** open, batch 5k of this wave. `WorkRoot.TakeParentEntries` re-inherits a whole extracted tree in
+    one `SetNamedSecurityInfoW` call when the destination's folder has a NO_PROPAGATE entry: 0.9 s per
+    20,000 files (T-F528 step 0), so tens of seconds for 10^6, with no cancel. Rare (only such a parent).
+    Found by T-F528's opus review.
+
+### T-F527 - A run can leave an entry its owner cannot delete, now next to the destination (P3, from T-F524's review)
+
+- [x] **Status:** done 2026-11-17 (batch 5k), within a measured limit. The user owns what the sandbox
+  makes (measured), and an owner may write the DACL: `TempOwner`'s removal, refused, takes each entry
+  back (`SetFileSecurityW`, a junction's own DACL, links never entered) and removes again; the scope
+  removes its root through it. A folder whose DACL also has an OWNER RIGHTS entry stays: only an
+  administrator can remove it (measured, `docs/DECISIONS.md`, "Batch 5k").
+- **Graduated 2026-11-17:** batch 5k.
+- **As filed:**
+  - [ ] **Status:** open, batch 5k of this wave. A compromised run can create a folder or file whose own DACL has an
+    OWNER RIGHTS entry and none for the user, which takes the owner's implicit rights away: the scope's
+    delete and the next sweep then fail (best-effort), and the hidden `.pakko-sandbox-*` folder stays in
+    the destination's folder rather than in `%TEMP%`; a standard user needs to take ownership to remove
+    it. Its content is the archive's own. Possible: take ownership and reset the DACL in the sweep, or
+    fail the seal on any entry with a DACL of its own (`QuarantineFiles.EnsureSealed`). Found by batch
+    5a's closing review (`docs/DECISIONS.md`, "T-F524").
+
+### T-F526 - The helper refused by Controlled Folder Access on another volume: retry in `%TEMP%` (P3, from T-F524)
+
+- [x] **Status:** done 2026-11-17 (batch 5k). A helper extraction next to the destination that wrote
+  nothing and exited 6 moves the scope's quarantine to %TEMP% and runs once more; the scan, the
+  selection and the bomb decision stand. Tested by an emulation (a deny on out's file creation), not by
+  Controlled Folder Access itself (`docs/DECISIONS.md`, "Batch 5k").
+- **Graduated 2026-11-17:** batch 5k.
+- **As filed:**
+  - [ ] **Status:** open, batch 5k of this wave. `QuarantineLocation` keeps the helper's quarantine in `%TEMP%` when
+    CFA is in block mode by the local setting, Group Policy or MDM (measured on PakkoW10). CFA set by a
+    channel none of those keys show, with a protected folder on another volume than `%TEMP%`, still
+    fails the helper's extraction there (exit 6, Defender's notice). A retry with the quarantine in
+    `%TEMP%` after a refused write in `out\` would cover it; it touches the order-sensitive
+    `ExtractSingleArchiveAsync`, so it is not part of T-F524 (`docs/DECISIONS.md`, "T-F524").
