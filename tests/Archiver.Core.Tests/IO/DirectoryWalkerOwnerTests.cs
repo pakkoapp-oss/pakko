@@ -68,7 +68,36 @@ public sealed partial class DirectoryWalkerOwnerTests
         LiteralPrefixBuilt().IsMatch(Code("Archiver.Core/Services/InputPaths.cs")).Should().BeTrue("the scan must see the owner's own");
     }
 
-    [GeneratedRegex(@"@""\\\\\?\\(UNC\\)?""\s*\+")]
+    // T-F552: any spelling of the prefix in a literal (verbatim, interpolated, escaped, inside
+    // string.Concat or a format) counts; only a prefix test (StartsWith) and a volume GUID path's
+    // constant are not a build.
+    [Fact]
+    public void LiteralPrefixBuilt_SeesEverySpelling()
+    {
+        string[] built =
+        [
+            @"return @""\\?\"" + path;",
+            @"return $@""\\?\{path}"";",
+            @"return @$""\\?\UNC\{path}"";",
+            @"return string.Concat(@""\\?\"", path);",
+            @"return ""\\\\?\\"" + path;",
+            @"return $""\\\\?\\{path}"";",
+        ];
+        string[] notBuilt =
+        [
+            @"if (path.StartsWith(@""\\?\"", StringComparison.Ordinal))",
+            @"if (path.StartsWith(@""\\?\UNC\"", StringComparison.OrdinalIgnoreCase))",
+            @"if (path.StartsWith(""\\\\?\\"", StringComparison.Ordinal))",
+            @"const string Start = @""\\?\Volume{"";",
+        ];
+
+        built.Where(line => !LiteralPrefixBuilt().IsMatch(line)).Should().BeEmpty();
+        notBuilt.Where(line => LiteralPrefixBuilt().IsMatch(line)).Should().BeEmpty();
+    }
+
+    // A literal holding the prefix ("\\?\" verbatim or "\\\\?\\" escaped) not right after StartsWith(,
+    // and not a volume GUID path.
+    [GeneratedRegex(@"(?<!StartsWith\([$@]{0,2})""(\\\\\?\\|\\\\\\\\\?\\\\)(?!Volume\{)")]
     private static partial Regex LiteralPrefixBuilt();
 
     [Fact]
