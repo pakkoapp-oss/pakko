@@ -15002,13 +15002,22 @@ own after (`CLI-068`, `CLI-069`).
 **The first `-t`'s lines, kept where names go back (T-F550).** T-F539 dropped the printed bytes from
 every listing and read them with a second `-t` where a name is sent back, a whole second
 decompression. They are now kept (`TarPrintedNames`: 1 MiB blocks, each line its length and its
-bytes, under twice the listing's bytes plus a block) only by a scope whose reader says, before its
+bytes, under twice the listing's bytes and 4 a line, plus a block) only by a scope whose reader says, before its
 scan, that names will go back: an App selection's extraction or antivirus scan, and a filtered test.
 A list, a full test and an extraction without a selection keep nothing, so T-F539's reason holds
 where it applies and its budgets stand unchanged; keeping them for every extraction cost 111 B an
 entry against the budget's 100 and 3.0 B a character of long names against 2.4 (`CatalogMemoryBudgetTests`,
-measured first, then narrowed). A name sent back without kept lines (a duplicate's first copies)
-still reads them with one second `-t`.
+measured first, then narrowed). The paths that keep them have a budget of their own: a filtered
+test halfway through its filter holds 117 B an entry (`TarFilteredTest_WhileItSelects_HoldsAtMostItsBudgetPerEntry`,
+140 allowed). A name sent back without kept lines (a duplicate's first copies) still reads them with
+one second `-t`.
+
+**The closing reviewer (2026-11-17): no P1 or P2.** Fixed in the batch: a kept line is stored as the
+run hands it over and its `\r` dropped once, by the reader, as before (stripping it in the store too
+took `x\r\r`, the name `x\r`, as `x`; the oracle now feeds lines ending in `\r` and is red on a second
+strip); `ForEach`'s slice is bounded on its own line; `FirstUnreached` returns null, not -1; CLI-069
+checks that nothing was written anywhere under the output. Filed as T-F554: `--numeric-owner` is not
+measured on 3.3.2 (Server 2022), and a regular file's size that does not parse still counts as 0.
 
 **The check over them gives the whole listing's verdicts.** `TarNames.FirstUnreached` counts only the
 names that can decide a selection: its own, then every name printed in bytes that read as one of its
