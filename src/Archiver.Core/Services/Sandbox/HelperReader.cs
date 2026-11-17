@@ -661,4 +661,4 @@ internal static class HelperFormats
 
 /// <summary>T-F526: the helper could write nothing into a quarantine next to the destination. Its text is
 /// the ordinary extraction failure, so a caller that does not run it again reports what it always did.</summary>
-internal sealed class QuarantineRefusedException(CoreText text) : CoreTextIOException(text);
+internal sealed class QuarantineRefusedException(CoreText text) : CoreTextIOException(text); // NOSONAR: S3871 - internal, caught by ExtractAsync or reported as CoreTextIOException
