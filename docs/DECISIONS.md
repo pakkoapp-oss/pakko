@@ -14983,6 +14983,63 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 5k - work folders' security (T-F534, T-F532, T-F527, T-F526; 2026-11-17)
+
+Measured on the host (Windows 11 26300, NTFS on D:) unless noted; the sandbox's facts came from a real
+AppContainer run in the integration tests.
+
+**T-F534 - the folder alone, no walk.** A parent's NO_PROPAGATE entry reaches only its direct
+children, so a staging folder renamed into place differs from a folder made there only in its own DACL;
+its descendants inherit the same set from it either way. `WorkRoot.TakeParentEntriesOfFolder` copies the
+DACL of the operation's work root (made by `CreateDirectoryW` without a descriptor in the same parent)
+onto the folder through a handle opened with `OPEN_REPARSE_POINT` and `SetKernelObjectSecurity`, which
+walks nothing. Without `SE_DACL_AUTO_INHERIT_REQ` (0x0100) in the control word the copy loses the
+auto-inherited flag and the next "replace child permissions" leaves explicit entries behind (measured);
+with it the folder matches a fresh one byte for byte. 20,000 files: the old `SetNamedSecurityInfoW` walk
+took 799 ms, the copy 4 ms, so the cancel the task asked for is not needed. When the root lies in
+another parent (not reached today) the old re-inheritance stays.
+
+**T-F532 - a merged file takes its own folder's entries.** Each folder's set of entries passed to files
+(`QuarantineAcl.FileInheritableEntries`: the OI entries with their inheritance flags cleared, as binary)
+is compared once a folder with staging's; files come out of `StagedFiles()` folder by folder, so only the
+last folder and its verdict are kept, no collection. A file whose folder differs is re-inherited after
+its move. Its failure is not silent: the file keeps staging's wider entries in a folder that restricts
+access, so it is reported as Access denied with its relative path; the file stays, since it may already
+have replaced the user's. That failure path has no test: forcing `SetNamedSecurityInfoW` to fail on a
+file the test owns needs fault injection, a seam only for that.
+
+**T-F527 - an entry its owner cannot delete, within a measured limit.**
+- What the sandbox creates is owned by the user, not the AppContainer SID (measured in
+  `Dispose_AFolderOnlyTheSandboxMayEnter_IsRemovedWithTheRoot`). An owner keeps READ_CONTROL and
+  WRITE_DAC whatever the DACL says, so `TempOwner`'s removal, refused, now writes each entry's DACL back
+  to SYSTEM, Administrators and the user (`QuarantineAcl.GiveBackToOwner`) top-down and removes again.
+- `CreateFileW` cannot be used there: it always adds SYNCHRONIZE and FILE_READ_ATTRIBUTES, which a DACL
+  that lets the user nothing refuses. `SetFileSecurityW` asks for WRITE_DAC alone, and on a junction it
+  writes the junction's own DACL, not its target's (measured); the walk never enters a link either.
+- AppContainer access is a dual check: the user's side and the AppContainer's side both have to allow.
+  A folder that grants only the sandbox's SID therefore locks the sandbox out too; a compromised run gets
+  that state by opening a folder to its SID and Everyone, filling it, then stripping it to its SID alone.
+  The test builds exactly that.
+- The limit: an OWNER RIGHTS entry removes the owner's implicit WRITE_DAC. A file with such a DACL still
+  goes through the parent's FILE_DELETE_CHILD; a non-empty folder can be renamed that way but its content
+  cannot be deleted by a standard user, and `takeown` fails. Only an administrator removes it. Left as
+  measured: the content is the archive's own, and the root is hidden.
+
+**T-F526 - the helper retried under %TEMP%.** The retry is inside `HelperReader.ExtractAsync`, not in
+`ExtractSingleArchiveAsync`: the scan, the selection and the compression-bomb decision stand, and the
+antivirus scan's reader is always in %TEMP%. Condition: exit 6 (Write), the quarantine next to the
+destination, and nothing at all in `out`. Exit 6 covers both `CreateFileW` and `WriteFile`; CFA refuses
+each file the helper creates, so a run it stopped left nothing, while any other write failure leaves the
+files before it and is not retried. `TarSandboxScope.MoveQuarantineToTemp` makes a new root as the %TEMP%
+branch does, with the same sandbox, and removes the old one through `TempOwner.TryRemove`. tar.exe, signed
+by Microsoft, is let through by CFA and is not retried.
+- The test emulates CFA and does not reproduce it: a deny of creating files in `out`, for the user. A
+  deny for the AppContainer's own SID did not stop the helper (measured); the user's side of the dual
+  check did. Real CFA is measured on PakkoW10 only, as in T-F524.
+- A refusal after the first file (the negative case of the plan) has no test of its own: an ACL cannot
+  refuse a write to a file the same run just created with write access. The empty-`out` check is the
+  line that decides it.
+
 ## Batch 5j - tar.exe's listings: numeric owners and the first -t's lines (T-F551, T-F550; 2026-11-17)
 
 **`-tv --numeric-owner` (T-F551, and a P2).** tar.exe prints an owner and a group name as they are.
