@@ -672,6 +672,8 @@ public sealed class TarSandboxedService : ITarService
             skippedFiles.Add(CoreMessages.Skip(relativePath, CoreMessages.Text(MessageCode.AccessDenied, relativePath)));
         foreach (string relativePath in staging.BlockedByFolder)
             context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationIsAFolder, relativePath));
+        foreach (string relativePath in staging.PermissionsNotApplied)
+            context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.AccessDenied, relativePath));
 
         // T-F87: every extracted file was individually skipped (already existed at the
         // destination) — nothing was actually written, so the caller must not count this
