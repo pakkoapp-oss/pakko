@@ -73,6 +73,24 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
         list.Problems.Should().BeEmpty("Core refuses it and says why");
     }
 
+    // T-F557: a mask written as \\?\ below a folder "d." is searched there, not refused as not found;
+    // the twin "d" is never listed.
+    [Fact]
+    public void Resolve_LiteralMaskBelowAFolderWindowsTrims_IsSearchedThere()
+    {
+        string literalFolder = @"\\?\" + Path.Combine(_temp.Path, "d.");
+        Directory.CreateDirectory(literalFolder);
+        File.WriteAllText(Path.Combine(literalFolder, "f.txt"), "f");
+        File.WriteAllText(Path.Combine(literalFolder, "g.log"), "g");
+        Directory.CreateDirectory(Full("d"));
+        File.WriteAllText(Path.Combine(Full("d"), "twin.txt"), "twin");
+
+        CliArchiveSourceList list = CliArchiveSources.Resolve([literalFolder + @"\*.txt"], _temp.Path, Full("o.zip"));
+
+        list.Problems.Should().BeEmpty();
+        list.Sources.Select(s => s.FullPath).Should().Equal(Path.Combine(literalFolder, "f.txt"));
+    }
+
     [Theory]
     [InlineData(".")]
     [InlineData(@".\")]

@@ -94,6 +94,13 @@ internal static class WorkItemEnumerator
                 case WalkEntryKind.UnreadableDirectory:
                     reportError(ZipArchiveService.UnreadableDirectoryError(entry.Info.FullName, entry.Error!));
                     break;
+                // T-F557: a spelled walk never yields it; one that did is not dropped in silence.
+                case WalkEntryKind.TrimmedName:
+                    reportError(ZipArchiveService.TrimmedNameError(entry.Info.FullName));
+                    break;
+                case WalkEntryKind.Directory:
+                case WalkEntryKind.LeftOut:
+                    break;
             }
         }
     }

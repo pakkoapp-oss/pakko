@@ -21,15 +21,22 @@ public static class InputPaths
     /// trimmed. A <c>\\?\</c> path is judged the same way (T-F510 is where such names get archived).
     /// Trailing separators do not make the last name a middle one: Core normalizes them away
     /// (<c>TrimEndingDirectorySeparator</c>), and "d \" then opens "d".</summary>
-    public static bool NameTrimmed(string path)
+    public static bool NameTrimmed(string path) => TrimmedPartEnd(path) >= 0;
+
+    // T-F557: where in path the first part Windows trims ends ("C:\x\d.\f.txt" -> after "d."), or -1.
+    private static int TrimmedPartEnd(string path)
     {
-        string[] parts = path[(Path.GetPathRoot(path) ?? "").Length..].TrimEnd(Separators).Split(Separators);
+        int rootLength = (Path.GetPathRoot(path) ?? "").Length;
+        string[] parts = path[rootLength..].TrimEnd(Separators).Split(Separators);
+        int end = rootLength;
         for (int i = 0; i < parts.Length; i++)
         {
+            end += parts[i].Length;
             if (PartTrimmed(parts[i], last: i == parts.Length - 1))
-                return true;
+                return end;
+            end++;
         }
-        return false;
+        return -1;
     }
 
     /// <summary>T-F531: whether any part of <paramref name="path"/> ends as Windows trims a last part
@@ -109,7 +116,9 @@ public static class InputPaths
         {
             return CoreMessages.Text(MessageCode.SourceNotFound, path);
         }
-        // T-F509: by this path Windows opens another file (a twin) or none.
-        return NameTrimmed(path) ? CoreMessages.Text(MessageCode.SourceNameTrimmed, path) : null;
+        // T-F509: by this path Windows opens another file (a twin) or none. T-F557: the text names the
+        // part that ends in a space or a dot, a folder above the file where that is the one.
+        int trimmedEnd = TrimmedPartEnd(path);
+        return trimmedEnd >= 0 ? CoreMessages.Text(MessageCode.SourceNameTrimmed, path[..trimmedEnd]) : null;
     }
 }

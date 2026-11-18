@@ -64,6 +64,36 @@ public sealed partial class InputPathsOwnerTests
         InputPaths.NameTrimmed(path).Should().Be(pathTrimmed);
     }
 
+    // T-F557: a path's \\?\ prefix is taken off by InputPaths.SamePlainPath, which keeps it where the
+    // plain path names a twin ("\\?\C:\x\d." is not "C:\x\d"). The CLI had two copies that took it off always.
+    private static readonly (string File, int Count, string Why)[] LongPathPrefixAllowed =
+    [
+        ("Archiver.Core/Services/DirectoryJunction.cs", 1, "whether a path is on a share: a test, nothing is opened by the plain form"),
+    ];
+
+    [Fact]
+    public void LongPathPrefixDropped_OutsideTheOwner_IsOnlyTheListedOnes()
+    {
+        var found = SourceFiles()
+            .Where(f => f != "Archiver.Core/Services/InputPaths.cs")
+            .Select(f => (File: f, Count: UncPrefix().Count(Code(f))))
+            .Where(f => f.Count > 0)
+            .ToDictionary(f => f.File, f => f.Count);
+
+        found.Should().BeEquivalentTo(LongPathPrefixAllowed.ToDictionary(a => a.File, a => a.Count),
+            "the \\\\?\\ prefix comes off through InputPaths.SamePlainPath (T-F557)");
+        UncPrefix().Count(Code("Archiver.Core/Services/InputPaths.cs")).Should().BePositive("the scan must see the owner's own");
+    }
+
+    [Theory]
+    [InlineData(@"C:\x\a.txt ", @"C:\x\a.txt ")]
+    [InlineData(@"C:\x\d.\f.txt", @"C:\x\d.")]
+    [InlineData(@"\\?\C:\x\d.\e\f.txt", @"\\?\C:\x\d.")]
+    public void Problem_NameTrimmed_NamesThePartThatIsTrimmed(string path, string named)
+    {
+        InputPaths.Problem(path)!.Arguments.Should().Equal(named);
+    }
+
     private static IEnumerable<string> SourceFiles() =>
         Directory.EnumerateFiles(SrcRoot, "*.cs", SearchOption.AllDirectories)
             .Select(f => Path.GetRelativePath(SrcRoot, f).Replace(Path.DirectorySeparatorChar, '/'))
@@ -77,6 +107,9 @@ public sealed partial class InputPathsOwnerTests
     // A TrimEnd of dots, spaces or both, in either order.
     [GeneratedRegex(@"\.TrimEnd\(\s*'[ .]'\s*(,\s*'[ .]'\s*)?\)")]
     private static partial Regex Trim();
+
+    [GeneratedRegex(@"@""\\\\\?\\UNC\\""")]
+    private static partial Regex UncPrefix();
 
     private static string FindRepoRoot()
     {
