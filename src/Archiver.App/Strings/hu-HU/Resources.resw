@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Lehet, hogy használatban vannak vagy védettek.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>A nevük vagy egy bennük lévő név szóközre vagy pontra végződik, amelyet a Windows elhagy; az archívum kibontása nem állítaná vissza.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Igen</value>
   </data>

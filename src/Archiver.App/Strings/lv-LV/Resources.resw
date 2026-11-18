@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Tie var būt lietošanā vai aizsargāti.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>To nosaukums vai nosaukums tajos beidzas ar atstarpi vai punktu, ko Windows atmet; arhīva izvilkšana to neatjaunotu.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Jā</value>
   </data>

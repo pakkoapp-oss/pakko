@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Morda so v uporabi ali zaščiteni.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Njihovo ime ali ime v njih se konča s presledkom ali piko, ki ju Windows izpusti; razširjanje arhiva ga ne bi povrnilo.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Da</value>
   </data>

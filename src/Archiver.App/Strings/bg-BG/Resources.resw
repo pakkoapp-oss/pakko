@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Може да се използват или да са защитени.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Името им или име в тях завършва с интервал или точка, които Windows премахва; извличането на архива не би го възстановило.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Да</value>
   </data>

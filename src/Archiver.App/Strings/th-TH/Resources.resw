@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>อาจกำลังถูกใช้งานหรือได้รับการป้องกัน</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>ชื่อของรายการหรือชื่อที่อยู่ภายในลงท้ายด้วยช่องว่างหรือจุดซึ่ง Windows ตัดทิ้ง การแตกไฟล์บีบอัดจะไม่ได้ชื่อนั้นคืนมา</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>ใช่</value>
   </data>

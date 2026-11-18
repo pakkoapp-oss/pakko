@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Môžu sa používať alebo byť chránené.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Ich názov alebo názov v nich končí medzerou alebo bodkou, ktorú Windows vynecháva; extrahovanie archívu by ho neobnovilo.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Áno</value>
   </data>

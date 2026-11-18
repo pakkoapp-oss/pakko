@@ -26,6 +26,54 @@ public sealed class CliArchiveSourcesSubprocessTests
         return [.. archive.Entries.Select(e => e.FullName).Order(StringComparer.Ordinal)];
     }
 
+    // T-F531: a recursive search enters a folder Windows trims ("d.") by its \\?\ path. ZIP stores
+    // its file under the name as spelled, with its own bytes; the twin folder "d" keeps its own.
+    // tar.exe cannot read such a name: refused, with why.
+    [Theory]
+    [InlineData("zip")]
+    [InlineData("tar.gz")]
+    public void Archive_RecursiveSearchOverAFolderWindowsTrims_ZipStoresItAsSpelled_TarRefusesIt(string type)
+    {
+        string root = MakeTree();
+        string dotted = @"\\?\" + Path.Combine(root, "d.");
+        Directory.CreateDirectory(dotted);
+        File.WriteAllText(dotted + @"\f.txt", "dotted");
+        Directory.CreateDirectory(Path.Combine(root, "d"));
+        File.WriteAllText(Path.Combine(root, "d", "f.txt"), "twin");
+        string archive = Path.Combine(CliFixtureFiles.CreateScratchDir(), "o." + type);
+        try
+        {
+            (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(root, "a", "-t" + type, "-r", archive, "*.txt");
+
+            if (type == "zip")
+            {
+                exitCode.Should().Be(0, stdErr);
+                ZipFiles(archive).Should().Equal("d./f.txt=dotted", "d/f.txt=twin", "dir/sub/s.txt=s", "t.txt=t");
+            }
+            else
+            {
+                exitCode.Should().Be(2, stdErr);
+                stdErr.Should().Contain("ends in a space or a dot");
+            }
+        }
+        finally
+        {
+            Directory.Delete(dotted, recursive: true);
+        }
+    }
+
+    private static string[] ZipFiles(string zipPath)
+    {
+        using ZipArchive archive = ZipFile.OpenRead(zipPath);
+        return [.. archive.Entries.Select(Content).Order(StringComparer.Ordinal)];
+    }
+
+    private static string Content(ZipArchiveEntry entry)
+    {
+        using var reader = new StreamReader(entry.Open());
+        return entry.FullName + "=" + reader.ReadToEnd();
+    }
+
     [Fact]
     public void Archive_RelativeFolder_IsStoredUnderThePathAsTyped()
     {

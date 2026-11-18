@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Chúng có thể đang được sử dụng hoặc được bảo vệ.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Tên của chúng, hoặc một tên bên trong, kết thúc bằng dấu cách hoặc dấu chấm mà Windows bỏ đi; giải nén tệp nén sẽ không lấy lại được tên đó.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Có</value>
   </data>

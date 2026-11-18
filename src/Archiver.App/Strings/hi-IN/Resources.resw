@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>वे उपयोग में या सुरक्षित हो सकते हैं।</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>उनका नाम या उनके भीतर का कोई नाम स्पेस या बिंदु पर समाप्त होता है, जिसे Windows हटा देता है; संग्रह निकालने से वह वापस नहीं मिलेगा।</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>हाँ</value>
   </data>

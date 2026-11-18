@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Možda se koriste ili su zaštićene.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Njihov naziv ili naziv u njima završava se razmakom ili tačkom koju Windows izostavlja; raspakivanje arhive ga ne bi vratilo.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Da</value>
   </data>

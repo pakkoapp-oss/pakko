@@ -589,7 +589,7 @@ public sealed class SourceRecyclerAdversarialTests : IDisposable
 
     // T-F531: ZIP archives "a." by its \\?\ path - a folder holding it, or the source written so -
     // each under its own name. Pakko's own extraction cannot give such a name back, so the archive
-    // would be the only copy: the source is kept as not safe to delete, and nothing of it is touched.
+    // would be the only copy: the source is kept with that reason, and nothing of it is touched.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -616,7 +616,7 @@ public sealed class SourceRecyclerAdversarialTests : IDisposable
             archived.Errors.Should().BeEmpty();
             archived.FullyProcessedSources.Should().Equal(source);
             snapshot.HoldsTrimmedName(source).Should().BeTrue();
-            result.Kept.Should().Equal(new KeptSource(source, KeepReason.NotSafeToDelete));
+            result.Kept.Should().Equal(new KeptSource(source, KeepReason.TrimmedName));
             File.ReadAllText(plain).Should().Be("plain a");
             File.ReadAllText(dotted).Should().Be("the dotted one");
         }

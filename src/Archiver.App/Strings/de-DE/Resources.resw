@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Sie werden möglicherweise verwendet oder sind geschützt.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Ihr Name oder ein Name darin endet mit einem Leerzeichen oder Punkt, den Windows entfernt; das Extrahieren des Archivs könnte ihn nicht wiederherstellen.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ja</value>
   </data>

@@ -411,6 +411,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Можливо, вони використовуються або захищені.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Їхня назва або назва в них закінчується пробілом чи крапкою, які Windows відкидає; видобування архіву її не поверне.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Так</value>
   </data>

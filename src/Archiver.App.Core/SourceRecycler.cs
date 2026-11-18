@@ -51,6 +51,10 @@ public enum KeepReason
 
     /// <summary>Deleting it was tried and it is still there: in use or protected.</summary>
     StillOnDisk,
+
+    /// <summary>T-F531: it is, or holds, a name Windows trims ("a.txt "). ZIP archived it, but
+    /// extracting cannot give the name back, so the archive would be its only copy.</summary>
+    TrimmedName,
 }
 
 /// <summary>A source left on disk, by the path given, and why.</summary>
@@ -144,7 +148,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
             // T-F531: archived in full, but the archive would be the only copy of a name Windows trims.
             if (snapshot.HoldsTrimmedName(source))
             {
-                notDeleted.Add(new KeptSource(source, KeepReason.NotSafeToDelete));
+                notDeleted.Add(new KeptSource(source, KeepReason.TrimmedName));
                 continue;
             }
             // T-F419: a file written into the source or edited since it was archived is not in
