@@ -14983,6 +14983,72 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 6 - measurements and CI (T-F553, T-F557, T-F554, T-F555, T-F530, T-F480; 2026-11-18)
+
+**T-F554 - what `-tv --numeric-owner` prints, per format.** Before refusing a listing whose owner or
+group column is not all digits, or whose regular-file line has no size, both rules were checked on
+every line of a listing of a fixture of each format, the same entries in each (a file, an empty file,
+folders, an empty folder, a name with spaces, a hard link), plus the repo's 7z, RAR, ZIP and tar
+fixtures and a CAB:
+
+| Build | Formats read | Owner and group all digits | Regular file has a size |
+|---|---|---|---|
+| 3.8.9 (Windows 11, 26300) | 26 of the 28 archives (not the two BSD ar): tar (ustar, pax, gnutar, v7), gz, bz2, xz, zst, lzma, lzip, .Z, 7z (tar.exe's and the fixture's), zip (tar.exe's and the fixture's), cpio (newc, odc, bin), ar (GNU), iso9660, xar, warc, mtree, rar, cab, the tar fixture | every line | every line |
+| 3.5.2 (PakkoW10, Windows 10) | every one it reads; it cannot read bz2, lz, lzma, 7z LZMA, xar, xz, zst | every line | every line |
+
+`ar` in its BSD flavour fails to list on both builds (tar.exe writes it) and is not a format Pakko offers. 3.3.2 (Server
+2022 RTM) is no longer reachable: CI's image ships 3.8.9 (T-F476), so the rule is version-free rather
+than measured there. A refused listing reuses `TarListingInconsistent` (batch 5j's pairing check):
+no new text in 37 locales.
+
+**T-F555 - what a file made in a folder that passes files nothing gets.** A folder whose protected DACL
+holds only container-inherit entries (`(A;CI;FA;;;<user>)`); a file created in it by the user:
+
+    D:AI(A;;FA;;;SY)(A;;0x1200a9;;;<logon SID>)(A;;FA;;;<user>)
+
+the token's default DACL, not an empty one. A merged file there now gets the same, read from the
+process token (`TokenDefaultDacl`); re-inheriting it, as T-F532 did, left it an empty DACL nobody but
+the owner could open. The work root's DACL (T-F534) is copied only when the root opened is owned by
+the owner this process gives what it makes, checked through the handle the DACL is read from, so a
+folder renamed into the root's place by someone with Modify on the parent gives nothing.
+
+**T-F530 - a large file written twice.** One 4 GiB file (half random, half repeated text per MiB),
+`pakko a -tzip`, Release, two runs each; bytes written from `GetProcessIoCounters`, the second pass
+timed as an unbuffered copy of the archive (`robocopy /J`) on the same volume:
+
+| Case | Total | Archive | Written by the process | Second pass |
+|---|---|---|---|---|
+| Fastest (`-mx1`) | 35.0-42.1 s | 2.13 GiB | 4.26 GiB | 0.4-3.3 s (1-9 %) |
+| AES-256 (`-mx5`) | 80.3-84.9 s | 2.02 GiB | 4.03 GiB | 1.6-3.9 s (2-5 %) |
+
+Every byte is written twice, as filed, but the second write is under the plan's 20 % on this SSD: the
+time goes to Deflate and AES, not to the copy. The Fastest half is closed without a writer change.
+The password half moves to batch 7 with T-F493 (encryption on the BCL), where the writer changes
+anyway. For it: a ZipCrypto header's last byte (the CRC's high byte, or with bit 3 the time's) must be
+known before the data is encrypted, so it cannot be written after the data as the sizes can. The cost
+that stays is the free space: twice the compressed size on the destination's volume.
+
+**T-F480 - the drifted ratios are the calibration's build configuration.** The July numbers T-F352
+set (FewLargeFiles about 1.2) were measured in Release (T-F352's entry above: "12 cores, SSD,
+Release"); the 2026-11-10 recalibration (1.61) ran Debug. v1.7.2 (beside T-F352) and this branch,
+alternated, five runs each:
+
+| Build | Scenario | v1.7.2 | batch 6 |
+|---|---|---|---|
+| Debug | Archive/FewLargeFiles | 1.54-1.66 | 1.48-1.75 |
+| Debug | Archive/Hybrid | 1.33-1.45 | 1.42-1.69 |
+| Release (3 runs) | Archive/FewLargeFiles | 1.00-1.21 | 1.24-1.31 |
+| Release (3 runs) | Archive/Hybrid | 1.11-1.14 | 1.07-1.21 |
+
+Nothing drifted in the code: the same build reads the same on both versions. The Release figures were
+taken while another project shared the machine (below) and are not a calibration.
+
+**A busy machine (2026-11-18).** Part of the series ran while another project loaded the machine.
+Readings from that time, not to be taken as Pakko's: Extract/ManySmallFiles 2.67-3.27 and
+Extract/Hybrid 3.12-3.40 (ceilings 2.18 and 2.66), equally on v1.10.0, `main` and this branch; and
+`TarScan_WhileItScans_HoldsAtMostItsBudgetPerEntry` 148-210 B an entry against its 60. T-F481 and
+T-F491 wait for an idle machine.
+
 ## Batch 5l - names Windows trims, archived by ZIP (T-F531; 2026-11-18)
 
 Measured on the host (Windows 11 26300, NTFS on D:).
