@@ -2193,11 +2193,19 @@ public sealed class TarSandboxedService : ITarService
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
     // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see
     // DECISIONS.md's T-F90 entry.
-    internal static long ParseTarListingSize(string line) => ParseTarListingSize(TarListingDate.Fields(line));
-
     // T-F545: digits only - a sign would make a size negative and a total smaller than its parts.
-    internal static long ParseTarListingSize(string[] fields) =>
-        fields.Length > 4 && long.TryParse(fields[4], NumberStyles.None, CultureInfo.InvariantCulture, out long size) ? size : 0;
+    // T-F554: null when the columns cannot be trusted - the owner or the group not digits (under
+    // --numeric-owner they are on every line both builds print; a name there may hold spaces and move
+    // the size column), or no size at all; the listing is then refused, never a size of 0.
+    internal static long? ParseTarListingSize(string[] fields) =>
+        HasNumericOwner(fields) && long.TryParse(fields[4], NumberStyles.None, CultureInfo.InvariantCulture, out long size) ? size : null;
+
+    /// <summary>T-F554: whether a <c>-tv --numeric-owner</c> line's owner and group are numbers, so its
+    /// later columns are where they belong.</summary>
+    internal static bool HasNumericOwner(string[] fields) =>
+        fields.Length > 4 && IsDigits(fields[2]) && IsDigits(fields[3]);
+
+    private static bool IsDigits(string field) => field.Length > 0 && field.All(char.IsAsciiDigit);
 
     // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".
     internal static string[] SplitLines(string text)

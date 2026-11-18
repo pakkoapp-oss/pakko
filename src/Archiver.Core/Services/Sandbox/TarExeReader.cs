@@ -480,7 +480,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         if (typeExitCode != 0)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(typeStdErr)));
 
-        if (listing.Count != names.Length)
+        if (listing.Count != names.Length || listing.Untrusted)
             throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
         // T-F90: column 4 (size) is accumulated alongside the existing column-0 (type) check in
@@ -604,14 +604,19 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         public List<long> Sizes { get; } = [];
         public int Count => Types.Count;
 
+        /// <summary>T-F554: a line whose columns cannot be trusted was met; the listing is refused.</summary>
+        public bool Untrusted { get; private set; }
+
         public void OnLine(ReadOnlySpan<byte> bytes)
         {
             string line = encoding.GetString(bytes.TrimEnd((byte)'\r'));
             if (line.Length == 0)
                 return;
             string[] fields = TarListingDate.Fields(line);
+            long? size = line[0] == '-' ? ParseTarListingSize(fields) : 0;
+            Untrusted |= size is null || !HasNumericOwner(fields);
             Types.Add(line[0]);
-            Sizes.Add(line[0] == '-' ? ParseTarListingSize(fields) : 0);
+            Sizes.Add(size ?? 0);
         }
     }
 
@@ -637,7 +642,10 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             int at = Count++;
             if (at >= names.Length || Unpaired)
                 return;
-            if (!NamesItsEntry(line, names[at]))
+            string[] fields = TarListingDate.Fields(line);
+            // T-F554: a line whose columns cannot be trusted stops the listing as one not paired does.
+            long? size = line[0] == '-' ? ParseTarListingSize(fields) : 0;
+            if (!NamesItsEntry(line, names[at]) || size is null || !HasNumericOwner(fields))
             {
                 Unpaired = true;
                 return;
@@ -648,12 +656,11 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             string path = EntryDiskName.StripLeadingDotSlash(names[at]).TrimEnd('/');
             if (path.Length == 0)
                 return;
-            string[] fields = TarListingDate.Fields(line);
             TarListedDate? modified = TarListingDate.Parse(fields, _months, _now);
             onEntry(new ArchiveEntryInfo
             {
                 Path = path,
-                Size = line[0] == '-' ? ParseTarListingSize(fields) : 0,
+                Size = size.Value,
                 Modified = modified?.Value,
                 ModifiedHasTime = modified?.HasTime ?? true,
                 IsDirectory = line[0] == 'd',

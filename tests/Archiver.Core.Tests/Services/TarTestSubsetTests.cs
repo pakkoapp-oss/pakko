@@ -67,10 +67,26 @@ public sealed class TarTestSubsetTests
         TarExeReader.DeclaredSizeOf(Huge, ["a.txt", "b.txt"]).Should().Be(long.MaxValue);
     }
 
-    [Fact]
-    public void ListingSize_WithASign_IsNoSize()
+    // T-F554: a line whose columns cannot be trusted has no size, and the listing is refused - never a
+    // size of 0, which let a bomb pass T-F94's check. Under --numeric-owner the owner and group are
+    // digits on every line tar.exe 3.8.9 and 3.5.2 print (every format both read, measured); a name
+    // there means the option did not take, and the column a size is read from may be another's.
+    [Theory]
+    [InlineData("-rw-r--r--", "0", "0", "0", "-5")]
+    [InlineData("-rw-r--r--", "0", "0", "0", "big")]
+    [InlineData("-rw-r--r--", "0", "user", "0", "5")]
+    [InlineData("-rw-r--r--", "0", "0", "users", "5")]
+    [InlineData("-rw-r--r--", "0", "my", "owner", "0", "1048576", "Jan", "1", "2026", "bomb.bin")]
+    [InlineData("-rw-r--r--", "0", "0", "0")]
+    public void ListingSize_ColumnsThatCannotBeTrusted_IsNoSize(params string[] fields)
     {
-        TarSandboxedService.ParseTarListingSize(["-rw-r--r--", "0", "0", "0", "-5"]).Should().Be(0);
+        TarSandboxedService.ParseTarListingSize(fields).Should().BeNull();
+    }
+
+    [Fact]
+    public void ListingSize_NumericOwnerAndGroup_IsTheSizeColumn()
+    {
+        TarSandboxedService.ParseTarListingSize(["-rw-r--r--", "0", "1000", "1000", "5000", "Nov", "18", "2026", "a.txt"]).Should().Be(5000);
     }
 
     [Fact]
