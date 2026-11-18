@@ -100,6 +100,29 @@ public sealed class SdelAdversarialTests : IDisposable
         File.Delete(@"\\?\" + Path.Combine(folder, "a.txt "));
     }
 
+    // T-F531 review (P1): a folder "d " or "d.." in the middle of a path is opened as spelled, but
+    // extracting trims every part ("d /f.txt" lands in "d"): a file the search found below one is
+    // archived and kept, never deleted.
+    [Fact]
+    public void Sdel_SearchBelowAFolderWhoseNameExtractingTrims_ArchivesAndDeletesNothing()
+    {
+        string spaced = @"\\?\" + _scratch.Inside("ds") + @"\d \f.txt";
+        string dots = @"\\?\" + _scratch.Inside("ds") + @"\d..\g.txt";
+        Directory.CreateDirectory(Path.GetDirectoryName(spaced)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(dots)!);
+        File.WriteAllText(spaced, "F");
+        File.WriteAllText(dots, "G");
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-r", "-sdel", "ds.zip", @"ds\*.txt");
+
+        exitCode.Should().Be(1, stdErr);
+        stdErr.Should().Contain("-sdel kept");
+        File.ReadAllText(spaced).Should().Be("F");
+        File.ReadAllText(dots).Should().Be("G");
+        ZipFiles(_scratch.Inside("ds.zip")).Should().BeEquivalentTo("f.txt=F", "g.txt=G");
+        Directory.Delete(@"\\?\" + _scratch.Inside("ds"), recursive: true);
+    }
+
     // T-F509: tar.exe read both names, and -sdel then deleted "a.txt" by its plain path and kept
     // "a.txt " unreported. The source is refused whole: nothing archived from it, nothing deleted.
     [Fact]
