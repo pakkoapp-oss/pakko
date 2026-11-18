@@ -157,6 +157,7 @@ jobs:
           # (the hook is run by AgentBashHookTests through pwsh).
           # T-F470: src/Archiver.ArchiveHelper/** is C that ArchiveHelperProtocolTests runs as a
           # sandboxed child process; coverlet measures neither C nor a child.
+          # T-F553: tests/Archiver.Core.Litmus/** is a console tool LitmusPaperTests starts as a child.
           # See docs/CONVENTIONS.md's "SonarCloud Coverage Exclusions" section.
           .\.sonar\scanner\dotnet-sonarscanner begin `
             /k:"$env:SONAR_PROJECT_KEY" `
@@ -164,7 +165,7 @@ jobs:
             /d:sonar.token="$env:SONAR_TOKEN" `
             /d:sonar.host.url="https://sonarcloud.io" `
             /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml" `
-            /d:sonar.coverage.exclusions="src/Archiver.Shell/Program.cs,src/Archiver.Shell/NativeProgressDialog.cs,src/Archiver.Core/Services/ExplorerLauncher.cs,src/Archiver.CLI/Program.cs,src/Archiver.OperationUi/**,src/Archiver.Shell/HelperProcessLauncher.cs,scripts/**,src/Archiver.ArchiveHelper/**"
+            /d:sonar.coverage.exclusions="src/Archiver.Shell/Program.cs,src/Archiver.Shell/NativeProgressDialog.cs,src/Archiver.Core/Services/ExplorerLauncher.cs,src/Archiver.CLI/Program.cs,src/Archiver.OperationUi/**,src/Archiver.Shell/HelperProcessLauncher.cs,scripts/**,src/Archiver.ArchiveHelper/**,tests/Archiver.Core.Litmus/**"
 
       # T-F275: the PAR2 tools the recovery-data tests check Pakko against (GPL, so downloaded,
       # never committed; the script pins each zip's SHA-256). PAKKO_PAR2_ORACLES_REQUIRED=1 on the

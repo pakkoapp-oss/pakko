@@ -483,9 +483,22 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         if (listing.Count != names.Length || listing.Untrusted)
             throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
-        // T-F90: column 4 (size) is accumulated alongside the existing column-0 (type) check in
-        // the same pass — see DECISIONS.md's T-F90 entry for why the size column, unlike the
-        // date column, is safe to parse regardless of locale.
+        (long totalDeclaredSize, long[] sizes) = DeclaredSizes(listing, names);
+
+        // T-F05: the raw names (with tar's own trailing '/' on directory entries preserved) are
+        // returned so ExtractSingleArchiveAsync's selected-subset extraction can build a "-xf"
+        // member argument list without a second "-tf" invocation, and so the exact path form
+        // tar.exe itself uses is what's ever passed back to it (see DECISIONS.md's T-F05 spike
+        // entry — an unmatched/mismatched member name makes the whole "-xf" call fail non-zero).
+        return new TarCatalog(totalDeclaredSize, names, sizes);
+    }
+
+    // T-F90: column 4 (size) is accumulated alongside the existing column-0 (type) check in
+    // the same pass — see DECISIONS.md's T-F90 entry for why the size column, unlike the
+    // date column, is safe to parse regardless of locale.
+    // Batch 6 (Sonar S3776): out of ScanForUnsafeEntriesAsync; a folder's name gains its '/' here.
+    private static (long Total, long[] Sizes) DeclaredSizes(VerboseListing listing, string[] names)
+    {
         long totalDeclaredSize = 0;
         // T-F142/T-F171: each entry's own size by its index (same-named entries each have theirs), so
         // a selected subset can total its own bytes for progress, distinct from totalDeclaredSize
@@ -508,13 +521,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             if (typeChar == '-')
                 totalDeclaredSize = AddDeclared(totalDeclaredSize, sizes[i]);
         }
-
-        // T-F05: the raw names (with tar's own trailing '/' on directory entries preserved) are
-        // returned so ExtractSingleArchiveAsync's selected-subset extraction can build a "-xf"
-        // member argument list without a second "-tf" invocation, and so the exact path form
-        // tar.exe itself uses is what's ever passed back to it (see DECISIONS.md's T-F05 spike
-        // entry — an unmatched/mismatched member name makes the whole "-xf" call fail non-zero).
-        return new TarCatalog(totalDeclaredSize, names, sizes);
+        return (totalDeclaredSize, sizes);
     }
 
     // T-F142: the files among a selection's members, each copy counted (a progress total): tar.exe
