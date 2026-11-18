@@ -1026,6 +1026,38 @@ Add-SmokeStep 'CLI-070' {
     'zip: exit 1, its own bytes, kept with why; tar.gz refused, exit 2; the twin untouched'
 }
 
+# T-F558: an archive Windows opens as a device is refused as not found, not read. A zip named "NUL"
+# (made through \\?\) is the null device by its plain path everywhere; "CON.zip" is the console on
+# Windows 10 and Server 2022 (reading it blocked) and a file on Windows 11; a pipe is never read.
+Add-SmokeStep 'CLI-071' {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $folder = Get-StepFolder 'cli071'
+    $results = foreach ($name in @('NUL', 'CON.zip')) {
+        $zip = [System.IO.Compression.ZipFile]::Open('\\?\' + (Join-Path $folder $name), 'Create')
+        try {
+            $writer = [System.IO.StreamWriter]::new($zip.CreateEntry('b.txt').Open())
+            try { $writer.Write('B') } finally { $writer.Dispose() }
+        } finally { $zip.Dispose() }
+        $out = Join-Path $folder ('out-' + $name.Replace('.', '-'))
+        $run = Invoke-Pakko @('x', "-o$out", $name) -WorkingDirectory $folder -TimeoutSeconds 120
+        Assert-Smoke ($run.Text -notmatch 'Exception|Unexpected error') "pakko x ${name}: $($run.Text)"
+        if ([System.IO.Path]::GetFullPath((Join-Path $folder $name)).StartsWith('\\.\')) {
+            Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text -match 'does not exist') "pakko x ${name}: a device here, exit $($run.ExitCode) $($run.Text)"
+            Assert-Smoke (-not [System.IO.Directory]::Exists($out)) "pakko x ${name}: wrote $out"
+            "${name}: a device here, refused"
+        }
+        else {
+            Assert-Smoke ($run.ExitCode -eq 0) "pakko x ${name}: exit $($run.ExitCode) $($run.Text)"
+            Assert-Smoke ([System.IO.File]::ReadAllText((Join-Path $out 'b.txt')) -eq 'B') "pakko x ${name}: no b.txt"
+            "${name}: a file here, extracted"
+        }
+        [System.IO.File]::Delete('\\?\' + (Join-Path $folder $name))
+    }
+    $pipe = Invoke-Pakko @('t', '\\.\pipe\pakko-smoke-cli071') -TimeoutSeconds 120
+    Assert-Smoke ($pipe.ExitCode -eq 2 -and $pipe.Text -match 'does not exist') "pakko t on a pipe: exit $($pipe.ExitCode) $($pipe.Text)"
+    ($results + 'a pipe: refused') -join '; '
+}
+
 Add-SmokeStep 'CLI-057' {
     $folder = Get-StepFolder 'cli057'
     $source = Join-Path $folder 'cs'
