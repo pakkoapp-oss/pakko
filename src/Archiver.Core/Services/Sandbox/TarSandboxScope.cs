@@ -147,6 +147,10 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <summary>The operation-scoped quarantine directory (contains "out\" if present) — deleted whole by Dispose().</summary>
     public string QuarantineRoot { get; private set; }
 
+    /// <summary>T-F555: this scope's AppContainer profile, named once from the root it was made with; after
+    /// <see cref="MoveQuarantineToTemp"/> the root no longer names it.</summary>
+    internal string SandboxName => _profile.Name;
+
     /// <summary>T-F524: the quarantine is next to the destination, not under %TEMP%.</summary>
     internal bool NearDestination { get; private set; }
 

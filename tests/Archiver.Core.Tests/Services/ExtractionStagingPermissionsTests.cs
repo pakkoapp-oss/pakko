@@ -68,6 +68,33 @@ public sealed class ExtractionStagingPermissionsTests : IDisposable
         Rules(Path.Combine(dest, "sub", "b.txt")).Should().Equal(RulesOfAFileMadeBeside(Path.Combine(dest, "sub", "b.txt")));
     }
 
+    // T-F555: a folder that passes nothing to its files (its entries reach subfolders only, or this
+    // folder only): a file made there gets the creator's default DACL (measured: SYSTEM, the logon
+    // session, the user), not none. A merged file gets the same, never an empty DACL no one can open.
+    [Fact]
+    public void Merge_AFolderThatGivesItsFilesNothing_FilesGetWhatAFileMadeThereGets()
+    {
+        string dest = Path.Combine(_temp.Path, "dest");
+        string sub = Path.Combine(dest, "s");
+        Directory.CreateDirectory(sub);
+        var security = new DirectorySecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.FullControl,
+            InheritanceFlags.ContainerInherit, PropagationFlags.None, AccessControlType.Allow));
+        new DirectoryInfo(sub).SetAccessControl(security);
+        string b = Path.Combine(sub, "b.txt");
+
+        using (var staging = ExtractionStaging.Create(dest))
+        {
+            Stage(staging, Path.Combine("s", "b.txt"));
+            staging.CommitInto(dest).Should().BeEmpty();
+            staging.PermissionsNotApplied.Should().BeEmpty();
+        }
+
+        Rules(b).Should().NotBeEmpty().And.Equal(RulesOfAFileMadeBeside(b));
+        File.ReadAllText(b).Should().Be(Path.Combine("s", "b.txt"));
+    }
+
     // The usual merge: the destination's folders pass down what staging's did, and no file is rewritten.
     [Fact]
     public void Merge_FoldersThatGiveWhatStagingGave_LeaveTheFilesAlone()

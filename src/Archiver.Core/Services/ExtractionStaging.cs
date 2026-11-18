@@ -212,7 +212,7 @@ internal sealed class ExtractionStaging : IDisposable
                 (Directory.Exists(finalFile) ? _blockedByFolder : lockedRelativePaths).Add(relative);
                 continue;
             }
-            if (entries.Differ(System.IO.Path.GetDirectoryName(finalFile)!) && !TryInheritOnly(InputPaths.Literal(finalFile)))
+            if (entries.Differ(System.IO.Path.GetDirectoryName(finalFile)!) && !TryInheritOnly(InputPaths.Literal(finalFile), entries.GivesNothing))
                 _permissionsNotApplied.Add(relative);
             committed?.Invoke(finalFile);
         }
@@ -227,6 +227,9 @@ internal sealed class ExtractionStaging : IDisposable
         private string? _lastFolder;
         private bool _lastDiffers;
 
+        /// <summary>T-F555: the last folder passes no entry to its files (read, and empty).</summary>
+        public bool GivesNothing { get; private set; }
+
         public bool Differ(string folder)
         {
             if (string.Equals(folder, _lastFolder, StringComparison.OrdinalIgnoreCase))
@@ -234,17 +237,19 @@ internal sealed class ExtractionStaging : IDisposable
             _lastFolder = folder;
             _stagingGives ??= QuarantineAcl.FileInheritableEntries(InputPaths.Literal(staging)) ?? "";
             // Unread is not the same: the file then takes its folder's entries all the same.
-            _lastDiffers = QuarantineAcl.FileInheritableEntries(InputPaths.Literal(folder)) is not { } folderGives || folderGives != _stagingGives;
+            string? folderGives = QuarantineAcl.FileInheritableEntries(InputPaths.Literal(folder));
+            GivesNothing = folderGives is { Length: 0 };
+            _lastDiffers = folderGives is null || folderGives != _stagingGives;
             return _lastDiffers;
         }
     }
 
     // T-F532: not swallowed - the file would keep staging's entries in a folder that may give fewer.
-    private static bool TryInheritOnly(string file)
+    private static bool TryInheritOnly(string file, bool folderGivesNothing)
     {
         try
         {
-            QuarantineAcl.InheritOnly(file);
+            QuarantineAcl.InheritOnly(file, folderGivesNothing);
             return true;
         }
         catch (IOException)
