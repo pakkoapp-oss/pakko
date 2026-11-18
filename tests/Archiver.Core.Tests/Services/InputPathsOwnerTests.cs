@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 using FluentAssertions;
 
@@ -92,6 +93,28 @@ public sealed partial class InputPathsOwnerTests
     public void Problem_NameTrimmed_NamesThePartThatIsTrimmed(string path, string named)
     {
         InputPaths.Problem(path)!.Arguments.Should().Equal(named);
+    }
+
+    // T-F558: a path Windows opens as a device is no file to read: "CON.zip" in any folder is the console
+    // on Windows 10 and Server 2022, and Detect blocked reading it. "NUL" is the null device on every
+    // Windows (CON would block this test's own read without the fix). Spelled as \\?\ it is a file.
+    [Theory]
+    [InlineData(@"C:\x\NUL", true)]
+    [InlineData(@"C:\x\nul", true)]
+    [InlineData(@"\\.\NUL", true)]
+    [InlineData(@"\\.\NUL\o.zip", true)]
+    [InlineData(@"\\?\C:\x\NUL", false)]
+    [InlineData(@"\\.\C:\x\a.zip", false)]
+    [InlineData(@"C:\x\a.zip", false)]
+    public void Problem_ADevice_IsNotFound(string path, bool device)
+    {
+        CoreText? problem = InputPaths.Problem(path);
+
+        if (device)
+            problem.Should().BeEquivalentTo(new { Code = MessageCode.SourceNotFound, Arguments = new[] { path } });
+        else
+            problem.Should().BeNull();
+        DestinationFolder.IsDevice(path).Should().Be(device, "T-F475's creation check keeps answering for a device");
     }
 
     private static IEnumerable<string> SourceFiles() =>

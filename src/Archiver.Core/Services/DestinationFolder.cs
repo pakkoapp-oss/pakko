@@ -72,22 +72,9 @@ internal static class DestinationFolder
         };
     }
 
-    /// <summary>T-F475: whether Windows opens <paramref name="archivePath"/> as a device - the path
-    /// itself (no folder above it; "CON.zip" in any folder on Windows 10 and Server 2022) or a path
-    /// under a device's root (<c>\\.\NUL\o.zip</c>). <see cref="Path.GetFullPath(string)"/> applies
-    /// the rules of the Windows it runs on. False for a path that cannot be parsed: the folder's
-    /// own check reports that one.</summary>
-    internal static bool IsDevice(string archivePath)
-    {
-        if (InputPaths.Problem(archivePath) is not null)
-            return false;
-        string fullPath = Path.GetFullPath(archivePath);
-        if (Path.GetDirectoryName(fullPath) is null)
-            return true;
-        string root = Path.GetPathRoot(fullPath)!; // has a folder above it, so a root too
-        return (root.StartsWith(@"\\.\", StringComparison.Ordinal) || root.StartsWith(@"\\?\", StringComparison.Ordinal))
-            && ArchiveEntrySecurity.IsDeviceName(root[4..].TrimEnd('\\'));
-    }
+    /// <summary>T-F475: whether Windows opens <paramref name="archivePath"/> as a device; T-F558: the rule is
+    /// <see cref="InputPaths.NamesADevice"/>'s, which also refuses such a path to every reader.</summary>
+    internal static bool IsDevice(string archivePath) => InputPaths.NamesADevice(archivePath);
 
     /// <summary>The result of an archive creation whose folder could not be made.</summary>
     internal static ArchiveResult CreationRefused(ArchiveOptions options, Exception failure) => new()

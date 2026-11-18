@@ -1973,6 +1973,17 @@ re-measured with T-F346's script before and after.
   потрібно"; then "Біля призначення"). Left: the device run, the bench and the closing review.
 - **Reported by:** the T-F474 bench (10,000 files onto D: copied out of `%TEMP%`), 2026-11-13.
 
+### T-F559 - A device-named file inside a source folder on Windows 10 (P3, from T-F558)
+
+- [ ] **Status:** open. T-F558 refuses a path Windows opens as a device where Core is given it
+  (`InputPaths.Problem`), but a folder walked as a source can hold one ("`CON.txt`", made through
+  `\\?\`): on Windows 10 and Server 2022 its plain path is the console, and the walk's readers open
+  it by that path. Likely the same block T-F558 fixed for an archive. Probe on PakkoW10 and on the
+  CI image (a folder holding `CON.txt` archived as ZIP and as tar, hashed, scanned) before a fix;
+  the fix belongs to the walk's owner (`DirectoryWalker`), as T-F531's spelled walk did for names
+  Windows trims.
+- **Reported by:** the agent (batch 6, T-F558's closing review), 2026-11-18.
+
 ### T-F556 - The Shell and the App could archive a name Windows trims as Explorer lists it (P3, from T-F531)
 
 - [ ] **Status:** open. ZIP archives "`a.txt `" written as `\\?\` (T-F531), but Explorer hands the

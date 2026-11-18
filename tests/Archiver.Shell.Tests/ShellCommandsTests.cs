@@ -106,12 +106,31 @@ public sealed class ShellCommandsTests : IDisposable
 
         if (deviceHere)
         {
-            ui.Messages.Should().NotBeEmpty();
+            ui.Messages.Should().ContainSingle().Which.Text.Should().Contain("does not exist");
             Directory.Exists(Path.Combine(_root, "_" + baseName)).Should().BeFalse();
             return;
         }
         ui.Messages.Should().BeEmpty();
         File.ReadAllText(Path.Combine(_root, "_" + baseName, "b.txt")).Should().Be("B");
+    }
+
+    // T-F558: an archive whose plain path is a device on every Windows exists only by its \\?\ spelling;
+    // the plain path is refused as not found. NUL reads nothing, so this row passed before the fix too;
+    // the CON rows above on Windows 10 and Server 2022 are the ones that blocked in Detect.
+    [Theory]
+    [InlineData("here")]
+    [InlineData("folder")]
+    public async Task Extract_ArchiveWhosePlainPathIsADevice_IsRefusedNotOpened(string command)
+    {
+        string zip = Path.Combine(_root, "NUL");
+        MakeZip(@"\\?\" + zip, ("a.txt", "A"));
+        var ui = new FakeOperationUi();
+        ShellCommands commands = Create(ui);
+
+        await (command == "here" ? commands.ExtractHereAsync([zip]) : commands.ExtractFolderAsync([zip]));
+
+        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain("does not exist").And.NotContain("not a recognized archive");
+        Directory.EnumerateFileSystemEntries(_root).Should().ContainSingle();
     }
 
     // T-F268 step 3: one window per Explorer command, naming each archive as it starts.
