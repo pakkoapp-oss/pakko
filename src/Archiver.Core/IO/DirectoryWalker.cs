@@ -71,10 +71,11 @@ public static class DirectoryWalker
     /// <c>\\?\</c> path (as is everything below it) and walked as any other, never
     /// <see cref="WalkEntryKind.TrimmedName"/>; <paramref name="leaveOut"/> gets it so too. A root written
     /// as <c>\\?\</c> may then itself be such a name. Name the entries with <see cref="RelativePath"/>.</param>
-    public static IEnumerable<WalkEntry> Walk(string root, Func<FileSystemInfo, bool>? leaveOut = null, bool spelledBelow = false) =>
-        (spelledBelow ? Archiver.Core.Services.InputPaths.SpelledProblem(root) : Archiver.Core.Services.InputPaths.Problem(root)) is null
-            ? WalkFrom(root, leaveOut, spelled: spelledBelow)
-            : [];
+    public static IEnumerable<WalkEntry> Walk(string root, Func<FileSystemInfo, bool>? leaveOut = null, bool spelledBelow = false)
+    {
+        Archiver.Core.Models.CoreText? problem = spelledBelow ? Archiver.Core.Services.InputPaths.SpelledProblem(root) : Archiver.Core.Services.InputPaths.Problem(root);
+        return problem is null ? WalkFrom(root, leaveOut, spelled: spelledBelow) : [];
+    }
 
     /// <summary>T-F531: the path of a walk's entry relative to <paramref name="root"/>, as spelled. A
     /// literal <c>\\?\</c> entry below a plain root is compared with the root's literal form:

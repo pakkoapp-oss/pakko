@@ -69,7 +69,7 @@ public sealed partial class DirectoryWalkerOwnerTests
     public void RelativePath_OutsideTheOwner_IsOnlyTheListedOnes()
     {
         var found = SourceFiles().Where(f => f != Owner)
-            .Select(f => (File: f, Count: Regex.Count(Code(f), @"\bGetRelativePath\(")))
+            .Select(f => (File: f, Count: RelativePathCall().Count(Code(f))))
             .Where(f => f.Count > 0)
             .ToDictionary(f => f.File, f => f.Count);
 
@@ -149,6 +149,9 @@ public sealed partial class DirectoryWalkerOwnerTests
     private static string Code(string file) =>
         string.Join('\n', File.ReadAllLines(Path.Combine(SrcRoot, file.Replace('/', Path.DirectorySeparatorChar)))
             .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
+
+    [GeneratedRegex(@"\bGetRelativePath\(")]
+    private static partial Regex RelativePathCall();
 
     // A listing by the calls that list a folder.
     [GeneratedRegex(@"\.Enumerate(Files|Directories|FileSystemEntries|FileSystemInfos)\(|\.Get(Files|Directories|FileSystemEntries|FileSystemInfos)\(|\bFileSystemEnumerable\b")]
