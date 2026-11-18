@@ -109,19 +109,24 @@ public static class InputPaths
     internal static CoreText? Problem(string? path) =>
         ParseProblem(path) ?? (IsDeviceFullPath(Path.GetFullPath(path!)) ? CoreMessages.Text(MessageCode.SourceNotFound, path!) : null);
 
-    /// <summary>T-F475: whether Windows opens <paramref name="path"/> as a device - the path itself (no
-    /// folder above it; "CON.zip" in any folder on Windows 10 and Server 2022) or a path under a device's
-    /// root (<c>\\.\NUL\o.zip</c>). <see cref="Path.GetFullPath(string)"/> applies the rules of the Windows
+    /// <summary>T-F475: whether Windows opens <paramref name="path"/> as a device - the path itself ("CON.zip"
+    /// in any folder on Windows 10 and Server 2022 is <c>\\.\CON</c>) or a path under a device's root
+    /// (<c>\\.\NUL\o.zip</c>); never a drive, a share or a volume. <see cref="Path.GetFullPath(string)"/> applies the rules of the Windows
     /// it runs on. False for a path that cannot be parsed.</summary>
     internal static bool NamesADevice(string path) => ParseProblem(path) is null && IsDeviceFullPath(Path.GetFullPath(path));
 
+    // Only in the device namespace: "C:\x\NUL" is "\\.\NUL" by then. A drive, a share or a volume there
+    // is a root, which has no folder above it either (T-F558: the drive-root sources were refused).
     private static bool IsDeviceFullPath(string fullPath)
     {
-        if (Path.GetDirectoryName(fullPath) is null)
-            return true;
-        string root = Path.GetPathRoot(fullPath)!; // has a folder above it, so a root too
-        return (root.StartsWith(@"\\.\", StringComparison.Ordinal) || root.StartsWith(@"\\?\", StringComparison.Ordinal))
-            && ArchiveEntrySecurity.IsDeviceName(root[4..].TrimEnd('\\'));
+        string? root = Path.GetPathRoot(fullPath);
+        if (root is null || !(root.StartsWith(@"\\.\", StringComparison.Ordinal) || root.StartsWith(@"\\?\", StringComparison.Ordinal)))
+            return false;
+        string name = root[4..].TrimEnd('\\');
+        bool isVolume = (name.Length == 2 && name[1] == ':')
+            || name.StartsWith(@"UNC\", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("Volume{", StringComparison.OrdinalIgnoreCase);
+        return !isVolume && (Path.GetDirectoryName(fullPath) is null || ArchiveEntrySecurity.IsDeviceName(name));
     }
 
     private static CoreText? ParseProblem(string? path)

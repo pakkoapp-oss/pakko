@@ -15047,12 +15047,15 @@ taken while another project shared the machine (below) and are not a calibration
 the hang dump (`--blame-hang-timeout`, `dotnet-dump analyze`, `clrstack -all`) had
 `ArchiveFormatDetector.Detect` in `RandomAccess.ReadAtOffset` on "`CON.zip`", the console on
 Server 2022 and Windows 10. `InputPaths.Problem` checked parsing and trimmed names only. It now refuses
-a full path Windows opens as a device (no folder above it, or a `\\.\`/`\\?\` root that is a device
-name) as "not found", the text `ArchiveProblem` already gives a path that is no file, so no locale
+a full path Windows opens as a device (in the `\\.\`/`\\?\` namespace, a root that is a device name or
+has no folder above it, but not a drive, a share or a volume) as "not found", the text `ArchiveProblem` already gives a path that is no file, so no locale
 changes. T-F475's `DestinationFolder.IsDevice` called `Problem` first and would have answered false for
 every device once `Problem` refused them; the rule now lives in `InputPaths.NamesADevice` (parsing
 only, then the device test), and `IsDevice` calls it. A `\\?\` path is never a device by its name, so
-a file made that way stays readable by that spelling.
+a file made that way stays readable by that spelling. The first version took "no folder above it" for
+a device anywhere, as `IsDevice` did for archive paths, which always have one; a drive root has none,
+and T-F476's next probe refused every drive-root source (`DriveRootSourceTests`). Roots are now rows of
+`Problem_ADevice_IsNotFound`.
 
 **A busy machine (2026-11-18).** Part of the series ran while another project loaded the machine.
 Readings from that time, not to be taken as Pakko's: Extract/ManySmallFiles 2.67-3.27 and

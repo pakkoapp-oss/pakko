@@ -106,6 +106,14 @@ public sealed partial class InputPathsOwnerTests
     [InlineData(@"\\?\C:\x\NUL", false)]
     [InlineData(@"\\.\C:\x\a.zip", false)]
     [InlineData(@"C:\x\a.zip", false)]
+    [InlineData(@"\\.\PhysicalDrive0", true)]
+    // A root has no folder above it either, and is no device (T-F476's probe: DriveRootSourceTests).
+    [InlineData(@"C:\", false)]
+    [InlineData(@"\\?\C:\", false)]
+    [InlineData(@"\\.\C:\", false)]
+    [InlineData(@"\\server\share", false)]
+    [InlineData(@"\\?\UNC\server\share\", false)]
+    [InlineData(@"\\?\Volume{00000000-0000-0000-0000-000000000000}\", false)]
     public void Problem_ADevice_IsNotFound(string path, bool device)
     {
         CoreText? problem = InputPaths.Problem(path);
