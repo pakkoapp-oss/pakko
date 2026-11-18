@@ -366,9 +366,9 @@ public sealed class SourceRecyclerTests
     }
 
     // T-F531: ZIP archived the folder in full, but Pakko's own extraction cannot give a name Windows
-    // trims back: the archive would be the only copy. Kept, as not safe to delete, never "changed".
+    // trims back: the archive would be the only copy. Kept with that reason, never "changed".
     [Fact]
-    public async Task DeleteAsync_SourceHoldingANameWindowsTrims_IsKeptAsNotSafeToDelete()
+    public async Task DeleteAsync_SourceHoldingANameWindowsTrims_IsKeptAsTrimmedName()
     {
         _ops.Add(@"C:\tw", @"C:\tw", isFixed: true);
         _ops.Add(@"C:\ok", @"C:\ok", isFixed: true);
@@ -376,7 +376,7 @@ public sealed class SourceRecyclerTests
         RecycleResult result = await new SourceRecycler(_ops).DeleteAsync(
             [@"C:\tw", @"C:\ok"], new ChangedSnapshot("none", "none", withTrimmedName: @"C:\tw"), _ => Task.FromResult(true));
 
-        result.Kept.Should().Equal(new KeptSource(@"C:\tw", KeepReason.NotSafeToDelete));
+        result.Kept.Should().Equal(new KeptSource(@"C:\tw", KeepReason.TrimmedName));
         result.Deleted.Should().Equal(@"C:\ok");
         _ops.RecycleCalls.Should().ContainSingle().Which.Should().Equal(@"C:\ok");
     }

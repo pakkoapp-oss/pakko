@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Jie gali būti naudojami arba apsaugoti.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Jų pavadinimas arba pavadinimas juose baigiasi tarpu arba tašku, kurį Windows atmeta; išskleidus archyvą jo nebūtų galima atkurti.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Taip</value>
   </data>

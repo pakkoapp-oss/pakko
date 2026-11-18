@@ -14996,8 +14996,13 @@ lists every other `GetRelativePath` with why). Both ZIP writers, the `-x` filter
 (`SourceEntryNames.LeaveOutBelow`), the folder totals, `-stl` and the CLI's mask search walk so. A
 source written as `\\?\` with such a name is taken by ZIP (`InputPaths.SpelledProblem`); its plain
 spelling is still refused, as it opens the twin. tar is unchanged: both refusals (the top-level name,
-and `WalkRefusal` for a folder holding one) are Pakko's, before tar.exe runs, so the tar.exe version
-does not reach them and no run on PakkoW10's 3.5.2 was needed.
+and `WalkRefusal` for a folder holding one) are Pakko's, before tar.exe runs. Run on PakkoW10 (Windows 10
+19045, bsdtar 3.5.2) with the AOT `pakko` of dev package 1.10.0.38, as on the host: `a -sdel tw.zip tw`
+exit 1, `tw/a.txt` and `tw/a.txt ` each with its own bytes, the folder kept with the reason; the `\\?\`
+source exit 1 with its own bytes; `a -r rs.zip *.txt` over `d.` and `d` stores `d./f.txt` and `d/f.txt`
+each with its own bytes; all three as `.tar.gz` exit 2, refused. The mask search's refusal names
+`...\d.\f.txt` as ending in a space or a dot, where it is the folder's name that does; the existing
+text, left.
 
 **Deleting such a source stays forbidden (the agent's decision).** Every key now carries the `\\?\`
 spelling (`SourceKey.Of`, `SourceTree.List`, `PathIdentity`'s final path through
@@ -15007,8 +15012,11 @@ with an archive of `tw/a.txt`, `tw/a.txt `, `tw/d/in.txt`, `tw/d./in.txt`: `pakk
 `-aou`, `-aos` alike, exit 0, no message) writes `a (1).txt` and `d/in (1).txt` for the trimmed ones;
 7za writes `a.txt_` and `d_/in.txt`. The bytes survive, the names do not, the Recycle Bin cannot take a
 `\\?\` path, and `-sdel` deletes for good. So: the App's `ISourceSnapshot.HoldsTrimmedName` keeps such
-a source as `NotSafeToDelete` (before, it was marked unreadable and reported as changed since the
-start); the CLI's `-sdel` keeps it with the reason that extracting cannot give the name back.
+a source with its own reason, `KeepReason.TrimmedName` (before, it was marked unreadable and reported
+as changed since the start); the CLI's `-sdel` keeps it with the reason that extracting cannot give the
+name back. A new reason and a new string in the 37 locales, not `NotSafeToDelete`: that one's text
+("the path could not be opened, or a folder holds a link on a drive without a Recycle Bin") would give
+the user a wrong reason for `tw` (the closing advisor).
 
 **Not in this batch.**
 - The Shell and the App do not turn Explorer's path into `\\?\`: Explorer passes the plain path, which

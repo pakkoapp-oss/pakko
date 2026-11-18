@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>ہو سکتا ہے وہ استعمال میں یا محفوظ ہوں۔</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>ان کا نام یا ان کے اندر کوئی نام اسپیس یا نقطے پر ختم ہوتا ہے جسے Windows ہٹا دیتا ہے؛ آرکائیو نکالنے سے وہ واپس نہیں ملے گا۔</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>ہاں</value>
   </data>

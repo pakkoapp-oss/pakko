@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>使用中または保護されている可能性があります。</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>名前、またはその中の名前が、Windows が取り除く空白またはピリオドで終わっています。アーカイブを展開しても元の名前には戻りません。</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>はい</value>
   </data>

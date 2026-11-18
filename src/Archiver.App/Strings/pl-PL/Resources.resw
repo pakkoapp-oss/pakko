@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Mogą być używane lub chronione.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Ich nazwa lub nazwa w nich kończy się spacją lub kropką, którą Windows pomija; wypakowanie archiwum by jej nie przywróciło.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Tak</value>
   </data>

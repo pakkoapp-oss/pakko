@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Huenda vinatumika au vimelindwa.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Jina lake, au jina lililo ndani yake, linaishia kwa nafasi au nukta ambayo Windows huiondoa; kutoa kumbukumbu hakutalirudisha jina hilo.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ndiyo</value>
   </data>

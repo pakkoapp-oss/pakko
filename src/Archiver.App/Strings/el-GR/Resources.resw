@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Ίσως χρησιμοποιούνται ή προστατεύονται.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Το όνομά τους ή ένα όνομα μέσα τους τελειώνει σε κενό ή τελεία, που τα Windows αφαιρούν· η εξαγωγή του αρχείου συμπίεσης δεν θα το επανέφερε.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ναι</value>
   </data>

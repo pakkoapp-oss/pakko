@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Kullanımda veya korumalı olabilirler.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Adları veya içlerindeki bir ad, Windows'un attığı bir boşluk ya da noktayla bitiyor; arşivi ayıklamak onu geri getiremez.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Evet</value>
   </data>

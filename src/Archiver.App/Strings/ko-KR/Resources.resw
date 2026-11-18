@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>사용 중이거나 보호되어 있을 수 있습니다.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>이름 또는 그 안의 이름이 Windows가 제거하는 공백이나 마침표로 끝납니다. 압축 파일을 풀어도 원래 이름으로 돌아오지 않습니다.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>예</value>
   </data>

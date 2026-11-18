@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Ne voivat olla käytössä tai suojattuja.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Niiden nimi tai niiden sisällä oleva nimi päättyy välilyöntiin tai pisteeseen, jonka Windows poistaa; arkiston purkaminen ei palauttaisi sitä.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Kyllä</value>
   </data>

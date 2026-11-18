@@ -15534,7 +15534,7 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   a source written as `\\?\` with such a name is taken by ZIP (`InputPaths.SpelledProblem`), and tar
   still refuses both. Every key built from a source path keeps the spelling (`SourceKey`, `SourceTree`,
   `PathIdentity` through `InputPaths.SamePlainPath`); such a source is archived but never deleted, as
-  extracting cannot give the name back (the App's `NotSafeToDelete`, the CLI's `-sdel` reason). The CLI's
+  extracting cannot give the name back (the App's `KeepReason.TrimmedName`, the CLI's `-sdel` reason). The CLI's
   mask search and `-stl` see what ZIP archives (`docs/DECISIONS.md`, "Batch 5l"). T-F556 filed for the
   Shell and the App, which get the plain path from Explorer.
 - **Graduated 2026-11-18:** batch 5l.

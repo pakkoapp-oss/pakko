@@ -76,6 +76,7 @@ public sealed class DialogService : IDialogService
         KeepReason.OutputMissing => "NotDeletedReasonOutputMissing",
         KeepReason.NotSafeToDelete => "NotDeletedReasonNotSafeToDelete",
         KeepReason.StillOnDisk => "NotDeletedReasonStillOnDisk",
+        KeepReason.TrimmedName => "NotDeletedReasonTrimmedName",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "A KeepReason with no text."),
     };
 

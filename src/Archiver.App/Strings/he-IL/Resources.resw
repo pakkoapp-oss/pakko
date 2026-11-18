@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>ייתכן שהם בשימוש או מוגנים.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>השם שלהם או שם בתוכם מסתיים ברווח או בנקודה ש-Windows משמיט; חילוץ הארכיון לא יחזיר אותו.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>כן</value>
   </data>

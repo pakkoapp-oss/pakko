@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>De kan være i bruk eller beskyttet.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Navnet deres eller et navn i dem slutter med et mellomrom eller et punktum som Windows fjerner; utpakking av arkivet ville ikke gi det tilbake.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ja</value>
   </data>

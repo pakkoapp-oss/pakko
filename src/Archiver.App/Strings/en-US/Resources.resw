@@ -444,6 +444,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>They may be in use or protected.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Their name, or a name inside them, ends in a space or a dot, which Windows drops; extracting the archive could not give it back.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Yes</value>
   </data>

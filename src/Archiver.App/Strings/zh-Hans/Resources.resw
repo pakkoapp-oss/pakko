@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>它们可能正在使用或受保护。</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>其名称或其中的名称以 Windows 会删去的空格或句点结尾；解压该压缩包也无法恢复该名称。</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>是</value>
   </data>

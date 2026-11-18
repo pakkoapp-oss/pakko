@@ -368,6 +368,9 @@
   <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
     <value>Pot fi în uz sau protejate.</value>
   </data>
+  <data name="NotDeletedReasonTrimmedName" xml:space="preserve">
+    <value>Numele lor sau un nume din ele se termină cu un spațiu sau un punct, pe care Windows îl elimină; extragerea arhivei nu l-ar readuce.</value>
+  </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Da</value>
   </data>
