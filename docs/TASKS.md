@@ -95,7 +95,7 @@ above stays as the record of what each stream holds.
 | 5j | tar listing pairing | T-F551, T-F550 | the `-t`/`-tv` check that a selection takes the entries listed (T-F465): pairing each row by its escaped name, and the first `-t`'s bytes kept in chunks instead of a second run (done, 2026-11-17) | plan mode and advisor at both ends, tests and the measurement on 3.8.9 and 3.5.2, a fresh opus reviewer (a security boundary) |
 | 5k | Work folders' security | T-F532, T-F534, T-F527, T-F526 | the security descriptors and the place of Pakko's work folders: inheritance on a merge and its cancel, an entry its owner cannot delete, the helper refused by CFA | plan mode; PakkoW10 for CFA; an opus reviewer |
 | 5l | Trimmed names in ZIP | T-F531 (done, 2026-11-18) | every key built from a source path carries its `\\?\` spelling | done on `batch-5l`: ZIP archives such names by `\\?\`, a source that is or holds one is kept, never deleted (`CLI-054`, `CLI-070`, `SHL-019`); T-F556, T-F557 filed |
-| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480 done and T-F530's Fastest half closed by measurement (2026-11-18); T-F481, T-F491 wait for an idle machine |
+| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480, T-F476 and T-F558 (found by T-F476's probe) done, T-F530's Fastest half closed by measurement (2026-11-18); T-F481, T-F491 wait for an idle machine; T-F559, T-F560 filed |
 | 7 | Z | T-F493, T-F530's password half | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, `APP-005` on a tar (T-F550: an App selection keeps the first `-t`'s lines), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
@@ -1951,27 +1951,22 @@ re-measured with T-F346's script before and after.
   time on the open handle before close; keep T-F161's staging guarantees.
 - **Reported by:** the agent, 2026-11-10.
 
-### T-F476 - CI's `windows-2022` image now has a tar.exe 3.8.9 without xz or LZMA (P3)
-
-- [ ] **Status:** open. Found 2026-11-09 by T-F470's release-batch sweep on a throwaway branch:
-  `windows-2022` printed `bsdtar 3.8.9 - libarchive 3.8.9 zlib/1.2.5.f-ipp cng/2.0 libb2/bundled`
-  and `archiveint.dll` 3.8.9, where it used to be 3.5.2. So `canary.yml`'s `canary-server2022` job
-  no longer tests 3.5.2; Windows 10's 3.5.2 is reachable only on PakkoW10. That build has no xz or
-  LZMA ("Unsupported compression option --xz", "LZMA codec is unsupported"): 16 tests assume tar.exe
-  writes or reads xz or a 7z (`TarSandboxedServiceTestTests` checked-format and truncation rows,
-  `TarExeWritesXzWithACheck`, `TestAsync_OneArchive_ReportsBytesReadAgainstTheDeclaredSize`, the
-  7z row of `SandboxStdinTests`, `CompressAsync_RenameConflictOnCompoundExtension_...`) and fail
-  instead of skipping, as `CliSingleFileStreamSubprocessTests` already does. Next: skip those by
-  the capability probe, and re-point the canary's comment and `docs/TESTING.md` (Server 2022 is no
-  longer the 3.5.2 leg).
-- **Reported by:** the agent, 2026-11-09.
-
 ### T-F524 - The quarantine next to the destination, not on the system drive (P2, the user)
 
 - [~] **Status:** code done 2026-11-13 (batch 5a, `docs/DECISIONS.md`, "T-F524"). Asked by the user
   ("Мені подобається цей варіант з темпом у корені диска. Переконайся що така стратегія усюди де
   потрібно"; then "Біля призначення"). Left: the device run, the bench and the closing review.
 - **Reported by:** the T-F474 bench (10,000 files onto D: copied out of `%TEMP%`), 2026-11-13.
+
+### T-F560 - TarScan_WhileItScans_HoldsAtMostItsBudgetPerEntry reads 8 to 210 B an entry (P3, batch 6)
+
+- [ ] **Status:** open. The Slow test's live bytes at the scan's middle swing between runs on the
+  same commit: `main` (405d2d6a) on windows-latest read 9, 8 and 88 B an entry, batch 6 read 62, 9
+  and 88, this machine 148 to 210, against a 60 budget measured at 30 when T-F536 added it. Unlike
+  its sibling (`TarScan_ItsResult_...`) it takes `Before` without a warm-up scan, so the process's
+  one-time costs (pools, caches) and the GC's timing fall into the middle. Next: the sibling's
+  warm-up, then five runs on an idle machine and on the canary's runner before the budget changes.
+- **Reported by:** the agent (batch 6, the push check), 2026-11-18.
 
 ### T-F559 - A device-named file inside a source folder on Windows 10 (P3, from T-F558)
 
