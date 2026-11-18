@@ -109,14 +109,9 @@ public static class CliSourceDeleter
         || !real.Equals(Normalize(WithoutLongPathPrefix(path)), StringComparison.OrdinalIgnoreCase);
 
     // Only a drive letter or UNC after the prefix: \\?\Volume{...}\ and \\?\GLOBALROOT\ stay as
-    // they are, or GetFullPath would read what follows as relative to the current folder.
-    private static string WithoutLongPathPrefix(string path)
-    {
-        if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
-            return @"\\" + path[8..];
-        bool driveAfterPrefix = path.Length >= 6 && path.StartsWith(@"\\?\", StringComparison.Ordinal) && char.IsAsciiLetter(path[4]) && path[5] == ':';
-        return driveAfterPrefix ? path[4..] : path;
-    }
+    // they are, or GetFullPath would read what follows as relative to the current folder. T-F557: and
+    // "\\?\C:\x\d." stays too, or it would be its twin "C:\x\d".
+    private static string WithoutLongPathPrefix(string path) => InputPaths.SamePlainPath(path);
 
     private static bool IsSameOrUnder(string path, string folder) =>
         path.Equals(folder, StringComparison.OrdinalIgnoreCase)

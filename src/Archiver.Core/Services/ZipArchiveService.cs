@@ -2257,6 +2257,13 @@ public sealed class ZipArchiveService : IArchiveService
                 case WalkEntryKind.UnreadableDirectory:
                     context.ReportError(UnreadableDirectoryError(entry.Info.FullName, entry.Error!));
                     break;
+                // T-F557: a spelled walk never yields it; one that did is not dropped in silence.
+                case WalkEntryKind.TrimmedName:
+                    context.ReportError(TrimmedNameError(entry.Info.FullName));
+                    break;
+                case WalkEntryKind.Directory:
+                case WalkEntryKind.LeftOut:
+                    break;
             }
         }
 
@@ -2319,6 +2326,8 @@ public sealed class ZipArchiveService : IArchiveService
     // T-F23: a reparse point met inside a source folder is reported and never followed.
     internal static SkippedFile ReparsePointSkipped(FileSystemInfo info) =>
         CoreMessages.Skip(info.FullName, info is DirectoryInfo ? MessageCode.FolderLinkNotFollowed : MessageCode.ReparsePointNotArchived);
+
+    internal static ArchiveError TrimmedNameError(string path) => CoreMessages.Error(path, MessageCode.SourceNameTrimmed, path);
 
     // T-F236: a subfolder that cannot be listed — one error; the rest of the tree is archived.
     internal static ArchiveError UnreadableDirectoryError(string directory, Exception ex) =>

@@ -60,9 +60,10 @@ public static class CliArchiveSources
         {
             // T-F512 (c): a name Windows trims ("a.txt.", "d.\f.txt") goes to Core as typed. Made a
             // full path first, it named its twin, which was archived and then deleted by -sdel;
-            // Core refuses it (T-F509).
+            // Core refuses it (T-F509). T-F557: written as \\?\ it names itself, and is searched as any
+            // other mask: its wildcard went to Core as a name, "not found".
             string typed = Path.Combine(baseFolder, mask.Path);
-            if (InputPaths.NameTrimmed(typed))
+            if (InputPaths.NameTrimmed(typed) && !typed.StartsWith(@"\\?\", StringComparison.Ordinal))
             {
                 sources.Add(new CliArchiveSource(typed, 1));
                 continue;

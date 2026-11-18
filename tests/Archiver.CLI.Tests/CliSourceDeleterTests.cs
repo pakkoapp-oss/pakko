@@ -83,6 +83,13 @@ public sealed class CliSourceDeleterTests : IDisposable
         CliSourceDeleter.Refusal([source], @"C:\work\sub").Should().Contain("current folder");
     }
 
+    // T-F557: "d." written as \\?\ is its own folder, not the current folder "d" it is trimmed to.
+    [Fact]
+    public void Refusal_LiteralFolderWindowsTrims_IsNotTheCurrentFolderItsTwin()
+    {
+        (CliSourceDeleter.Refusal([@"\\?\C:\work\d."], @"C:\work\d") ?? "").Should().NotContain("current folder");
+    }
+
     [Fact]
     public void Refusal_CurrentFolderReachedThroughAJunction_IsRefused()
     {

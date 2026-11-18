@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Archiver.Core.IO;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.IO;
@@ -138,6 +139,18 @@ public sealed partial class DirectoryWalkerOwnerTests
         Listing().Matches(Code(Owner)).Select(m => m.Value).Should().Contain(".EnumerateFileSystemInfos(");
         Listing().Matches("d.GetDirectories(); Directory.EnumerateFileSystemEntries(p); new FileSystemEnumerable<string>(r, t, o)")
             .Select(m => m.Value).Should().Equal(".GetDirectories(", ".EnumerateFileSystemEntries(", "FileSystemEnumerable");
+    }
+
+    // T-F557: the ZIP writers name every kind a walk yields. A kind left out of the switch was dropped
+    // in silence and the source reported complete; TrimmedName, which a spelled walk never yields, among them.
+    [Theory]
+    [InlineData("Archiver.Core/Services/ZipArchiveService.cs")]
+    [InlineData("Archiver.Core/Services/Zip/WorkItemEnumerator.cs")]
+    public void ZipWritersWalk_NamesEveryKind(string file)
+    {
+        string code = Code(file);
+        Enum.GetNames<WalkEntryKind>().Where(kind => !code.Contains("case WalkEntryKind." + kind, StringComparison.Ordinal))
+            .Should().BeEmpty("a kind the walk yields is written, skipped or reported, never dropped (T-F557)");
     }
 
     private static IEnumerable<string> SourceFiles() =>

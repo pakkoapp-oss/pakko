@@ -182,13 +182,8 @@ public static class CliNameSelection
 
     // T-F419: a searched mask without the prefix, or its "?" part would read as a wildcard folder
     // ("\\?\C:\d\*.zip" finds what "C:\d\*.zip" does, as in 7-Zip). Long paths need no prefix in .NET.
-    private static string AsSearched(string fullPath)
-    {
-        if (fullPath.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
-            return @"\\" + fullPath[8..];
-        bool driveAfterPrefix = fullPath.Length >= 6 && fullPath.StartsWith(@"\\?\", StringComparison.Ordinal) && char.IsAsciiLetter(fullPath[4]) && fullPath[5] == ':';
-        return driveAfterPrefix ? fullPath[4..] : fullPath;
-    }
+    // T-F557: InputPaths' rule, which keeps the prefix of a path whose plain form names a twin.
+    private static string AsSearched(string fullPath) => InputPaths.SamePlainPath(fullPath);
 
     // The files under the mask's literal leading folders; deeper only when it recurses or a folder
     // part holds a wildcard. DirectoryWalker enters no link, so a junction loop ends the walk; a

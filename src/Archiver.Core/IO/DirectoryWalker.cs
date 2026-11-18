@@ -85,7 +85,7 @@ public static class DirectoryWalker
     public static string RelativePath(string root, string fullName)
     {
         // T-F406: checked here, not caught: GetFullPath throws only for these.
-        if (string.IsNullOrEmpty(root) || string.IsNullOrEmpty(fullName) || root.Contains('\0') || fullName.Contains('\0'))
+        if (string.IsNullOrWhiteSpace(root) || string.IsNullOrWhiteSpace(fullName) || root.Contains('\0') || fullName.Contains('\0'))
             return fullName;
         string fullRoot = Path.GetFullPath(root);
         if (IsLiteral(fullName) && !IsLiteral(fullRoot))
@@ -218,6 +218,8 @@ public static class DirectoryWalker
         }
     }
 
-    private static bool IsReparsePoint(FileSystemInfo info) =>
-        (info.Attributes & FileAttributes.ReparsePoint) != 0;
+    // T-F557: an entry gone before its stat reads every bit set (-1); it is not a link, and its open
+    // reports it gone.
+    internal static bool IsReparsePoint(FileSystemInfo info) =>
+        info.Attributes != (FileAttributes)(-1) && (info.Attributes & FileAttributes.ReparsePoint) != 0;
 }

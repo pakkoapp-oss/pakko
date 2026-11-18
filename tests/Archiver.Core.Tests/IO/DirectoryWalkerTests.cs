@@ -292,4 +292,21 @@ public sealed class DirectoryWalkerTests : IDisposable
             File.Delete(@"\\?\" + Path.Combine(_temp.Path, "skip."));
         }
     }
+
+    // T-F557: a root or name of spaces is below no root, as an empty one; GetFullPath would throw.
+    [Theory]
+    [InlineData("   ", @"C:\x\f.txt")]
+    [InlineData(@"C:\x", "   ")]
+    public void RelativePath_WhitespaceOnly_ComesBackAsGiven(string root, string fullName)
+    {
+        DirectoryWalker.RelativePath(root, fullName).Should().Be(fullName);
+    }
+
+    // T-F557: a child spelled again by its \\?\ path and gone before its stat reads attributes -1,
+    // every bit set: it is not a link. Opened later, it is reported as gone.
+    [Fact]
+    public void IsReparsePoint_EntryThatIsGone_IsNot()
+    {
+        DirectoryWalker.IsReparsePoint(new FileInfo(@"\\?\" + Path.Combine(_temp.Path, "gone."))).Should().BeFalse();
+    }
 }
