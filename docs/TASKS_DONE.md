@@ -15547,3 +15547,104 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     App's and the CLI's deletion snapshots, `ResolveFinalPath` (`PathIdentity` already answers for the
     `\\?\` spelling). tar.exe cannot read such a top-level name; tar keeps refusing it.
   - **Reported by:** the agent (T-F510), 2026-11-14.
+
+### T-F553 - SonarCloud: 48 open findings on `main` after .NET 11 (P3, 2026-11-17)
+
+- [x] **Status:** done 2026-11-18 (batch 6). The 26 `IDE0028` fixed in place by `dotnet format`, and the rule
+  enforced in the build (`dotnet_diagnostic.IDE0028.severity = warning` in `.editorconfig`; the
+  style option alone also raised IDE0300/0301/0305). The litmus program: one type per file (S3903),
+  async console writes (S6966), its options parsed apart into a record (S127, S3776), the
+  `GetProcessMemoryInfo` result used (S1854); `S2245` (a seeded fixture) and `S1215` (`GC.Collect`
+  in a memory measurement) are Won't-Fix in `docs/CONVENTIONS.md`. The two `S1135` TODOs stay tracked.
+- **Graduated 2026-11-18:** batch 6.
+- **As filed:**
+  - [ ] **Status:** open, batch 6. `issues/search` on `main`, 2026-11-17: 48 unresolved, none in the
+    gate (the gate reads new code only). 26 are `IDE0028` (collection initializers) from the .NET 11
+    analyzers in Core, App.Core, CLI and tests; 21 are in `tests/Archiver.Core.Litmus` (T-F508's litmus
+    program: `S3903`, `S127`, `S6966`, `S2245`, `S1215`, `S3776`, `S1854`); `S1135` in `build.yml` and
+    `ArchiveEntrySecurity.cs:86` (TODOs). Fix in place, or a Won't-Fix line in `docs/CONVENTIONS.md`
+    with its reason (a random fixture is not security, `S2245`); done when `main` shows only the tracked
+    TODOs.
+
+### T-F557 - Batch 5l's reviewer's P3s: the walk's leftovers around names Windows trims (P3, 2026-11-18)
+
+- [x] **Status:** done 2026-11-18 (batch 6), each with a test seen red: `RelativePath` gives a whitespace-only
+  root or name back as given; both ZIP writers name `WalkEntryKind.TrimmedName` again and report it
+  as the source's error (an owner test checks every kind is named); `IsReparsePoint` of an entry
+  gone between listing and stat is no link; a `\\?\` mask below `d.` is searched there; the CLI's two
+  copies of the long-path strip (`CliSourceDeleter`, `CliNameSelection`) call
+  `InputPaths.SamePlainPath` (owner test: no other strip outside the owner but `DirectoryJunction`);
+  the refusal names the part Windows trims, not the whole path.
+- **Graduated 2026-11-18:** batch 6.
+- **As filed:**
+  - [ ] **Status:** open, batch 6. From batch 5l's closing review (`docs/DECISIONS.md`, "Batch 5l"):
+    - `DirectoryWalker.RelativePath` throws `ArgumentException` for a whitespace-only root or name; the
+      contract test's hostile "empty" is `""`. No operation reaches it today.
+    - The ZIP writers' walk switches (`AddDirectoryToArchiveAsync`, `WorkItemEnumerator`) no longer name
+      `WalkEntryKind.TrimmedName`: safe only because a spelled walk never yields it; a kind that came back
+      would be dropped in silence and the source reported complete.
+    - `DirectoryWalker.AsSpelled` rebuilds a child as a new `FileInfo`; one gone between the listing and
+      the stat reads attributes -1 and is reported as a reparse point.
+    - A mask typed as `\\?\C:\x\d.\*.txt` goes to Core with its wildcard (the `NameTrimmed(typed)`
+      short-cut in `CliArchiveSources`) and is "not found" instead of searched.
+    - `CliSourceDeleter.WithoutLongPathPrefix` repeats `InputPaths.SamePlainPath`: with the current folder
+      `C:\x\d`, the source `\\?\C:\x\d.` is refused as the current folder (exit 7, nothing deleted).
+    - tar's refusal of a file the mask search found below "`d.`" says `...\d.\f.txt` ends in a space or a
+      dot; it is the folder's name that does.
+  - **Reported by:** batch 5l's closing reviewer, 2026-11-18.
+
+### T-F554 - tar.exe's `-tv` on 3.3.2, and a size that does not parse counts as 0 (P3, batch 5j's reviewer)
+
+- [x] **Status:** done 2026-11-18 (batch 6). 3.3.2 is out of reach (CI's image is 3.8.9, PakkoW10 3.5.2), so
+  the listing is checked whatever the version: a `-tv` line whose owner or group column is not all
+  digits (`--numeric-owner` did not apply, or a column moved) or whose regular-file line has no
+  size refuses the listing as `TarListingInconsistent` instead of counting 0; no new text.
+  Measured first on every format each build reads: both rules hold on every line, 26 archives on
+  3.8.9 and every format 3.5.2 reads (`docs/DECISIONS.md`, "Batch 6").
+- **Graduated 2026-11-18:** batch 6.
+- **As filed:**
+  - [ ] **Status:** open, batch 6. Batch 5j runs `-tv --numeric-owner` so that an owner or group never
+    moves the size column (a bomb read as 0 bytes passed T-F94's check); measured on 3.8.9 and 3.5.2 only.
+    On 3.3.2 (Server 2022 RTM) the option is unmeasured: if it were ignored in list mode the spaced-owner
+    bomb would pass there again, since `ParseTarListingSize` still counts a regular file's size that does
+    not parse as 0. Measure 3.3.2, and refuse a listing whose regular-file line has no size rather than
+    count 0 (check every format tar.exe reads prints one first).
+
+### T-F555 - Batch 5k's reviewer's P3s: an empty inherited DACL, the work root copied by path, the profile name after a move (P3, 2026-11-17)
+
+- [x] **Status:** done 2026-11-18 (batch 6), each with a test seen red (mutation): (1) measured, a file made in
+  a folder that passes files nothing gets the token's default DACL; a merged file there now gets the
+  same (`QuarantineAcl.InheritOnly(path, parentGivesFilesNothing)`); (2) `CopyFolderDacl` reads the
+  root's owner and DACL through one handle and writes nothing unless the owner is the one this
+  process gives what it makes; (3) `TarSandboxScope.SandboxName` keeps the profile's name, and the
+  test helpers use it instead of deriving it from a moved root.
+- **Graduated 2026-11-18:** batch 6.
+- **As filed:**
+  - [ ] **Status:** open, batch 6. From batch 5k's closing review (`docs/DECISIONS.md`, "Batch 5k"):
+    1. T-F532 re-inherits a merged file in a folder that passes no entry to files (only container-inherit
+       or this-folder-only entries): the file then gets an empty DACL, while one created there gets the
+       token's default DACL. Measure what a file created there gets, and write that, or skip.
+    2. T-F534 copies the work root's DACL by path. Someone with Modify on the parent (this branch's case:
+       an entry the parent gives its children only) could rename the root and put a folder of their own
+       there, whose DACL then lands on the user's extracted folder. Check the root's owner is the user, or
+       hold the root open without delete sharing from its creation.
+    3. `TarSandboxScope.SandboxNameFor` derives the profile from the root's name; after T-F526's move the
+       scope's `QuarantineRoot` no longer names its profile. Production code asks it only in `CreateAsync`;
+       a test helper that derives the SID from a moved scope's root would get another one. Keep the
+       profile name on the scope instead.
+
+### T-F480 - Archive/FewLargeFiles and the Hybrid ratios drifted since July (P3)
+
+- [x] **Status:** done 2026-11-18 (batch 6): nothing drifted in the code. T-F352's July numbers were
+  measured in Release, the 2026-11-10 recalibration in Debug; v1.7.2 and this branch, alternated,
+  read the same in each (Debug Archive/FewLargeFiles 1.54-1.66 against 1.48-1.75; Release v1.7.2
+  1.00-1.21, its July 1.2). The ceilings stay as calibrated, Debug, as REL-001 runs them
+  (`docs/DECISIONS.md`, "Batch 6").
+- **Graduated 2026-11-18:** batch 6.
+- **As filed:**
+  - [ ] **Status:** open. The 2026-11-10 calibration (`CompressionPerformanceTests`, five runs each)
+    measured Archive/FewLargeFiles at 1.61 (1.2 when T-F352 set it), Archive/Hybrid 1.46 (1.3),
+    Extract/Hybrid 1.77 (1.56); v1.9.0 and v1.10.0 are equal, so the drift is older. The ceilings now
+    follow the new numbers. Next: the same scenarios through older release CLIs (v1.6-v1.9) to find
+    the version, then the change.
+  - **Reported by:** the agent, 2026-11-10.
