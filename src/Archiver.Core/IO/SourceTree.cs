@@ -40,7 +40,8 @@ public static class SourceTree
         // T-F406: a path Windows cannot parse is checked at the entry, never caught as an ArgumentException.
         if (Archiver.Core.Services.InputPaths.SpelledProblem(fullPath) is not null)
             return Missing;
-        List<string> trimmed = Archiver.Core.Services.InputPaths.NameTrimmed(fullPath) ? [fullPath] : [];
+        // T-F531 review: a part judged as a last one ("d " in the middle opens as spelled, but extracting trims it).
+        List<string> trimmed = Archiver.Core.Services.InputPaths.AnyPartTrimmedAsLast(fullPath) ? [fullPath] : [];
         try
         {
             var file = new FileInfo(fullPath);

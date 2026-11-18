@@ -32,6 +32,15 @@ public static class InputPaths
         return false;
     }
 
+    /// <summary>T-F531: whether any part of <paramref name="path"/> ends as Windows trims a last part
+    /// ("d ", "d..", "a.txt "). Such a part in the middle opens as spelled, but an archive entry's name has
+    /// every part trimmed on extraction (<c>EntryDiskName</c>), so the name would not come back.</summary>
+    internal static bool AnyPartTrimmedAsLast(string path)
+    {
+        string[] parts = path[(Path.GetPathRoot(path) ?? "").Length..].TrimEnd(Separators).Split(Separators);
+        return Array.Exists(parts, part => PartTrimmed(part, last: true));
+    }
+
     /// <summary>T-F509: <see cref="NameTrimmed"/> for one name met inside a folder, judged as the last part
     /// of a path: the consumers of a walk open and delete each entry, a folder included, by its own path.</summary>
     internal static bool OwnNameTrimmed(string name) => PartTrimmed(name, last: true);

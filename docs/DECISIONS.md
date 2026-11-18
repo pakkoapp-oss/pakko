@@ -15031,6 +15031,15 @@ the user a wrong reason for `tw` (the closing advisor).
   old slice by `fullRoot.Length` only straddled the boundary, and Pakko's tag is searched in the tail, so
   the answer was right by accident; the test pins the comparison by `RelativePath`.
 
+**The closing review (a fresh opus reviewer).**
+- P1, fixed: a folder named "`d `", "`d..`" or "`d. `" in the middle of a path keeps its ending
+  (`GetFullPath` trims only "`d.`" there), so `InputPaths.NameTrimmed` did not flag a source below it.
+  `pakko a -r -sdel o.zip ds\*.txt` over `ds\d \f.txt` archived it as `d /f.txt` and deleted it for
+  good (exit 0, seen red), though extracting writes it into `d`. `SourceTree.List` now names a source
+  any part of which ends as Windows trims a last part (`InputPaths.AnyPartTrimmedAsLast`), so it is kept.
+- P3s filed as T-F557. Its "explicit type over `var`" finding does not hold here: the test projects'
+  `.editorconfig` demands `var` (IDE0007, the build fails).
+
 **Red before the change.** The walker tests by mutation (six); the ZIP folder, filter, matrix and literal
 folder tests before the change; the key, listing, final path, recycler, `-sdel`, mask search and `-stl`
 tests with the code of commit 4 reverted (14 red); the mask search's "taken once" by removing the plain

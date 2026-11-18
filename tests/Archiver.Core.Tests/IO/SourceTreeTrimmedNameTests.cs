@@ -65,6 +65,21 @@ public sealed class SourceTreeTrimmedNameTests : IDisposable
         SourceTree.List(Path.Combine(_root, "b.txt ")).Exists.Should().BeFalse("the plain spelling is the twin's");
     }
 
+    // T-F531 review (P1): "d " and "d.." keep their ending in the middle of a path, so the path opens
+    // as spelled, but extracting trims every part of an entry's name: such a source is named too.
+    [Theory]
+    [InlineData("d ")]
+    [InlineData("d..")]
+    [InlineData("d. ")]
+    public void List_SourceBelowAFolderWhoseNameExtractingTrims_IsNamedAsTrimmed(string folder)
+    {
+        string file = Literal + Path.Combine(_root, folder) + @"\f.txt";
+        Directory.CreateDirectory(Literal + Path.Combine(_root, folder));
+        File.WriteAllText(file, "f");
+
+        SourceTree.List(file).TrimmedNames.Should().Equal(file);
+    }
+
     [Fact]
     public void FinalPathOfItself_LiteralNameWindowsTrims_KeepsTheLiteralSpelling()
     {
