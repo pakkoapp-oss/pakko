@@ -186,7 +186,7 @@ internal static class Par2Repairer
     /// <summary>The input files of a repair, each opened once, read-shared, closed together.</summary>
     private sealed class HandleCache : IDisposable
     {
-        private readonly Dictionary<string, SafeFileHandle> _handles = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, SafeFileHandle> _handles = [with(StringComparer.OrdinalIgnoreCase)];
 
         internal SafeFileHandle Open(string path)
         {

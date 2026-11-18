@@ -12,7 +12,7 @@ namespace Archiver.Core.IntegrationTests;
 // library doesn't exist in this repo yet.
 internal sealed class FakeAmsiScanner : IAmsiScanner
 {
-    public HashSet<string> DetectedContentNames { get; } = new(StringComparer.Ordinal);
+    public HashSet<string> DetectedContentNames { get; } = [with(StringComparer.Ordinal)];
     // T-F171: same-named copies differ only in content.
     public string? DetectedText { get; set; }
     public List<string> ScannedContentNames { get; } = [];

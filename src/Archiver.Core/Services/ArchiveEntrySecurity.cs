@@ -24,13 +24,14 @@ internal static partial class ArchiveEntrySecurity
     // T-F39: Reject reserved Windows device names (with or without extension, case-insensitive).
     // T-F243: the full list from Microsoft's "Naming Files" page, incl. COM0/LPT0, the
     // superscript-digit ports and the console names.
-    private static readonly HashSet<string> _reservedNames = new(StringComparer.OrdinalIgnoreCase)
-    {
+    private static readonly HashSet<string> _reservedNames =
+    [
+        with(StringComparer.OrdinalIgnoreCase),
         "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$",
         "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
         "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
         "COM\u00B9", "COM\u00B2", "COM\u00B3", "LPT\u00B9", "LPT\u00B2", "LPT\u00B3"
-    };
+    ];
 
     // T-F228: a ".." segment (either separator — Windows honors both) or a rooted/drive-relative
     // name can leave the extraction folder, or leave and re-enter it under a name the conflict
@@ -143,12 +144,13 @@ internal static partial class ArchiveEntrySecurity
 
     // T-F51: files matching this list drive GroupPolicyOptions.MotwMode.UnsafeExtensionsOnly —
     // modeled on Windows Attachment Manager/SmartScreen's own known-executable extension set.
-    private static readonly HashSet<string> _unsafeExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
+    private static readonly HashSet<string> _unsafeExtensions =
+    [
+        with(StringComparer.OrdinalIgnoreCase),
         ".exe", ".bat", ".cmd", ".com", ".cpl", ".msi", ".msp", ".scr", ".vbs", ".vbe", ".js",
         ".jse", ".ws", ".wsf", ".wsc", ".wsh", ".ps1", ".ps1xml", ".ps2", ".ps2xml", ".psc1",
         ".psc2", ".msh", ".mshxml", ".scf", ".lnk", ".inf", ".reg", ".hta"
-    };
+    ];
 
     // T-F45: Propagate Zone.Identifier ADS from archive to extracted file.
     // Best-effort — swallows all exceptions. Never fatal.

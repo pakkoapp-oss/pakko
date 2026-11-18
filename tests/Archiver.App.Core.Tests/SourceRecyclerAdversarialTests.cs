@@ -394,8 +394,8 @@ public sealed class SourceRecyclerAdversarialTests : IDisposable
 
     private sealed class RecordingOps : ISourceDeleteOperations
     {
-        public readonly Dictionary<string, string> Final = new(StringComparer.OrdinalIgnoreCase);
-        public readonly HashSet<string> OnDisk = new(StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, string> Final = [with(StringComparer.OrdinalIgnoreCase)];
+        public readonly HashSet<string> OnDisk = [with(StringComparer.OrdinalIgnoreCase)];
         public readonly List<string> Touched = [];
         public bool Fixed = true;
 

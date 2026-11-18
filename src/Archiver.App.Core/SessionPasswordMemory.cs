@@ -10,7 +10,7 @@ namespace Archiver.App.Core;
 /// </summary>
 public sealed class SessionPasswordMemory
 {
-    private readonly Dictionary<string, string> _verified = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _verified = [with(StringComparer.OrdinalIgnoreCase)];
     private string? _pendingArchive;
     private string? _pending;
 

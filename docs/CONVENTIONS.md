@@ -514,6 +514,10 @@ Won't-fix categories recorded so far:
 - **S3267 ("use Where") on `TarNames.JudgeByRepeats`'s loop** (T-F440): the loop's condition adds
   each name to the set it checks; a `Where` would hide that side effect in a lambda. Marked
   `// NOSONAR: S3267` on the `foreach`.
+- **S2245 (weak random) and S1215 (`GC.Collect`) in `tests/Archiver.Core.Litmus`** (T-F553): the
+  fixtures' `Random` is seeded so every run writes the same bytes, nothing secret; the child collects
+  before the measured run so T-F498's allocation and fault counters start from a collected heap.
+  Marked `// NOSONAR` on each line.
 - **CodeQL `cs/ecb-encryption` ("Encryption using ECB") on `AesCtrKeystream.cs`'s
   `_aes.Mode = CipherMode.ECB`** (T-F188; moved from `WinZipAesReader.cs` into the shared
   `Services/Zip/Decryption/AesCtrKeystream.cs` by T-F193, which re-raised it as a new alert): this

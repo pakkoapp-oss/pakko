@@ -96,7 +96,6 @@ public sealed partial class QuarantineFilesOwnerTests
         ("Sandbox/ArchiveintGate.cs", "File.Exists(ArchiveintPath)", 1, "a system DLL, not the quarantine"),
         ("Sandbox/ArchiveintGate.cs", "File.WriteAllBytesAsync(archive, new byte[1024], cancellationToken)", 1, "the probe's empty tar, a Pakko-named file in the temp folder"),
         ("Sandbox/ArchiveintGate.cs", "File.Delete(archive)", 1, "the probe's empty tar, a Pakko-named file in the temp folder"),
-        ("Sandbox/ArchiveHelperOutput.cs", "new(StringComparer.Ordinal)", 1, "a Dictionary of support names, not the disk"),
         ("Sandbox/ArchiveHelperOutput.cs", "new(what)", 1, "an exception, not the disk"),
         ("Sandbox/TarSignatureVerifier.cs", "File.OpenHandle(filePath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete)", 1, "tar.exe and its DLLs"),
         ("Sandbox/TarExeReader.cs", "new(allNames.Where(n => n.EndsWith('/')).Select(n => EntryDiskName.AsPakkoWrites(n.TrimEnd('/'))), StringComparer.OrdinalIgnoreCase)", 1, "a HashSet of entry names, not the disk"),

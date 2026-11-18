@@ -75,8 +75,7 @@ internal static partial class Native
 
     public static ProcessMemoryCounters OwnMemory()
     {
-        var counters = new ProcessMemoryCounters { Cb = (uint)Marshal.SizeOf<ProcessMemoryCounters>() };
-        if (!GetProcessMemoryInfo(GetCurrentProcess(), out counters, (int)counters.Cb))
+        if (!GetProcessMemoryInfo(GetCurrentProcess(), out ProcessMemoryCounters counters, Marshal.SizeOf<ProcessMemoryCounters>()))
             throw new InvalidOperationException($"GetProcessMemoryInfo failed (Win32 error {Marshal.GetLastPInvokeError()}).");
         return counters;
     }
