@@ -510,7 +510,7 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     // A concrete collection, never a collection expression: WinRT marshals ItemsSource (T-F355).
-    public ObservableCollection<string> SevenZipMethodChoices { get; } = new();
+    public ObservableCollection<string> SevenZipMethodChoices { get; } = [];
 
     private readonly IReadOnlyList<SevenZipMethod> _sevenZipMethods;
 
@@ -623,7 +623,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     // A concrete collection, never a collection expression: WinRT marshals ItemsSource (T-F355).
     public ObservableCollection<string> RecoveryPercentChoices { get; } =
-        new(RecoveryDataOption.Percents.Select(RecoveryPercentText));
+        [with(RecoveryDataOption.Percents.Select(RecoveryPercentText))];
 
     private int RecoveryPercent => RecoveryDataOption.PercentFor(_policy, AddRecoveryData, RecoveryPercentIndex);
 
@@ -1479,7 +1479,7 @@ public sealed partial class MainViewModel : ObservableObject
             CurrentFolderPath,
             _currentLevelDisplayName,
             _archiveIndex,
-            new List<string>(_nestedBreadcrumbAncestry),
+            [with(_nestedBreadcrumbAncestry)],
             _currentNestedScopeDir,
             _browseEncryption));
 
@@ -1520,7 +1520,7 @@ public sealed partial class MainViewModel : ObservableObject
                 .ToList();
         }
 
-        CurrentFolderEntries = new ObservableCollection<ArchiveEntryViewModel>(entries);
+        CurrentFolderEntries = [with(entries)];
         SelectedBrowserEntries = [];
         RebuildBreadcrumb();
     }
@@ -1555,7 +1555,7 @@ public sealed partial class MainViewModel : ObservableObject
                     segments.AddRange(CurrentFolderPath.Split('/'));
                 break;
         }
-        BreadcrumbSegments = new ObservableCollection<string>(segments);
+        BreadcrumbSegments = [with(segments)];
     }
 
     // T-F05/T-F242: double-clicking a pending-list row opens a real archive in the browser. The

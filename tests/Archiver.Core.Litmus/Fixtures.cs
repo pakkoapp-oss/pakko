@@ -75,7 +75,7 @@ internal static class Fixtures
 
     private static void WriteManyFiles(string src, int files)
     {
-        var rng = new Random(7);
+        var rng = new Random(7); // NOSONAR: S2245 - a seeded fixture, the same bytes every run; not security
         int perFolder = Math.Max(1, files / 20);
         for (int i = 0; i < files; i++)
         {
@@ -89,7 +89,7 @@ internal static class Fixtures
 
     private static void WriteLargeFile(string path, long length)
     {
-        var rng = new Random(11);
+        var rng = new Random(11); // NOSONAR: S2245 - a seeded fixture, the same bytes every run; not security
         byte[] block = new byte[1024 * 1024];
         using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1024 * 1024);
         for (long written = 0; written < length; written += block.Length)
@@ -131,7 +131,7 @@ internal static class Fixtures
             SourcePaths = [source], DestinationFolder = folder, ArchiveName = "t", Format = ArchiveContainerFormat.TarGz,
         });
         if (!tar.Success)
-            Console.Error.WriteLine($"no tar.gz fixture in {folder}: {string.Join("; ", tar.Errors.Select(e => e.Message))}");
+            await Console.Error.WriteLineAsync($"no tar.gz fixture in {folder}: {string.Join("; ", tar.Errors.Select(e => e.Message))}");
 
         if (File.Exists(source))
         {

@@ -21,11 +21,11 @@ public sealed class SourceRecyclerTests
 {
     private sealed class FakeOps : ISourceDeleteOperations
     {
-        public readonly Dictionary<string, string?> Final = new(StringComparer.OrdinalIgnoreCase);
-        public readonly HashSet<string> Fixed = new(StringComparer.OrdinalIgnoreCase);
-        public readonly HashSet<string> OnDisk = new(StringComparer.OrdinalIgnoreCase);
-        public readonly HashSet<string> RecycleLeaves = new(StringComparer.OrdinalIgnoreCase);
-        public readonly HashSet<string> DeleteThrows = new(StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, string?> Final = [with(StringComparer.OrdinalIgnoreCase)];
+        public readonly HashSet<string> Fixed = [with(StringComparer.OrdinalIgnoreCase)];
+        public readonly HashSet<string> OnDisk = [with(StringComparer.OrdinalIgnoreCase)];
+        public readonly HashSet<string> RecycleLeaves = [with(StringComparer.OrdinalIgnoreCase)];
+        public readonly HashSet<string> DeleteThrows = [with(StringComparer.OrdinalIgnoreCase)];
         public bool RecycleThrows;
         public readonly List<IReadOnlyList<string>> RecycleCalls = [];
         public readonly List<string> Deleted = [];

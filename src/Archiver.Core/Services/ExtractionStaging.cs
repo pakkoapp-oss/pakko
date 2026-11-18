@@ -27,9 +27,9 @@ internal sealed class ExtractionStaging : IDisposable
     /// <summary>The full staging path with a trailing separator, for prefix checks.</summary>
     public string FullPathWithSeparator { get; }
 
-    private readonly Dictionary<string, DateTime> _folderTimes = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DateTime> _folderTimes = [with(StringComparer.OrdinalIgnoreCase)];
 
-    private readonly HashSet<string> _renameExisting = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _renameExisting = [with(StringComparer.OrdinalIgnoreCase)];
     private HashSet<string>? _claimedFinalPaths;
     private readonly List<string> _leftOutThroughLink = [];
 

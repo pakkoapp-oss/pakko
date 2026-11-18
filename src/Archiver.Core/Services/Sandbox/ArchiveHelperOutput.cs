@@ -83,7 +83,7 @@ internal sealed class ArchiveHelperOutput
     private readonly byte[] _digest = new byte[32];
     private readonly HashSet<long> _warned = [];
     private readonly List<string> _missingExports = [];
-    private readonly Dictionary<string, int?> _capabilities = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int?> _capabilities = [with(StringComparer.Ordinal)];
     private readonly Action<long, long>? _onRead;
     private readonly Action<long, long>? _onReading;
     private int _lines;

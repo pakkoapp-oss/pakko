@@ -35,6 +35,9 @@ dotnet_diagnostic.IDE0360.severity = warning
 dotnet_style_prefer_auto_properties = true:warning
 dotnet_diagnostic.IDE0032.severity = warning
 dotnet_diagnostic.IDE0031.severity = warning
+# T-F553: Sonar found 26 at once after .NET 11's analyzers; the build keeps them from coming back
+dotnet_style_prefer_collection_expression = when_types_loosely_match
+dotnet_diagnostic.IDE0028.severity = warning
 
 # Using directives
 csharp_using_directive_placement = outside_namespace:error

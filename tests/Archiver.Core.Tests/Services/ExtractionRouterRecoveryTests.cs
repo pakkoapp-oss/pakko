@@ -12,7 +12,7 @@ namespace Archiver.Core.Tests.Services;
 // T-F275 step 3: a ZIP engine whose test passes every path it is given, or fails the ones named.
 internal sealed class TestingZipEngine : IArchiveService
 {
-    public HashSet<string> Failing { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> Failing { get; } = [with(StringComparer.OrdinalIgnoreCase)];
     public List<string> Tested { get; } = [];
     public Func<string, bool, bool>? Filter { get; private set; }
 
@@ -42,7 +42,7 @@ internal sealed class TestingZipEngine : IArchiveService
 // format gives tar.exe no checksum to compare (a tar.gz), and says nothing of a 7z.
 internal sealed class TestingTarEngine : ITarService
 {
-    public HashSet<string> Failing { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> Failing { get; } = [with(StringComparer.OrdinalIgnoreCase)];
     public List<string> Tested { get; } = [];
     public Func<string, bool, bool>? Filter { get; private set; }
 

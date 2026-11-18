@@ -21,7 +21,7 @@ internal sealed class CliReportContext
     public bool KeptExistingByChoice { get; init; }
 
     /// <summary>Archive file names the fixed -p was already reported wrong for.</summary>
-    public HashSet<string> WrongPasswordArchives { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> WrongPasswordArchives { get; } = [with(StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>The name an error line shows for <paramref name="path"/>.</summary>
     public string DisplayName(string path) =>

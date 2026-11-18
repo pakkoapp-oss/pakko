@@ -81,7 +81,7 @@ public sealed partial class ShellResourceParityTests
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
-            return new Dictionary<string, string>(OperationWindowText.CreateHello().Strings);
+            return [with(OperationWindowText.CreateHello().Strings)];
         }
         finally
         {

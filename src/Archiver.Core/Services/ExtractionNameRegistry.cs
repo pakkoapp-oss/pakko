@@ -12,9 +12,9 @@ namespace Archiver.Core.Services;
 /// </summary>
 internal sealed class ExtractionNameRegistry
 {
-    private readonly HashSet<string> _keptApart = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, string> _owner = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _notWhollyOnDisk = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _keptApart = [with(StringComparer.OrdinalIgnoreCase)];
+    private readonly Dictionary<string, string> _owner = [with(StringComparer.OrdinalIgnoreCase)];
+    private readonly HashSet<string> _notWhollyOnDisk = [with(StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>The archive being extracted; setting it starts <see cref="ClaimedInThisArchive"/> afresh.</summary>
     public string CurrentArchive
@@ -29,11 +29,11 @@ internal sealed class ExtractionNameRegistry
 
     /// <summary>Every final path written so far; also what a new name must avoid
     /// (<see cref="ArchiveNaming.GetUniqueFilePath"/>, <see cref="ExtractionStaging.RenameExistingOnCommit"/>).</summary>
-    public HashSet<string> Claimed { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> Claimed { get; } = [with(StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>The paths <see cref="CurrentArchive"/> wrote. -aot asks this: an earlier archive's file
     /// is on disk, and it is that file that is renamed (<see cref="ExtractionStaging.PlanRenameOfExisting"/>).</summary>
-    public HashSet<string> ClaimedInThisArchive { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> ClaimedInThisArchive { get; } = [with(StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>Whether <paramref name="finalPath"/> meets an earlier entry that must not be
     /// replaced: either side reached it under another name.</summary>
