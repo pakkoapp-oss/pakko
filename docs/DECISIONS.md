@@ -15057,6 +15057,24 @@ a device anywhere, as `IsDevice` did for archive paths, which always have one; a
 and T-F476's next probe refused every drive-root source (`DriveRootSourceTests`). Roots are now rows of
 `Problem_ADevice_IsNotFound`.
 
+**The batch's closing review (a fresh read-only reviewer on T-F554, T-F555, T-F558).** No P1.
+- P2, fixed: `\??\NUL` passed, since only `\\.\` and `\\?\` were taken for the device namespace;
+  `\??\CON` would reach `Detect`'s read again. With it, the rule became an allow-list: in that
+  namespace only a drive with its separator, `UNC\`, `Volume{...}\` and a `GLOBALROOT\Device\HarddiskVolume*`
+  path (a shadow copy) are paths; a pipe, a mailslot, a disk, `\\.\C:` (the raw volume, which the root
+  fix had let through again) and every other device are "not found". A device name list could not
+  cover a pipe (a read that blocks, and a server that may impersonate the reader).
+- P3, filed as T-F561: T-F554 proves a `-tv` size parses, not that tar.exe writes no more than it; a
+  libarchive reader that prints a size it does not enforce would still let the bomb total read 0.
+  None was found reachable (ZIP goes to the ZIP engine, RAR5 of unknown size is refused).
+- P3, accepted: T-F555's owner check refuses when the default owner is not the folder's (an
+  elevated run, an SMB server that sets the owner); `WorkRoot` then keeps the parent's one-level
+  entry, a loss of function, not of safety. Renaming another folder of the user's own into the
+  root's name stays possible to whoever can already modify the parent. An elevated run's merged
+  file takes Administrators and SYSTEM only, what Windows gives an elevated process's new file.
+- Nit, kept: `TarSandboxScope.SandboxName` has no production reader; it is the scope's own record
+  of its profile, read by `QuarantineLocationTests`.
+
 **A busy machine (2026-11-18).** Part of the series ran while another project loaded the machine.
 Readings from that time, not to be taken as Pakko's: Extract/ManySmallFiles 2.67-3.27 and
 Extract/Hybrid 3.12-3.40 (ceilings 2.18 and 2.66), equally on v1.10.0, `main` and this branch; and

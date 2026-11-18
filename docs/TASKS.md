@@ -95,7 +95,7 @@ above stays as the record of what each stream holds.
 | 5j | tar listing pairing | T-F551, T-F550 | the `-t`/`-tv` check that a selection takes the entries listed (T-F465): pairing each row by its escaped name, and the first `-t`'s bytes kept in chunks instead of a second run (done, 2026-11-17) | plan mode and advisor at both ends, tests and the measurement on 3.8.9 and 3.5.2, a fresh opus reviewer (a security boundary) |
 | 5k | Work folders' security | T-F532, T-F534, T-F527, T-F526 | the security descriptors and the place of Pakko's work folders: inheritance on a merge and its cancel, an entry its owner cannot delete, the helper refused by CFA | plan mode; PakkoW10 for CFA; an opus reviewer |
 | 5l | Trimmed names in ZIP | T-F531 (done, 2026-11-18) | every key built from a source path carries its `\\?\` spelling | done on `batch-5l`: ZIP archives such names by `\\?\`, a source that is or holds one is kept, never deleted (`CLI-054`, `CLI-070`, `SHL-019`); T-F556, T-F557 filed |
-| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480, T-F476 and T-F558 (found by T-F476's probe) done, T-F530's Fastest half closed by measurement (2026-11-18); T-F481, T-F491 wait for an idle machine; T-F559, T-F560 filed |
+| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480, T-F476 and T-F558 (found by T-F476's probe) done, T-F530's Fastest half closed by measurement (2026-11-18); T-F481, T-F491 wait for an idle machine; T-F559, T-F560, T-F561 filed |
 | 7 | Z | T-F493, T-F530's password half | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, `APP-005` on a tar (T-F550: an App selection keeps the first `-t`'s lines), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
@@ -1957,6 +1957,18 @@ re-measured with T-F346's script before and after.
   ("Мені подобається цей варіант з темпом у корені диска. Переконайся що така стратегія усюди де
   потрібно"; then "Біля призначення"). Left: the device run, the bench and the closing review.
 - **Reported by:** the T-F474 bench (10,000 files onto D: copied out of `%TEMP%`), 2026-11-13.
+
+### T-F561 - tar.exe's output has no cap tied to the declared total (P3, batch 6's review)
+
+- [ ] **Status:** open. T-F554 refuses a `-tv` line whose size does not parse, but the bomb check
+  (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) still trusts the sizes libarchive prints; a
+  0 it does not enforce (a format whose entry size is unset until the data ends) would pass, and
+  nothing caps what tar.exe then writes. `Archiver.ArchiveHelper` already refuses an entry read
+  other than its declared size (`HelperReader`). No such format is reachable today (ZIP goes to the
+  ZIP engine; libarchive refuses RAR5 entries of unknown size). Next: measure every format tar.exe
+  reads for a printed 0 with data, then either a byte cap on the extraction tied to the total or a
+  `SECURITY.md` line that the rule rests on libarchive.
+- **Reported by:** the batch 6 closing reviewer, 2026-11-18.
 
 ### T-F560 - TarScan_WhileItScans_HoldsAtMostItsBudgetPerEntry reads 8 to 210 B an entry (P3, batch 6)
 

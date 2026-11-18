@@ -114,6 +114,22 @@ public sealed partial class InputPathsOwnerTests
     [InlineData(@"\\server\share", false)]
     [InlineData(@"\\?\UNC\server\share\", false)]
     [InlineData(@"\\?\Volume{00000000-0000-0000-0000-000000000000}\", false)]
+    // The review: \??\ is the device namespace too; a volume without its separator is the raw volume;
+    // a pipe, a mailslot or a disk is no file to read. Only a drive, a share, a volume or a disk volume
+    // through GLOBALROOT (a shadow copy) is a path there.
+    [InlineData(@"\??\NUL", true)]
+    [InlineData(@"\??\NUL\o.zip", true)]
+    [InlineData(@"\??\C:\x\NUL", false)]
+    [InlineData(@"\\.\C:", true)]
+    [InlineData(@"\\?\C:", true)]
+    [InlineData(@"\\?\Volume{00000000-0000-0000-0000-000000000000}", true)]
+    [InlineData(@"\\.\pipe\x", true)]
+    [InlineData(@"\\.\mailslot\x", true)]
+    [InlineData(@"\\?\GLOBALROOT\Device\Null", true)]
+    [InlineData(@"\\.\PhysicalDrive0\x", true)]
+    [InlineData(@"\\.\HarddiskVolume3\x", true)]
+    [InlineData(@"\\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\x\a.zip", false)]
+    [InlineData(@"\\.\UNC\server\share\a.zip", false)]
     public void Problem_ADevice_IsNotFound(string path, bool device)
     {
         CoreText? problem = InputPaths.Problem(path);

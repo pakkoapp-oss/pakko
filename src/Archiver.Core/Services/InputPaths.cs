@@ -110,23 +110,28 @@ public static class InputPaths
         ParseProblem(path) ?? (IsDeviceFullPath(Path.GetFullPath(path!)) ? CoreMessages.Text(MessageCode.SourceNotFound, path!) : null);
 
     /// <summary>T-F475: whether Windows opens <paramref name="path"/> as a device - the path itself ("CON.zip"
-    /// in any folder on Windows 10 and Server 2022 is <c>\\.\CON</c>) or a path under a device's root
-    /// (<c>\\.\NUL\o.zip</c>); never a drive, a share or a volume. <see cref="Path.GetFullPath(string)"/> applies the rules of the Windows
+    /// in any folder on Windows 10 and Server 2022 is <c>\\.\CON</c>) or any path in the <c>\\.\</c>,
+    /// <c>\\?\</c> or <c>\??\</c> namespace that is not on a drive, a share, a volume or a GLOBALROOT disk
+    /// volume (a pipe, <c>\\.\C:</c>). <see cref="Path.GetFullPath(string)"/> applies the rules of the Windows
     /// it runs on. False for a path that cannot be parsed.</summary>
     internal static bool NamesADevice(string path) => ParseProblem(path) is null && IsDeviceFullPath(Path.GetFullPath(path));
 
-    // Only in the device namespace: "C:\x\NUL" is "\\.\NUL" by then. A drive, a share or a volume there
-    // is a root, which has no folder above it either (T-F558: the drive-root sources were refused).
+    // Only in the device namespace: "C:\x\NUL" is "\\.\NUL" by then. The batch 6 review: an allow-list,
+    // not a list of device names - a pipe, a mailslot, a disk, a raw volume (no separator after "C:") or
+    // \??\NUL all open as something that is no file.
     private static bool IsDeviceFullPath(string fullPath)
     {
-        string? root = Path.GetPathRoot(fullPath);
-        if (root is null || !(root.StartsWith(@"\\.\", StringComparison.Ordinal) || root.StartsWith(@"\\?\", StringComparison.Ordinal)))
+        if (!(fullPath.StartsWith(@"\\.\", StringComparison.Ordinal) || fullPath.StartsWith(@"\\?\", StringComparison.Ordinal)
+            || fullPath.StartsWith(@"\??\", StringComparison.Ordinal)))
             return false;
-        string name = root[4..].TrimEnd('\\');
-        bool isVolume = (name.Length == 2 && name[1] == ':')
-            || name.StartsWith(@"UNC\", StringComparison.OrdinalIgnoreCase)
-            || name.StartsWith("Volume{", StringComparison.OrdinalIgnoreCase);
-        return !isVolume && (Path.GetDirectoryName(fullPath) is null || ArchiveEntrySecurity.IsDeviceName(name));
+        string rest = fullPath[4..];
+        bool drive = rest.Length >= 3 && char.IsAsciiLetter(rest[0]) && rest[1] == ':' && rest[2] == '\\';
+        bool share = rest.StartsWith(@"UNC\", StringComparison.OrdinalIgnoreCase);
+        int volumeEnd = rest.StartsWith("Volume{", StringComparison.OrdinalIgnoreCase) ? rest.IndexOf("}\\", StringComparison.Ordinal) : -1;
+        // A disk volume by its device name, the way a shadow copy is reached.
+        bool diskVolume = rest.StartsWith(@"GLOBALROOT\Device\HarddiskVolume", StringComparison.OrdinalIgnoreCase)
+            && rest.IndexOf('\\', @"GLOBALROOT\Device\HarddiskVolume".Length) > 0;
+        return !(drive || share || volumeEnd > 0 || diskVolume);
     }
 
     private static CoreText? ParseProblem(string? path)
