@@ -15043,6 +15043,17 @@ alternated, five runs each:
 Nothing drifted in the code: the same build reads the same on both versions. The Release figures were
 taken while another project shared the machine (below) and are not a calibration.
 
+**T-F558 - a device's name is no file to read.** T-F476's windows-2022 probe hung in a Shell test;
+the hang dump (`--blame-hang-timeout`, `dotnet-dump analyze`, `clrstack -all`) had
+`ArchiveFormatDetector.Detect` in `RandomAccess.ReadAtOffset` on "`CON.zip`", the console on
+Server 2022 and Windows 10. `InputPaths.Problem` checked parsing and trimmed names only. It now refuses
+a full path Windows opens as a device (no folder above it, or a `\\.\`/`\\?\` root that is a device
+name) as "not found", the text `ArchiveProblem` already gives a path that is no file, so no locale
+changes. T-F475's `DestinationFolder.IsDevice` called `Problem` first and would have answered false for
+every device once `Problem` refused them; the rule now lives in `InputPaths.NamesADevice` (parsing
+only, then the device test), and `IsDevice` calls it. A `\\?\` path is never a device by its name, so
+a file made that way stays readable by that spelling.
+
 **A busy machine (2026-11-18).** Part of the series ran while another project loaded the machine.
 Readings from that time, not to be taken as Pakko's: Extract/ManySmallFiles 2.67-3.27 and
 Extract/Hybrid 3.12-3.40 (ceilings 2.18 and 2.66), equally on v1.10.0, `main` and this branch; and

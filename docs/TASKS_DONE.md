@@ -15648,3 +15648,17 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     follow the new numbers. Next: the same scenarios through older release CLIs (v1.6-v1.9) to find
     the version, then the change.
   - **Reported by:** the agent, 2026-11-10.
+
+### T-F558 - An archive named as a device blocked reading the console on Windows 10 and Server 2022 (P2, found by T-F476's probe)
+
+- [x] **Status:** done 2026-11-18 (batch 6). T-F476's probe of the whole suite on windows-2022 hung
+  in `Extract_ArchiveNamedAsADevice_IntoAFolderThatIsNotOne`; the hang dump showed
+  `ArchiveFormatDetector.Detect` blocked in a read of "`CON.zip`", which there (and on Windows 10) is
+  the console: `InputPaths.Problem` passed a path Windows opens as a device. It now refuses one as
+  "not found" (no new text, as `ArchiveProblem` does for a path that is no file); the rule moved from
+  `DestinationFolder.IsDevice` (T-F475) into `InputPaths.NamesADevice`, which `IsDevice` calls, so
+  creation keeps refusing such a name. The `\\?\` spelling of such a file is no device and stays
+  readable. Tests: `Problem_ADevice_IsNotFound` (red on four rows before), a "device's name" kind in
+  `CoreNeverThrowsContractTests`, the Shell's CON rows by the `\\?\` spelling where CON.zip is the
+  console. A device-named file inside a walked folder is T-F559.
+- **Graduated 2026-11-18:** batch 6.

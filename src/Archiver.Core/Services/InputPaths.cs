@@ -103,8 +103,28 @@ public static class InputPaths
             ? problem
             : null;
 
-    /// <summary>Why <paramref name="path"/> cannot be opened at all, or null when it can be tried.</summary>
-    internal static CoreText? Problem(string? path)
+    /// <summary>Why <paramref name="path"/> cannot be opened at all, or null when it can be tried.
+    /// T-F558: a path Windows opens as a device is no file ("not found"): "CON.zip" is the console on
+    /// Windows 10 and Server 2022, and reading it blocked.</summary>
+    internal static CoreText? Problem(string? path) =>
+        ParseProblem(path) ?? (IsDeviceFullPath(Path.GetFullPath(path!)) ? CoreMessages.Text(MessageCode.SourceNotFound, path!) : null);
+
+    /// <summary>T-F475: whether Windows opens <paramref name="path"/> as a device - the path itself (no
+    /// folder above it; "CON.zip" in any folder on Windows 10 and Server 2022) or a path under a device's
+    /// root (<c>\\.\NUL\o.zip</c>). <see cref="Path.GetFullPath(string)"/> applies the rules of the Windows
+    /// it runs on. False for a path that cannot be parsed.</summary>
+    internal static bool NamesADevice(string path) => ParseProblem(path) is null && IsDeviceFullPath(Path.GetFullPath(path));
+
+    private static bool IsDeviceFullPath(string fullPath)
+    {
+        if (Path.GetDirectoryName(fullPath) is null)
+            return true;
+        string root = Path.GetPathRoot(fullPath)!; // has a folder above it, so a root too
+        return (root.StartsWith(@"\\.\", StringComparison.Ordinal) || root.StartsWith(@"\\?\", StringComparison.Ordinal))
+            && ArchiveEntrySecurity.IsDeviceName(root[4..].TrimEnd('\\'));
+    }
+
+    private static CoreText? ParseProblem(string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
             return CoreMessages.Text(MessageCode.SourceNotFound, path ?? "");

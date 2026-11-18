@@ -36,7 +36,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     public static TheoryData<string> Hostile =>
     [
         "a file", "a folder", "missing", "a missing drive", "bad characters", "empty", "locked", "not an archive", "an empty file",
-        "a device", "a trimmed name",
+        "a device", "a device's name", "a trimmed name",
     ];
 
     // T-F509: what each "a trimmed name" path's twin was before the operation.
@@ -108,6 +108,10 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             // T-F475: NUL, not CON - a console source can wait for input.
             case "a device":
                 return @"\\.\NUL";
+            // T-F558: a plain path Windows opens as a device: "NUL" on every Windows ("CON.zip" too on
+            // Windows 10 and Server 2022, where reading it blocked).
+            case "a device's name":
+                return System.IO.Path.Combine(root, "NUL");
             case "an empty file":
                 string empty = System.IO.Path.Combine(root, "empty" + extension);
                 File.WriteAllBytes(empty, []);
