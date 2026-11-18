@@ -220,6 +220,29 @@ public sealed class WorkRootTests : IDisposable
         RawDacl.Sddl(Path.Combine(actualDest, "sub", "a.txt")).Should().EndWith(Mark, "a rewrite of the folder's inheritance walks its tree");
     }
 
+    // T-F555: the root's DACL is read by its name; someone with Modify on the parent could rename the
+    // root and put a folder of their own there. A folder not owned by the owner this process gives what
+    // it makes gives nothing: the target keeps its DACL. Another owner cannot be set without a
+    // privilege, so the owner expected is passed instead.
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public void CopyFolderDacl_AFolderOfAnotherOwner_WritesNothing()
+    {
+        string from = Path.Combine(_temp.Path, "from");
+        string to = Path.Combine(_temp.Path, "to");
+        Directory.CreateDirectory(from);
+        Directory.CreateDirectory(to);
+        GiveChildrenOnly(from, new SecurityIdentifier(WellKnownSidType.WorldSid, null));
+        string before = RawDacl.Sddl(to);
+
+        Action copy = () => Archiver.Core.Services.Sandbox.QuarantineAcl.CopyFolderDacl(from, to, new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null));
+
+        copy.Should().Throw<IOException>();
+        RawDacl.Sddl(to).Should().Be(before);
+        Archiver.Core.Services.Sandbox.QuarantineAcl.CopyFolderDacl(from, to);
+        RawDacl.Sddl(to).Should().Be(RawDacl.Sddl(from), "the folder this process made is copied as before");
+    }
+
     [SupportedOSPlatform("windows")]
     private static void GiveChildrenOnly(string folder, SecurityIdentifier sid)
     {

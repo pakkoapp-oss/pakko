@@ -157,8 +157,8 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         using TarSandboxScope near = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None, nearFolder: _temp.Path);
 
         foreach (TarSandboxScope scope in new[] { inTemp, near })
-            TarSandboxScope.SandboxNameFor(scope.QuarantineRoot).Length.Should().BeLessThanOrEqualTo(40, "packaged names stop at 50; the margin is the package name's");
-        TarSandboxScope.SandboxNameFor(inTemp.QuarantineRoot).Should().NotBe(TarSandboxScope.SandboxNameFor(near.QuarantineRoot));
+            scope.SandboxName.Length.Should().BeLessThanOrEqualTo(40, "packaged names stop at 50; the margin is the package name's");
+        inTemp.SandboxName.Should().NotBe(near.SandboxName);
     }
 
     // T-F244's class: scopes started at the same time each get a profile of their own.
@@ -172,8 +172,8 @@ public sealed partial class TarSandboxScopeTests : IDisposable
             Task.Run(() => TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))));
         try
         {
-            scopes.Select(s => TarSandboxScope.SandboxNameFor(s.QuarantineRoot)).Should().OnlyHaveUniqueItems();
-            scopes.Should().OnlyContain(s => new AppContainerProfile(TarSandboxScope.SandboxNameFor(s.QuarantineRoot)).IsRegisteredOnWindows());
+            scopes.Select(s => s.SandboxName).Should().OnlyHaveUniqueItems();
+            scopes.Should().OnlyContain(s => new AppContainerProfile(s.SandboxName).IsRegisteredOnWindows());
         }
         finally
         {
@@ -192,7 +192,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "seal")]);
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
         string sidText;
-        using (SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid())
+        using (SafeSidHandle sid = new AppContainerProfile(scope.SandboxName).GetSid())
             sidText = new System.Security.Principal.SecurityIdentifier(sid.DangerousGetHandle()).Value;
         // What a compromised run leaves: CreateDirectory takes a DACL with no WRITE_DAC needed (icacls
         // on an existing folder is refused in the sandbox, and PowerShell does not start there, so
@@ -225,7 +225,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         try
         {
             string sidText;
-            using (SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid())
+            using (SafeSidHandle sid = new AppContainerProfile(scope.SandboxName).GetSid())
                 sidText = new System.Security.Principal.SecurityIdentifier(sid.DangerousGetHandle()).Value;
             // An AppContainer is let in only where both the user's side and its own SID are: the run
             // makes the folder open to both (Everyone and its SID, with WRITE_DAC), fills it, then takes
@@ -263,7 +263,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
 
     private static async Task<int> CmdInSandboxOfAsync(TarSandboxScope scope, string command)
     {
-        using SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid();
+        using SafeSidHandle sid = new AppContainerProfile(scope.SandboxName).GetSid();
         (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\cmd.exe", ["/d", "/c", command],
             new ProcessLaunchOptions(AppContainerSid: sid, WorkingDirectory: scope.QuarantineRoot), CancellationToken.None);

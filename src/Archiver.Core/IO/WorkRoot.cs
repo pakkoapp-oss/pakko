@@ -119,7 +119,7 @@ public sealed partial class WorkRoot : IDisposable
     /// T-F534: <see cref="TakeParentEntries"/> for a folder renamed from this root into place as
     /// <paramref name="moved"/>. The entry its parent gives its children only reaches the folder alone,
     /// and what the folder passes down equals what it got in the root, so only the folder itself is
-    /// written: it takes the root's DACL, a folder made in that same parent (<see cref="QuarantineAcl.CopyFolderDacl"/>),
+    /// written: it takes the root's DACL, a folder made in that same parent (<see cref="QuarantineAcl.CopyFolderDacl(string, string)"/>),
     /// with no walk of its tree. A folder in another parent has its inheritance written again, as before.
     /// Best-effort, as <see cref="TakeParentEntries"/>.
     /// </summary>

@@ -155,6 +155,21 @@ public sealed class QuarantineLocationTests : IDisposable
         Directory.Exists(live).Should().BeTrue();
     }
 
+    // T-F555: the profile is named from the root the scope was made with; after T-F526's move the root is
+    // another, so the scope keeps the profile's name and the sandbox it names stays the scope's own.
+    [Fact]
+    public async Task Scope_MovedToTemp_StillNamesItsOwnSandbox()
+    {
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(Archive(("a.txt", "a")), needsOutputDir: true, CancellationToken.None, nearFolder: _temp.Path);
+        string named = scope.SandboxName;
+
+        scope.MoveQuarantineToTemp();
+
+        scope.SandboxName.Should().Be(named);
+        new AppContainerProfile(scope.SandboxName).IsRegisteredOnWindows().Should().BeTrue();
+        (await CmdAsync(scope, @"echo x> out\own.txt")).Should().Be(0, "the moved scope's own sandbox still writes its out\\");
+    }
+
     // --- Through the readers and the service ---
 
     [Theory]
@@ -453,7 +468,7 @@ public sealed class QuarantineLocationTests : IDisposable
 
     private static async Task<int> CmdAsync(TarSandboxScope scope, string command)
     {
-        using SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid();
+        using SafeSidHandle sid = new AppContainerProfile(scope.SandboxName).GetSid();
         (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\cmd.exe", ["/d", "/c", command],
             new ProcessLaunchOptions(AppContainerSid: sid, WorkingDirectory: scope.QuarantineRoot), CancellationToken.None);

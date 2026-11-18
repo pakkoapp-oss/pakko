@@ -19,9 +19,10 @@ internal sealed partial class AppContainerProfile
 
     private const int HResultAlreadyExists = unchecked((int)0x800700B7); // HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)
 
-    private readonly string _profileName;
+    public AppContainerProfile(string profileName) => Name = profileName;
 
-    public AppContainerProfile(string profileName) => _profileName = profileName;
+    /// <summary>The profile's name, as created.</summary>
+    public string Name { get; }
 
     // Where the OS records a profile (one key per AppContainer SID, confirmed 2026-09-25).
     private const string MappingsKey = @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppContainer\Mappings\";
@@ -43,9 +44,9 @@ internal sealed partial class AppContainerProfile
         lock (CreateLock)
         {
             int hr = NativeMethods.CreateAppContainerProfile(
-                _profileName,
-                _profileName,
-                _profileName,
+                Name,
+                Name,
+                Name,
                 pCapabilities: IntPtr.Zero,
                 dwCapabilityCount: 0,
                 out IntPtr sid);
@@ -73,7 +74,7 @@ internal sealed partial class AppContainerProfile
         lock (CreateLock)
         {
             int hr = NativeMethods.CreateAppContainerProfile(
-                _profileName, owner ?? _profileName, _profileName, pCapabilities: IntPtr.Zero, dwCapabilityCount: 0, out IntPtr sid);
+                Name, owner ?? Name, Name, pCapabilities: IntPtr.Zero, dwCapabilityCount: 0, out IntPtr sid);
             if (hr < 0)
                 throw new InvalidOperationException($"CreateAppContainerProfile failed (HRESULT 0x{hr:X8}).");
             NativeMethods.FreeSid(sid);
@@ -81,7 +82,7 @@ internal sealed partial class AppContainerProfile
     }
 
     /// <summary>T-F523: removes this profile; false when Windows refused (a sweep removes it later).</summary>
-    public bool TryDelete() => NativeMethods.DeleteAppContainerProfile(_profileName) >= 0;
+    public bool TryDelete() => NativeMethods.DeleteAppContainerProfile(Name) >= 0;
 
     /// <summary>
     /// T-F523: removes the profiles named <paramref name="prefix"/> + 24 hex whose display name is an
@@ -173,7 +174,7 @@ internal sealed partial class AppContainerProfile
     /// </summary>
     public SafeSidHandle GetSid()
     {
-        int hr = NativeMethods.DeriveAppContainerSidFromAppContainerName(_profileName, out IntPtr sid);
+        int hr = NativeMethods.DeriveAppContainerSidFromAppContainerName(Name, out IntPtr sid);
         if (hr < 0)
             throw new InvalidOperationException($"DeriveAppContainerSidFromAppContainerName failed (HRESULT 0x{hr:X8}).");
 
@@ -189,7 +190,7 @@ internal sealed partial class AppContainerProfile
     /// </summary>
     public void Delete()
     {
-        int hr = NativeMethods.DeleteAppContainerProfile(_profileName);
+        int hr = NativeMethods.DeleteAppContainerProfile(Name);
         if (hr < 0)
             throw new InvalidOperationException($"DeleteAppContainerProfile failed (HRESULT 0x{hr:X8}).");
     }

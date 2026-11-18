@@ -264,7 +264,14 @@ internal static partial class QuarantineAcl
     /// folder Pakko made, whose entries are all inherited. Throws <see cref="IOException"/> when the
     /// DACL cannot be written.
     /// </summary>
-    public static void InheritOnly(string path)
+    public static void InheritOnly(string path) => InheritOnly(path, parentGivesFilesNothing: false);
+
+    /// <summary>
+    /// T-F555: <see cref="InheritOnly(string)"/> for a file whose folder passes nothing to its files: the
+    /// file inherits nothing, so it takes the entries a file made there gets - the creator's default
+    /// DACL (measured: SYSTEM, the logon session, the user) - never an empty DACL no one can open.
+    /// </summary>
+    public static void InheritOnly(string path, bool parentGivesFilesNothing)
     {
         const int SE_FILE_OBJECT = 1;
         const uint DACL_SECURITY_INFORMATION = 0x00000004;
@@ -272,21 +279,63 @@ internal static partial class QuarantineAcl
         const int AclHeaderLength = 8;
         const byte AclRevision = 2;
 
-        IntPtr emptyAcl = Marshal.AllocHGlobal(AclHeaderLength);
+        byte[]? defaultDacl = parentGivesFilesNothing ? TokenDefaultDacl() : null;
+        IntPtr acl = Marshal.AllocHGlobal(defaultDacl?.Length ?? AclHeaderLength);
         try
         {
-            Marshal.WriteInt64(emptyAcl, 0);
-            Marshal.WriteByte(emptyAcl, 0, AclRevision);
-            Marshal.WriteInt16(emptyAcl, 2, AclHeaderLength);
+            if (defaultDacl is not null)
+            {
+                Marshal.Copy(defaultDacl, 0, acl, defaultDacl.Length);
+            }
+            else
+            {
+                Marshal.WriteInt64(acl, 0);
+                Marshal.WriteByte(acl, 0, AclRevision);
+                Marshal.WriteInt16(acl, 2, AclHeaderLength);
+            }
             uint result = NativeMethods.SetNamedSecurityInfoW(
                 path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION,
-                IntPtr.Zero, IntPtr.Zero, emptyAcl, IntPtr.Zero);
+                IntPtr.Zero, IntPtr.Zero, acl, IntPtr.Zero);
             if (result != 0)
                 throw new IOException($"SetNamedSecurityInfoW('{path}') failed (Win32 error {result}).");
         }
         finally
         {
-            Marshal.FreeHGlobal(emptyAcl);
+            Marshal.FreeHGlobal(acl);
+        }
+    }
+
+    // T-F555: the process token's default DACL, the one Windows gives an object whose parent passes it
+    // nothing, as a self-contained ACL. Throws IOException when it cannot be read, or the token has none.
+    private static byte[] TokenDefaultDacl()
+    {
+        const uint TokenQuery = 0x0008;
+        const int TokenDefaultDaclClass = 6;
+        const int AclSizeOffset = 2;
+
+        if (!NativeMethods.OpenProcessToken(new IntPtr(-1), TokenQuery, out Microsoft.Win32.SafeHandles.SafeAccessTokenHandle token))
+            throw new IOException($"OpenProcessToken failed (Win32 error {Marshal.GetLastPInvokeError()}).");
+        using (token)
+        {
+            _ = NativeMethods.GetTokenInformation(token, TokenDefaultDaclClass, IntPtr.Zero, 0, out uint needed);
+            if (needed == 0)
+                throw new IOException($"GetTokenInformation(TokenDefaultDacl) failed (Win32 error {Marshal.GetLastPInvokeError()}).");
+            IntPtr buffer = Marshal.AllocHGlobal((int)needed);
+            try
+            {
+                if (!NativeMethods.GetTokenInformation(token, TokenDefaultDaclClass, buffer, needed, out _))
+                    throw new IOException($"GetTokenInformation(TokenDefaultDacl) failed (Win32 error {Marshal.GetLastPInvokeError()}).");
+                IntPtr dacl = Marshal.ReadIntPtr(buffer);
+                if (dacl == IntPtr.Zero)
+                    throw new IOException("The process token has no default DACL.");
+                byte[] bytes = new byte[(ushort)Marshal.ReadInt16(dacl, AclSizeOffset)];
+                Marshal.Copy(dacl, bytes, 0, bytes.Length);
+                return bytes;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
         }
     }
 
@@ -340,9 +389,23 @@ internal static partial class QuarantineAcl
     /// there carries, its auto-inherited flag included. Written to the name itself (a link is not
     /// followed) by the low-level call, which never walks what is below it: what a folder passes down is
     /// the same either way. Throws <see cref="IOException"/> when a DACL cannot be read or written.
+    /// T-F555: <paramref name="from"/> is read by its name, which someone with Modify on the parent could
+    /// have given a folder of their own; the folder opened must be owned by the owner this process gives
+    /// what it makes, checked through the handle the DACL is read from, or nothing is written.
     /// </summary>
     public static void CopyFolderDacl(string from, string to)
     {
+        if (!OperatingSystem.IsWindows())
+            throw new IOException("A folder's DACL is copied on Windows only.");
+        CopyFolderDacl(from, to, System.Security.Principal.WindowsIdentity.GetCurrent().Owner
+            ?? throw new IOException("The process token names no owner for what it creates."));
+    }
+
+    internal static void CopyFolderDacl(string from, string to, System.Security.Principal.SecurityIdentifier expectedOwner)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new IOException("A folder's DACL is copied on Windows only.");
+        const uint OWNER_SECURITY_INFORMATION = 0x00000001;
         const uint DACL_SECURITY_INFORMATION = 0x00000004;
         const uint ReadControl = 0x00020000;
         const uint WriteDac = 0x00040000;
@@ -350,15 +413,19 @@ internal static partial class QuarantineAcl
         // (measured), and the next change of the parent's entries would treat this folder's as its own.
         const ushort DaclAutoInheritRequest = 0x0100;
         const uint SecurityDescriptorMinLength = 20;
+        const uint OwnerAndDacl = OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION;
 
         byte[] descriptor;
         using (Microsoft.Win32.SafeHandles.SafeFileHandle source = OpenFolderItself(from, ReadControl))
         {
-            _ = NativeMethods.GetKernelObjectSecurity(source, DACL_SECURITY_INFORMATION, null, 0, out uint needed);
+            _ = NativeMethods.GetKernelObjectSecurity(source, OwnerAndDacl, null, 0, out uint needed);
             descriptor = new byte[needed];
-            if (needed < SecurityDescriptorMinLength || !NativeMethods.GetKernelObjectSecurity(source, DACL_SECURITY_INFORMATION, descriptor, needed, out _))
+            if (needed < SecurityDescriptorMinLength || !NativeMethods.GetKernelObjectSecurity(source, OwnerAndDacl, descriptor, needed, out _))
                 throw ErrorFor(Marshal.GetLastPInvokeError(), from);
         }
+        System.Security.Principal.SecurityIdentifier? owner = new System.Security.AccessControl.RawSecurityDescriptor(descriptor, 0).Owner;
+        if (owner != expectedOwner)
+            throw new IOException($"'{from}' is owned by {owner?.Value ?? "no one"}, not by {expectedOwner.Value}: not the folder Pakko made.");
         // A self-relative descriptor: Revision, Sbz1, then Control (little-endian).
         ushort control = (ushort)(descriptor[2] | (descriptor[3] << 8) | DaclAutoInheritRequest);
         descriptor[2] = (byte)control;
@@ -609,6 +676,15 @@ internal static partial class QuarantineAcl
 
         [LibraryImport("advapi32.dll")]
         public static partial uint GetSecurityDescriptorLength(IntPtr securityDescriptor);
+
+        [LibraryImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool OpenProcessToken(IntPtr processHandle, uint desiredAccess, out Microsoft.Win32.SafeHandles.SafeAccessTokenHandle tokenHandle);
+
+        [LibraryImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool GetTokenInformation(
+            Microsoft.Win32.SafeHandles.SafeAccessTokenHandle tokenHandle, int tokenInformationClass, IntPtr tokenInformation, uint length, out uint returnLength);
 
         [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
         public static partial Microsoft.Win32.SafeHandles.SafeFileHandle CreateFileW(
