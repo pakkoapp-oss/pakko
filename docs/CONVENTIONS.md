@@ -613,6 +613,10 @@ uses), not merely untested (the first four since T-F149, the last two since T-F2
   (`Get-Par2Oracles.ps1`, PR #33). `AgentBashHookTests` runs the agent hook through pwsh on every
   case, the same child-process shape as `Archiver.CLI/Program.cs`; the other scripts are checked by
   `DevOpsHygieneTests` and the `lint-ps1` job.
+- **`tests/Archiver.Core.Litmus/**`** (T-F553): the page-fault litmus console tool (T-F498), not a
+  test project; `LitmusPaperTests` (`Category=Slow`) runs it as a child process. Sonar reads it as
+  main code, so batch 6's fixes of its own findings read as 160 uncovered lines (PR #259's gate at
+  45.9 %, 91 % without it).
 - **`src/Archiver.ArchiveHelper/**`** (T-F470): the C helper over `archiveint.dll`. It is under real
   test, by `ArchiveHelperProtocolTests` running the built exe in the sandbox and
   `ArchiveHelperBinaryTests` reading its PE, but coverlet measures neither C nor a child process, so
