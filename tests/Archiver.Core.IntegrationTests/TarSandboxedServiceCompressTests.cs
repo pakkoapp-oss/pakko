@@ -619,7 +619,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
     }
 
     // T-F362: found on device - "src.tar (1).xz" next to an existing src.tar.xz.
-    [Integration]
+    [SkipIfFormatUnsupported("xz")]
     public async Task CompressAsync_RenameConflictOnCompoundExtension_NumbersBeforeTheWholeExtension()
     {
         string srcFile = Path.Combine(_temp.Path, "a.txt");

@@ -641,7 +641,8 @@ public sealed class FixesAdversarialTests : IDisposable
     private void AnArchiveOrARefusal(string archive, int exitCode, string stdErr)
     {
         stdErr.Should().NotContain("Exception").And.NotContain("Unexpected error");
-        string path = _scratch.Inside(archive);
+        // T-F476: not Inside, which fails for "CON.zip" where it is the console (Server 2022, Windows 10).
+        string path = Path.GetFullPath(Path.Combine(_scratch.Root, archive));
         if (IsDeviceHere(path) || IsDeviceHere(Path.GetDirectoryName(path)!))
         {
             exitCode.Should().Be(2, stdErr);

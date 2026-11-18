@@ -94,12 +94,22 @@ public sealed class ShellCommandsTests : IDisposable
     [InlineData("folder", "CON")]
     public async Task Extract_ArchiveNamedAsADevice_IntoAFolderThatIsNotOne(string command, string baseName)
     {
-        string zip = MakeZip(baseName + ".zip", ("a.txt", "A"), ("b.txt", "B"));
+        string zip = Path.Combine(_root, baseName + ".zip");
+        // T-F476: where "CON.zip" is the console itself (Windows 10, Server 2022), the file exists
+        // only by its \\?\ spelling, and the plain path Explorer would hand over is refused.
+        bool deviceHere = Path.GetFullPath(zip).StartsWith(@"\\.\", StringComparison.Ordinal);
+        MakeZip((deviceHere ? @"\\?\" : "") + zip, ("a.txt", "A"), ("b.txt", "B"));
         var ui = new FakeOperationUi();
         ShellCommands commands = Create(ui);
 
         await (command == "here" ? commands.ExtractHereAsync([zip]) : commands.ExtractFolderAsync([zip]));
 
+        if (deviceHere)
+        {
+            ui.Messages.Should().NotBeEmpty();
+            Directory.Exists(Path.Combine(_root, "_" + baseName)).Should().BeFalse();
+            return;
+        }
         ui.Messages.Should().BeEmpty();
         File.ReadAllText(Path.Combine(_root, "_" + baseName, "b.txt")).Should().Be("B");
     }
