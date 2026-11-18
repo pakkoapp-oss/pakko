@@ -10,13 +10,25 @@ namespace Archiver.Core.IntegrationTests;
 /// </summary>
 public sealed class SkipIfFormatUnsupportedAttribute : FactAttribute
 {
-    public SkipIfFormatUnsupportedAttribute(string format)
+    public SkipIfFormatUnsupportedAttribute(string format) => Skip = TarFormatSupport.SkipReason(format);
+}
+
+/// <summary>
+/// <see cref="SkipIfFormatUnsupportedAttribute"/> for a theory. xUnit 2 cannot skip one row, so the
+/// rows of a format a tar.exe may lack go in a theory of their own (T-F476: windows-2022's 3.8.9
+/// has no xz, LZMA, bzip2 or zstd).
+/// </summary>
+public sealed class SkipIfFormatUnsupportedTheoryAttribute : TheoryAttribute
+{
+    public SkipIfFormatUnsupportedTheoryAttribute(string format) => Skip = TarFormatSupport.SkipReason(format);
+}
+
+internal static class TarFormatSupport
+{
+    public static string? SkipReason(string format)
     {
         if (!File.Exists(@"C:\Windows\System32\tar.exe"))
-        {
-            Skip = "tar.exe not present at C:\\Windows\\System32\\tar.exe";
-            return;
-        }
+            return "tar.exe not present at C:\\Windows\\System32\\tar.exe";
 
         TarCapabilities capabilities = new TarSandboxedService(new GroupPolicyOptions()).DetectCapabilitiesAsync().GetAwaiter().GetResult();
 
@@ -31,7 +43,6 @@ public sealed class SkipIfFormatUnsupportedAttribute : FactAttribute
             _ => throw new ArgumentException($"Unknown format '{format}'.", nameof(format)),
         };
 
-        if (!supported)
-            Skip = $"tar.exe (version {capabilities.Version}) does not support '{format}' on this system.";
+        return supported ? null : $"tar.exe (version {capabilities.Version}) does not support '{format}' on this system.";
     }
 }

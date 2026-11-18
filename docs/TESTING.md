@@ -1039,7 +1039,12 @@ regression worth investigating, not the old expected noise.
   `C:\Windows\System32\tar.exe` is not present
 - `[SkipIfFormatUnsupported("rar5")]` etc. — custom `FactAttribute`
   (`SkipIfFormatUnsupportedAttribute.cs`), skipped if `DetectCapabilitiesAsync` reports the named
-  format unsupported. Not yet exercised by any test — T-F50's format-specific fixtures will use it.
+  format unsupported; `[SkipIfFormatUnsupportedTheory(...)]` the same for a theory. xUnit 2 cannot
+  skip one row, so the rows of a format a tar.exe may lack (xz, LZMA, bzip2, zstd, LZMA 7z) are a
+  test of their own (T-F476). That is what lets `canary-server2022` run every IntegrationTests class
+  on windows-2022, whose tar.exe is 3.8.9 with zlib only; tar.exe 3.5.2 is measured on the PakkoW10
+  VM only. Archives named as a device ("CON.zip") are the console on Windows 10 and Server 2022: the
+  tests that make one take its `\\?\` spelling there and expect the plain path refused.
 - `[SevenZipWriterFact]` (T-F342) — skipped where `CanCreateSevenZipAsync` is false.
 - `[NativeX64Fact]` (T-F470) — the tests that need the real gate to choose the helper, or that touch
   the helper's copy right after it ran; skipped outside a native x64 process (the ARM64 canary).

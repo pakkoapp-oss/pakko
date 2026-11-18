@@ -25,8 +25,13 @@ public sealed class SandboxStdinTests : IDisposable
 
     [Theory]
     [InlineData("gz")]
-    [InlineData("7z")]
-    public async Task ArchiveAsStdin_NoGrantOnArchive_ListsAndExtractsInsideAppContainer(string kind)
+    public Task ArchiveAsStdin_NoGrantOnArchive_ListsAndExtractsInsideAppContainer(string kind) => ListsAndExtractsFromStdin(kind);
+
+    // T-F476: the 7z fixture is LZMA, which windows-2022's tar.exe cannot decode.
+    [SkipIfFormatUnsupported("7z")]
+    public Task ArchiveAsStdin_NoGrantOnASevenZip_ListsAndExtractsInsideAppContainer() => ListsAndExtractsFromStdin("7z");
+
+    private async Task ListsAndExtractsFromStdin(string kind)
     {
         _profile.EnsureExists();
         using SafeSidHandle sid = _profile.GetSid();

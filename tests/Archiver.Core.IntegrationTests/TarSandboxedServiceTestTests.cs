@@ -117,13 +117,25 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
     // ── A whole archive ─────────────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData("xz", true)]
-    [InlineData("bz2", true)]
-    [InlineData("zst", true)]
     [InlineData("tar", false)]
     [InlineData("gz", false)]
-    [InlineData("lzma", false)]
-    public async Task TestAsync_WholeArchive_Passes_AndSaysWhenOnlyTheStructureWasChecked(string kind, bool contentsVerified)
+    public Task TestAsync_WholeArchive_Passes_AndSaysWhenOnlyTheStructureWasChecked(string kind, bool contentsVerified) =>
+        WholeArchivePasses(kind, contentsVerified);
+
+    // T-F476: each format a tar.exe may lack (windows-2022's 3.8.9 has none of these) on its own.
+    [SkipIfFormatUnsupported("xz")]
+    public Task TestAsync_WholeXz_PassesWithItsContentsChecked() => WholeArchivePasses("xz", contentsVerified: true);
+
+    [SkipIfFormatUnsupported("bz2")]
+    public Task TestAsync_WholeBz2_PassesWithItsContentsChecked() => WholeArchivePasses("bz2", contentsVerified: true);
+
+    [SkipIfFormatUnsupported("zst")]
+    public Task TestAsync_WholeZst_PassesWithItsContentsChecked() => WholeArchivePasses("zst", contentsVerified: true);
+
+    [SkipIfFormatUnsupported("lzma")]
+    public Task TestAsync_WholeLzma_PassesWithOnlyItsStructureChecked() => WholeArchivePasses("lzma", contentsVerified: false);
+
+    private async Task WholeArchivePasses(string kind, bool contentsVerified)
     {
         string archive = Create(kind);
 
@@ -148,7 +160,7 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
         ShouldHavePassed(await _sut.TestAsync([archive]), archive, contentsVerified: false);
     }
 
-    [Integration]
+    [SkipIfFormatUnsupported("xz")]
     public async Task TestAsync_WritesNothingNextToTheArchive()
     {
         string archive = Create("xz");
@@ -160,12 +172,18 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
 
     // ── Damage ──────────────────────────────────────────────────────────────────────────────────
 
-    [Theory]
+    [SkipIfFormatUnsupportedTheory("xz")]
     [InlineData("xz", 0.25)]
     [InlineData("xz", 0.75)]
-    [InlineData("bz2", 0.5)]
-    [InlineData("zst", 0.5)]
-    public async Task TestAsync_FlippedByteInACheckedFormat_Fails(string kind, double where)
+    public Task TestAsync_FlippedByteInAnXz_Fails(string kind, double where) => FlippedByteFails(kind, where);
+
+    [SkipIfFormatUnsupported("bz2")]
+    public Task TestAsync_FlippedByteInABz2_Fails() => FlippedByteFails("bz2", 0.5);
+
+    [SkipIfFormatUnsupported("zst")]
+    public Task TestAsync_FlippedByteInAZst_Fails() => FlippedByteFails("zst", 0.5);
+
+    private async Task FlippedByteFails(string kind, double where)
     {
         string archive = Create(kind);
         Flip(archive, where);
@@ -200,9 +218,15 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
     [Theory]
     [InlineData("tar")]
     [InlineData("gz")]
-    [InlineData("xz")]
-    [InlineData("lzma")]
-    public async Task TestAsync_TruncatedArchive_Fails(string kind)
+    public Task TestAsync_TruncatedArchive_Fails(string kind) => TruncatedFails(kind);
+
+    [SkipIfFormatUnsupported("xz")]
+    public Task TestAsync_TruncatedXz_Fails() => TruncatedFails("xz");
+
+    [SkipIfFormatUnsupported("lzma")]
+    public Task TestAsync_TruncatedLzma_Fails() => TruncatedFails("lzma");
+
+    private async Task TruncatedFails(string kind)
     {
         string archive = Create(kind);
         Truncate(archive, 0.6);
@@ -235,7 +259,7 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
 
     // A zstd frame without the content checksum (the flag is bit 2 of the byte after the magic,
     // the checksum the frame's last four bytes): nothing verifies what it holds.
-    [Integration]
+    [SkipIfFormatUnsupported("zst")]
     public async Task TestAsync_ZstdWithoutTheContentChecksum_PassesWithTheWarning()
     {
         string archive = Create("zst");
@@ -250,7 +274,7 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
     // An xz stream may have no check ("xz --check=none", a legal stream), and then nothing
     // verifies what it holds: TarTestCoverage reads the check's id, the low four bits of the
     // eighth byte. What tar.exe itself writes has one, which the xz tests above rely on.
-    [Integration]
+    [SkipIfFormatUnsupported("xz")]
     public void TarExeWritesXzWithACheck()
     {
         byte[] head = File.ReadAllBytes(Create("xz"))[..8];
@@ -343,7 +367,7 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
 
     // ── Several archives, progress, cancellation ────────────────────────────────────────────────
 
-    [Integration]
+    [SkipIfFormatUnsupported("xz")]
     public async Task TestAsync_OneDamagedOfTwo_ReportsEachByItself()
     {
         string good = Create("xz");
@@ -358,7 +382,7 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
             (good, SourceOutcome.Completed), (bad, SourceOutcome.Partial));
     }
 
-    [Integration]
+    [SkipIfFormatUnsupported("xz")]
     public async Task TestAsync_OneArchive_ReportsBytesReadAgainstTheDeclaredSize()
     {
         string archive = Create("xz");
@@ -374,7 +398,7 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
         last.BytesTransferred.Should().Be(last.TotalBytes);
     }
 
-    [Integration]
+    [SkipIfFormatUnsupported("xz")]
     public async Task TestAsync_SeveralArchives_ReportsOneStepForEach()
     {
         string first = Create("xz");
