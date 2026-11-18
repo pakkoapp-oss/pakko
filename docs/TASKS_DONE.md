@@ -15662,3 +15662,27 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   `CoreNeverThrowsContractTests`, the Shell's CON rows by the `\\?\` spelling where CON.zip is the
   console. A device-named file inside a walked folder is T-F559.
 - **Graduated 2026-11-18:** batch 6.
+
+### T-F476 - CI's `windows-2022` image now has a tar.exe 3.8.9 without xz or LZMA (P3)
+
+- [x] **Status:** done 2026-11-18 (batch 6). One run of the whole default suite on windows-2022 (a
+  throwaway branch's job, with `--blame-hang-timeout`) listed 17 failures: 16 tar.exe tests of xz,
+  LZMA, bzip2, zstd or the LZMA 7z fixture and the CLI's `CON.zip` test; the Shell's `CON.zip`
+  test hung the run (T-F558). Each format a tar.exe may lack is now a test of its own that skips by
+  `DetectCapabilitiesAsync` (`SkipIfFormatUnsupported`, and a theory variant: xUnit 2 cannot skip
+  one row); `canary-server2022` runs every IntegrationTests class; `docs/TESTING.md` says 3.5.2 is
+  the PakkoW10 VM's only. The same job, rerun on the batch, is green (no failure, no hang).
+- **Graduated 2026-11-18:** batch 6.
+- **As filed:**
+  - [ ] **Status:** open. Found 2026-11-09 by T-F470's release-batch sweep on a throwaway branch:
+    `windows-2022` printed `bsdtar 3.8.9 - libarchive 3.8.9 zlib/1.2.5.f-ipp cng/2.0 libb2/bundled`
+    and `archiveint.dll` 3.8.9, where it used to be 3.5.2. So `canary.yml`'s `canary-server2022` job
+    no longer tests 3.5.2; Windows 10's 3.5.2 is reachable only on PakkoW10. That build has no xz or
+    LZMA ("Unsupported compression option --xz", "LZMA codec is unsupported"): 16 tests assume tar.exe
+    writes or reads xz or a 7z (`TarSandboxedServiceTestTests` checked-format and truncation rows,
+    `TarExeWritesXzWithACheck`, `TestAsync_OneArchive_ReportsBytesReadAgainstTheDeclaredSize`, the
+    7z row of `SandboxStdinTests`, `CompressAsync_RenameConflictOnCompoundExtension_...`) and fail
+    instead of skipping, as `CliSingleFileStreamSubprocessTests` already does. Next: skip those by
+    the capability probe, and re-point the canary's comment and `docs/TESTING.md` (Server 2022 is no
+    longer the 3.5.2 leg).
+  - **Reported by:** the agent, 2026-11-09.
