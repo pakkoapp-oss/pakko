@@ -169,6 +169,9 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         string tar = TarGzOfEmptyEntries(count);
         var service = new Archiver.Core.Services.AntivirusScanService(
             new TarCapabilities(), new GroupPolicyOptions(), () => new CleanScanner(), () => Archiver.Core.Services.Antivirus.AmsiProviderState.Usable);
+        // T-F560: as its sibling, a first scan pays the process's one-time costs before Before is taken;
+        // without it the middle read 8 to 210 B an entry on one commit.
+        _ = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [TarGzOfEmptyEntries(10)] });
         var progress = new HalfwayProgress(count);
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [tar] }, progress);
@@ -177,9 +180,11 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         progress.Halfway.Should().BeGreaterThan(0, "the scan reported its middle");
         long perEntry = (progress.Halfway - progress.Before) / count;
         output.WriteLine($"{count} entries: {(progress.Halfway - progress.Before) >> 10} KiB live halfway, {perEntry} B an entry");
-        // Measured 30 B: the names and their catalog. 660 with the quarantine's files listed whole, 287
-        // with a finding kept for each clean entry (T-F544).
-        perEntry.Should().BeLessThanOrEqualTo(60, "no list of the quarantine's files, no finding per clean entry");
+        // T-F560: measured 156-157 B after the warm-up, on this commit and on T-F544's own (the 30 B then had
+        // no warm-up): a name "d00012/f00012345.txt" is a 64 B string and its slot 8, its size 8, the rest the
+        // scan's own sets keyed by name. 660 with the quarantine's files listed whole, 287 with a finding kept
+        // for each clean entry (T-F544).
+        perEntry.Should().BeLessThanOrEqualTo(200, "no list of the quarantine's files, no finding per clean entry");
     }
 
     // T-F544: what a scan's result holds once it is done - its threats and inconclusive entries and a

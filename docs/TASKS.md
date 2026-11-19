@@ -95,7 +95,7 @@ above stays as the record of what each stream holds.
 | 5j | tar listing pairing | T-F551, T-F550 | the `-t`/`-tv` check that a selection takes the entries listed (T-F465): pairing each row by its escaped name, and the first `-t`'s bytes kept in chunks instead of a second run (done, 2026-11-17) | plan mode and advisor at both ends, tests and the measurement on 3.8.9 and 3.5.2, a fresh opus reviewer (a security boundary) |
 | 5k | Work folders' security | T-F532, T-F534, T-F527, T-F526 | the security descriptors and the place of Pakko's work folders: inheritance on a merge and its cancel, an entry its owner cannot delete, the helper refused by CFA | plan mode; PakkoW10 for CFA; an opus reviewer |
 | 5l | Trimmed names in ZIP | T-F531 (done, 2026-11-18) | every key built from a source path carries its `\\?\` spelling | done on `batch-5l`: ZIP archives such names by `\\?\`, a source that is or holds one is kept, never deleted (`CLI-054`, `CLI-070`, `SHL-019`); T-F556, T-F557 filed |
-| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480, T-F476 and T-F558 (found by T-F476's probe) done, T-F530's Fastest half closed by measurement (2026-11-18); T-F481 closed by measurement (2026-11-19); T-F491 waits for its ten runs; T-F559, T-F560, T-F561 filed |
+| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480, T-F476 and T-F558 (found by T-F476's probe) done, T-F530's Fastest half closed by measurement (2026-11-18); T-F481 closed by measurement and T-F491 as not reproduced (2026-11-19); T-F559, T-F560, T-F561 filed |
 | 7 | Z | T-F493, T-F530's password half | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, `APP-005` on a tar (T-F550: an App selection keeps the first `-t`'s lines), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
@@ -1886,23 +1886,6 @@ re-measured with T-F346's script before and after.
      Measure both, and fix only what is felt.
 - **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
-### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
-
-- [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 release smoke (`REL-001`). In a run of the whole
-  performance project, Pakko's CRC-32 of 3,000 files once took 0.74 s in all five timed passes
-  (median), against about 0.10 s otherwise, while 7za took its usual 0.23 s: ratio 3.18 against a
-  0.65 ceiling. Not noise (every pass slow, 7za normal) and not the thread pool: 40 fresh-process
-  runs of the test alone, 20 as they are and 20 with `DOTNET_ThreadPool_ForceMinWorkerThreads=C`,
-  read 0.32-0.61 with no slow run (`FileHashService` already raises the pool minimum, T-F128). It
-  showed only after the other classes of the project had run in the same process (the
-  `SevenZipRatios` collection runs after them). Suspects: GC after the compression tests' large
-  buffers, background work a previous test left running, Defender scanning the fresh fixture.
-  Next: reproduce in whole-project runs with an ETW/`dotnet-counters` trace (GC, thread pool,
-  CPU of other processes), then decide whether it is the test or `FileHashService`. Until then a
-  failure of this scenario gets the one rerun `docs/TESTING.md` allows, recorded in the release
-  record. Not a reason for .NET 11: the slow mode does not follow the pool minimum.
-- **Reported by:** the agent, 2026-11-10.
-
 ### T-F486 - High contrast: the App's window twice started empty (P2)
 
 - [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 release smoke (`APP-013`, second look on
@@ -1961,12 +1944,13 @@ re-measured with T-F346's script before and after.
 
 ### T-F560 - TarScan_WhileItScans_HoldsAtMostItsBudgetPerEntry reads 8 to 210 B an entry (P3, batch 6)
 
-- [ ] **Status:** open. The Slow test's live bytes at the scan's middle swing between runs on the
-  same commit: `main` (405d2d6a) on windows-latest read 9, 8 and 88 B an entry, batch 6 read 62, 9
-  and 88, this machine 148 to 210, against a 60 budget measured at 30 when T-F536 added it. Unlike
-  its sibling (`TarScan_ItsResult_...`) it takes `Before` without a warm-up scan, so the process's
-  one-time costs (pools, caches) and the GC's timing fall into the middle. Next: the sibling's
-  warm-up, then five runs on an idle machine and on the canary's runner before the budget changes.
+- [ ] **Status:** open, narrowed 2026-11-19. The test now takes the warm-up scan its
+  sibling takes, and the noise is gone: run alone it reads 156-157 B an entry every time, on `main`
+  and on T-F544's own commit (1ce23d79) alike, so the 30 B it was written with had no warm-up and
+  nothing regressed; after the project's other classes it reads 88-95. The budget is 200 (a 64 B
+  name, its 8 B slot and 8 B size, the scan's sets keyed by name; still under 287 and 660, the two
+  bugs it guards). Left: the ~65 B an entry the run alone holds beyond the class run, which looks
+  like a buffer sized by the listing (rented once, then pooled); find its owner before it is judged.
 - **Reported by:** the agent (batch 6, the push check), 2026-11-18.
 
 ### T-F559 - A device-named file inside a source folder on Windows 10 (P3, from T-F558)
