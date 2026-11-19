@@ -562,6 +562,14 @@ ran as one AppContainer SID, a reader of another operation running at the same t
   by the user only. The next extraction into that folder removes it, as it removes staging (T-F263).
   A destination on another volume that a cloud client syncs sees the quarantine while the run
   lasts, as it sees staging.
+- **A merged file and a locked quarantine (batch 5k, v1.11).** A file merged into an existing folder
+  takes that folder's entries, not the wider ones of Pakko's work folder; if that fails, the file is
+  reported as access denied, never left so silently (T-F532). A quarantine entry whose DACL refuses
+  the user is taken back through the owner's right to change its DACL and removed (T-F527), only in a
+  quarantine and only for entries the user owns, so a planted tree in a folder others can write to
+  never steers that walk. One state stays: an OWNER RIGHTS entry takes that right away, so a folder a
+  compromised run fills that way stays in the hidden quarantine, holding the archive's own content,
+  until an administrator removes it (measured; `docs/DECISIONS.md`, "Batch 5k").
 
 ### Trust Chain
 
