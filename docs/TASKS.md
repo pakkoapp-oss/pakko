@@ -95,7 +95,7 @@ above stays as the record of what each stream holds.
 | 5j | tar listing pairing | T-F551, T-F550 | the `-t`/`-tv` check that a selection takes the entries listed (T-F465): pairing each row by its escaped name, and the first `-t`'s bytes kept in chunks instead of a second run (done, 2026-11-17) | plan mode and advisor at both ends, tests and the measurement on 3.8.9 and 3.5.2, a fresh opus reviewer (a security boundary) |
 | 5k | Work folders' security | T-F532, T-F534, T-F527, T-F526 | the security descriptors and the place of Pakko's work folders: inheritance on a merge and its cancel, an entry its owner cannot delete, the helper refused by CFA | plan mode; PakkoW10 for CFA; an opus reviewer |
 | 5l | Trimmed names in ZIP | T-F531 (done, 2026-11-18) | every key built from a source path carries its `\\?\` spelling | done on `batch-5l`: ZIP archives such names by `\\?\`, a source that is or holds one is kept, never deleted (`CLI-054`, `CLI-070`, `SHL-019`); T-F556, T-F557 filed |
-| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480, T-F476 and T-F558 (found by T-F476's probe) done, T-F530's Fastest half closed by measurement (2026-11-18); T-F481, T-F491 wait for an idle machine; T-F559, T-F560, T-F561 filed |
+| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480, T-F476 and T-F558 (found by T-F476's probe) done, T-F530's Fastest half closed by measurement (2026-11-18); T-F481 closed by measurement (2026-11-19); T-F491 waits for its ten runs; T-F559, T-F560, T-F561 filed |
 | 7 | Z | T-F493, T-F530's password half | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, `APP-005` on a tar (T-F550: an App selection keeps the first `-t`'s lines), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
@@ -1938,17 +1938,6 @@ re-measured with T-F346's script before and after.
   user):** five cold starts of the App on 1.10.0.22, each given the folder `Звіти 2026` (holding
   `a.txt` and `Вкладена тека.txt`) by `--open-ui --archive`, 7Z picked in the Format list,
   LZMA2: `NanaZipC l -slt` lists both folders and both files in all five.
-- **Reported by:** the agent, 2026-11-10.
-
-### T-F481 - Extracting many small files costs ~1.4 ms a file, 3.85x 7-Zip on a Dev Drive (P3)
-
-- [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 performance A/B (`docs/DECISIONS.md`,
-  "v1.10.0 - performance against v1.9.0 and 7-Zip"): `pakko x` of a ZIP of 8000 x 16 KiB onto a
-  Dev Drive takes 11.6 s against 7za's 3.0 s; v1.9.0 takes the same 11.7 s, so not a regression.
-  In `%TEMP%` on C: (`ExtractAsync_ManySmallFiles`) the gap is 1.45x, since Defender scans each of
-  7za's files there too. Each Pakko file is written in the staging folder, opened again for its time
-  (`FileTimes`) and moved (`ExtractionStaging`). Next: profile one file's path and measure setting the
-  time on the open handle before close; keep T-F161's staging guarantees.
 - **Reported by:** the agent, 2026-11-10.
 
 ### T-F524 - The quarantine next to the destination, not on the system drive (P2, the user)
