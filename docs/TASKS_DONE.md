@@ -15727,3 +15727,71 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     failure of this scenario gets the one rerun `docs/TESTING.md` allows, recorded in the release
     record. Not a reason for .NET 11: the slow mode does not follow the pool minimum.
   - **Reported by:** the agent, 2026-11-10.
+
+### T-F493 - ZIP encryption through the BCL, where it is backward compatible with ours (P2, v1.11.0 stream Z)
+
+- [x] **Status:** closed 2026-11-19, the switch measured and not made (batch 7, `docs/DECISIONS.md`, "Batch 7").
+  The BCL hands out the plaintext before it checks the authentication code (535 MB of a 512 MiB
+  entry tampered in the middle), takes a password only as UTF-8, and throws one exception type for
+  a wrong password and a damaged entry, so the reader stays ours; the writer stays ours too (the
+  parallel writer, and the BCL's empty Deflate entry is refused by 7-Zip). What stays as tests:
+  `BclZipEncryptionInteropTests` - Pakko's archives read by the BCL, the BCL's AES-128/192/256 and
+  ZipCrypto read by Pakko, the released v1.10.0's archive read by both, and the two BCL facts the
+  decision rests on.
+- **Graduated 2026-11-19:** batch 7.
+- **As filed:**
+  - [ ] **Status:** open. The user, 2026-11-11: "switch to the built-in ZIP encryption, and check it
+    is backward compatible with ours". .NET 11's `System.IO.Compression` has `ZipEncryptionMethod`
+    (`None`, `ZipCrypto`, `Aes128`, `Aes192`, `Aes256`, `Unknown`), `ZipArchive.CreateEntry(name,
+    [level,] ReadOnlySpan<char> password, method)`, `ZipArchiveEntry.Open([access,] password)`,
+    `IsEncrypted` and `EncryptionMethod` (read from the GA reference pack's metadata, 2026-11-11).
+    Ours: the reader in `Services/Zip/Decryption` (about 1,200 lines) and `WinZipAesEncryptStream`
+    (AE-2, AES-256) in the sequential and the parallel writer. Unknown until measured: which AE
+    version the BCL writes, how it encodes a `char` password, and whether it checks the HMAC before
+    the first plaintext byte.
+    1. **Matrix first (tests that stay):** archives of `pakko.exe` v1.10.0 and of today's writer
+       read by the BCL; the BCL's archives read by today's reader, v1.10.0 and 7za; the fixtures
+       (ZipCrypto, AES-128/192, AE-1, data descriptors, other tools' archives) through both; a
+       password in cp866, cp1251, cp437 and UTF-8; a wrong password and one that passes the 2-byte
+       verifier but not the HMAC; a forged HMAC, a truncated entry, a lying size (T-F231); a million
+       entries and one large file against the parallel writer; FIPS policy. Results in
+       `docs/DECISIONS.md`, "T-F493 measured".
+    2. **Gate:** reading moves to the BCL only for consumers that commit after a clean end of stream
+       if the BCL hands out bytes before the HMAC (extraction stages, T-F161; `pakko x -so` stages,
+       `CliStreamStaging.cs`; preview, the AMSI scan, Hash and Test each checked); our reader stays
+       where a consumer streams on, so the deletion of our code is not promised. Writing moves only
+       if v1.10.0 and 7za read it, the BCL writes AE-2 (AE-1 puts the plaintext's CRC-32 in the
+       header, a confidentiality loss against today), and the matrix's timing is within 10 % of
+       T-F114's ceiling; otherwise `WinZipAesEncryptStream` stays and the reason is recorded.
+    3. **Then:** one owner of entry decryption (an internal interface, today's code its first
+       backend, an owner test in the style of `SandboxedReaderOwnerTests`); the BCL backend chosen in
+       one place; the full suite under both; the switch; our reader kept one release as the matrix's
+       oracle; creating ZipCrypto refused by a test; the v1.10.0 and 7za rows as permanent tests.
+       `SECURITY.md` needs the user's separate OK. Key zeroing inside the BCL cannot be checked from
+       outside: an accepted residual, not a gate row.
+  - **Reported by:** the user, 2026-11-11.
+
+### T-F530 - A large file written once with a password or Fastest, not through a chunk and a copy (P3, the user's question, 2026-11-14)
+
+- [x] **Status:** closed 2026-11-19 (batch 7, `docs/DECISIONS.md`, "Batch 7"). The Fastest half closed in batch 6;
+  the password half closes by the same rule: AES's second pass was 2-5 % of the time, under the
+  plan's 20 %. It waited for T-F493 because the writer was to change there; it did not, and the
+  ZipCrypto header byte named as the obstacle never applied, since Pakko writes no ZipCrypto. The
+  cost that stays is the free space: twice the compressed size.
+- **Graduated 2026-11-19:** batch 7.
+- **As filed:**
+  - [~] **Status:** measured 2026-11-18 (batch 6, `docs/DECISIONS.md`, "Batch 6"): one 4 GiB file is
+    written twice as filed (4.26 GiB for a 2.13 GiB archive), but the second pass is 1-9 % of the time
+    at Fastest and 2-5 % with AES, under the plan's 20 %: the Fastest half is closed with no writer
+    change. Left: the password half, in batch 7 with T-F493, where the writer changes anyway (a
+    ZipCrypto header's last byte must be known before the data is encrypted); the free space stays
+    twice the compressed size.
+  - **As filed:** open, batch 6 (measure first). `RequiresHandRolledWriter` (a password, or Fastest)
+    sends every archive through `ParallelSingleArchiveWriter`, and each file over 1 MiB
+    (`InMemoryCompressByteThreshold`) is compressed (and encrypted) into a chunk file, then copied into
+    the archive (`WriteCompressedEntryFromStreamAsync`): every such byte is written twice and needs
+    its size free twice. Memory is not the reason (the chunk is on disk); the local header carries
+    the sizes before the data. Where a large file is written alone (one file, or a disk with a seek
+    penalty, T-F359), it can go straight into the temp archive - Pakko's own file, so the header's
+    sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
+    first (one 4 GiB file with a password: time, bytes written, free space needed).
