@@ -15686,3 +15686,21 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     the capability probe, and re-point the canary's comment and `docs/TESTING.md` (Server 2022 is no
     longer the 3.5.2 leg).
   - **Reported by:** the agent, 2026-11-09.
+
+### T-F481 - Extracting many small files costs ~1.4 ms a file, 3.85x 7-Zip on a Dev Drive (P3)
+
+- [x] **Status:** closed 2026-11-19 by measurement (batch 6, `docs/DECISIONS.md`, "Batch 6"). The gap
+  is gone: the same ZIP of 8000 x 16 KiB extracted onto the Dev Drive takes 5.2 s with `main`
+  (dev package 1.10.0.39) against 11.3 s with v1.10.0's released `pakko` and 6.6 s with 7za, on
+  one machine, alternating. The time was already set on the open handle (T-F358); which change
+  between v1.10.0 and `main` halved it was not bisected.
+- **Graduated 2026-11-19:** batch 6.
+- **As filed:**
+  - [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 performance A/B (`docs/DECISIONS.md`,
+    "v1.10.0 - performance against v1.9.0 and 7-Zip"): `pakko x` of a ZIP of 8000 x 16 KiB onto a
+    Dev Drive takes 11.6 s against 7za's 3.0 s; v1.9.0 takes the same 11.7 s, so not a regression.
+    In `%TEMP%` on C: (`ExtractAsync_ManySmallFiles`) the gap is 1.45x, since Defender scans each of
+    7za's files there too. Each Pakko file is written in the staging folder, opened again for its time
+    (`FileTimes`) and moved (`ExtractionStaging`). Next: profile one file's path and measure setting the
+    time on the open handle before close; keep T-F161's staging guarantees.
+  - **Reported by:** the agent, 2026-11-10.

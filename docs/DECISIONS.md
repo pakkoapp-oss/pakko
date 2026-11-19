@@ -15087,6 +15087,23 @@ and T-F476's next probe refused every drive-root source (`DriveRootSourceTests`)
 - `t \??\CON` typed at the console is no T-F558 case: `?` is the CLI's wildcard (as in 7-Zip), so the
   argument is a mask over the current drive's root, and the result is the mask's.
 
+**T-F481: many small files extracted, closed (2026-11-19, an idle machine).** `pakko x` of a ZIP of
+8000 x 16 KiB random files (7za `-mx1`) onto the Dev Drive (D:, ReFS), each tool alternating, a 5 s
+pause after the previous output's removal, the first run dropped; medians in ms:
+
+| `pakko` | runs | median |
+|---|---|---|
+| v1.10.0 (the release's `pakko-win-x64.zip`, its SHA-256 checked) | 6 | 11,281 |
+| `main` (dev package 1.10.0.39) | 6 | 5,169 |
+| 7za (vendored) | 8 | 6,642 |
+
+v1.10.0 reads as it did on 2026-11-10 (11.6 s), so the fixture and the drive compare. 7za is slower
+than its 3.0 s then: the antivirus filter now sees the Dev Drive's writes (its state cannot be read
+without elevation), and it is the same for both tools. Without the 5 s pause single runs reached 15-19 s,
+the drive still freeing the removed output. The time was already set through the handle the content is
+written with (T-F358, `FileTimes.TrySetFile(SafeFileHandle, ...)`), so the task's next step was moot.
+Which change between v1.10.0 and `main` halved it was not bisected: the gap is closed either way.
+
 **A busy machine (2026-11-18).** Part of the series ran while another project loaded the machine.
 Readings from that time, not to be taken as Pakko's: Extract/ManySmallFiles 2.67-3.27 and
 Extract/Hybrid 3.12-3.40 (ceilings 2.18 and 2.66), equally on v1.10.0, `main` and this branch; and
