@@ -14992,9 +14992,11 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 
 **What the BCL does.**
 - It writes AE-2 (`0x9901` version 2, CRC 0 in the headers), strength 3 for `Aes256`.
-- A password goes in as UTF-8, for AES and ZipCrypto alike. The API takes `char`s, so an old archive
-  whose password was encoded in cp866, cp1251 or cp437 cannot be opened unless those bytes happen
-  to be valid UTF-8.
+- A password goes in as UTF-8, for AES and ZipCrypto alike. The API takes `char`s, so an archive
+  whose password was encoded in another page cannot be opened unless those bytes happen to be valid
+  UTF-8. Pakko tries UTF-8 and this machine's ANSI page (`EncryptedZipEntryReader.PasswordEncodings`),
+  not the OEM pages (cp866, cp437): the difference is a non-ASCII password from an ANSI-page tool,
+  cp1251 on a Ukrainian system, and none where the ANSI page is UTF-8 (closing review).
 - The authentication code is compared at the end of the stream. A 512 MiB entry with one byte
   flipped in the middle, or in the code alone, handed out 535,817,216 bytes of plaintext before
   `InvalidDataException`. Pakko's reader checks the code before the first byte.
@@ -15017,7 +15019,7 @@ Optimal, twice each: the BCL wrote it in 10.1 and 8.4 s, `pakko a` in 9.0 and 10
 - *Reading stays Pakko's.* Every consumer would need the plaintext held back until the stream ends,
   where Pakko's reader hands out none of a tampered entry
   (`EncryptedZipEntryReaderTests.TryOpen_TamperedAesCiphertext_HmacRejectsEvenWithCorrectPassword`).
-  The encodings Pakko tries for old passwords cannot be passed, and the one exception type would
+  The ANSI page Pakko tries for old passwords cannot be passed, and the one exception type would
   turn "wrong password" into a guess from a message, so Pakko's reader would stay for those
   archives anyway: a BCL backend beside it would add code, not remove it.
 - *Writing stays Pakko's.* The parallel writer encrypts entries apart and writes raw bytes, which
@@ -15032,6 +15034,11 @@ Optimal, twice each: the BCL wrote it in 10.1 and 8.4 s, `pakko a` in 9.0 and 10
   not the code, a lying size or a truncated entry, a million entries, Zip64 above 4 GiB, FIPS
   policy; and the consumers (preview, the scan, Hash, Test, `-so`) were not checked one by one.
   They are the matrix's first step again if a switch is ever weighed.
+- The empty Deflate entry was reported upstream as dotnet/runtime#137945 (the user's OK).
+- The closing opus reviewer (no P1): the two pins now take the exception type exactly, the wrong
+  password from a fixture (a fresh salt lets one in 65,536 pass the verifier), Pakko's tampered
+  row asserts its "authentication failed" text, and files are matched by relative path. The
+  writer-side facts (AE-2, the empty entry) are measurements, not tests.
 - No `SECURITY.md` change: Pakko's crypto code is unchanged. The residual named for a switch (key
   zeroing inside the BCL) does not arise.
 
