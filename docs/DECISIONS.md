@@ -15075,6 +15075,18 @@ and T-F476's next probe refused every drive-root source (`DriveRootSourceTests`)
 - Nit, kept: `TarSandboxScope.SandboxName` has no production reader; it is the scope's own record
   of its profile, read by `QuarantineLocationTests`.
 
+**On the device, both tar.exe builds (2026-11-19, dev package 1.10.0.39).** The smoke's CLI rows
+(64 OK, CLI-071 new) and the Shell, App and package rows (17 OK) pass on this machine. On PakkoW10
+(Windows 10 19045, bsdtar 3.5.2), with the package's AOT `pakko` and the T-F554 set of 28 archives:
+- `pakko t` and `pakko l` give the host's result on every archive 3.5.2 reads; the ones it does not
+  (bz2, lz, lzma, xz, zst, 7z, RAR) are skipped by tar.exe's capabilities as before. No archive is
+  refused as an inconsistent listing on either build.
+- `x`/`t` of a zip named `NUL`, and of one named `CON.zip` (`\\.\CON` there), exit 2 "does not exist"
+  at once, no output folder; on the host `CON.zip` is a file and extracts. `t \\.\pipe\...` exits 2 on
+  both. `a CON.zip b.txt` is refused as a reserved name (CLI-053).
+- `t \??\CON` typed at the console is no T-F558 case: `?` is the CLI's wildcard (as in 7-Zip), so the
+  argument is a mask over the current drive's root, and the result is the mask's.
+
 **A busy machine (2026-11-18).** Part of the series ran while another project loaded the machine.
 Readings from that time, not to be taken as Pakko's: Extract/ManySmallFiles 2.67-3.27 and
 Extract/Hybrid 3.12-3.40 (ceilings 2.18 and 2.66), equally on v1.10.0, `main` and this branch; and

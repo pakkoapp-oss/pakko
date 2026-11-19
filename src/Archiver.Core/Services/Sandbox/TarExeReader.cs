@@ -483,7 +483,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         if (listing.Count != names.Length || listing.Untrusted)
             throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
-        (long totalDeclaredSize, long[] sizes) = DeclaredSizes(listing, names);
+        (long totalDeclaredSize, long[] sizes) = ClassifyEntries(listing, names);
 
         // T-F05: the raw names (with tar's own trailing '/' on directory entries preserved) are
         // returned so ExtractSingleArchiveAsync's selected-subset extraction can build a "-xf"
@@ -496,8 +496,8 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     // T-F90: column 4 (size) is accumulated alongside the existing column-0 (type) check in
     // the same pass — see DECISIONS.md's T-F90 entry for why the size column, unlike the
     // date column, is safe to parse regardless of locale.
-    // Batch 6 (Sonar S3776): out of ScanForUnsafeEntriesAsync; a folder's name gains its '/' here.
-    private static (long Total, long[] Sizes) DeclaredSizes(VerboseListing listing, string[] names)
+    // Batch 6 (Sonar S3776): out of ScanForUnsafeEntriesAsync: refuses a special entry, gives a folder name its '/' (names is changed) and totals the sizes.
+    private static (long Total, long[] Sizes) ClassifyEntries(VerboseListing listing, string[] names)
     {
         long totalDeclaredSize = 0;
         // T-F142/T-F171: each entry's own size by its index (same-named entries each have theirs), so
