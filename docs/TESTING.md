@@ -260,6 +260,8 @@ automatically (same manual-tool pattern as `encrypted_aes256.zip` above):
   2→1, plus the real CRC-32 of `compressible.txt` injected into both the local and central
   headers) to exercise the AE-1 code path, where the header CRC-32 is real rather than zeroed.
   Cross-checked against the vendored `7za.exe` itself (still decrypts correctly after patching).
+- T-F493: `encrypted_aes256_pakko_v1_10_0.zip` - written by the released v1.10.0's `pakko a -tzip
+  -ptestpassword` (`compressible.txt` and an empty `empty.txt`); not regenerable by a later build.
 - `encrypted_aes256_tampered.zip` — **SYNTHETIC**, one ciphertext byte flipped in
   `encrypted_aes256.zip` (inside the AES-CTR data, not the salt/password-verification prefix) —
   the real password still verifies, but the HMAC-SHA1 authentication tag must reject the result.
@@ -287,6 +289,17 @@ passwords); `EncryptionPasswordRuleTests` (boundaries 0x1F/0x20/
 independent reader: `7za.exe t`/`x` on Pakko archives byte-exact, and Pakko on 7za-written ones);
 a TAR-plus-password rejection in `TarSandboxedServiceCompressTests`. Mutation-checked: fixed salt,
 HMAC over plaintext, the 99 clamp, the TAR guard, both rule boundaries.
+
+**T-F493 (the BCL's ZIP encryption, both ways).** `BclZipEncryptionInteropTests`: Pakko's AES
+archives (Optimal, NoCompression, Fastest; empty, one byte, above the in-memory limit, a Cyrillic
+name, an empty folder) read by .NET 11's `ZipArchiveEntry.Open(password)` byte for byte; the BCL's
+AES-128/192/256 and ZipCrypto at Optimal and NoCompression, and a UTF-8 Cyrillic password, extracted
+by Pakko; `encrypted_aes256_pakko_v1_10_0.zip` (written by the released v1.10.0's `pakko`, SHA-256
+checked: `compressible.txt` and an empty file, password `testpassword`) read by both; 7za's fixtures
+read by the BCL as by Pakko. Two rows pin the BCL facts the decision to keep Pakko's reader rests on
+(plaintext before the authentication code; one exception type for a wrong password and a damaged
+entry): red there means `docs/DECISIONS.md`'s "Batch 7" is due again. Mutation-checked: UTF-8 dropped
+from Pakko's password encodings, a wrong verifier byte in Pakko's writer.
 
 **T-F337 (byte-level check of encrypted ZIPs).** `ZipEncryptionByteLevelTests` reads the archives
 `ArchiveAsync` writes with a ZIP and AE-2 reader written in the test (BCL `Rfc2898DeriveBytes`,

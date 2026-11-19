@@ -62,7 +62,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 |---|---|---|---|
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
-| Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
+| Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half): closed in batch 7, the gate kept Pakko's reader and writer | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
 | B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, the archive search and the identity owner: done; archiving such names is T-F531, next wave), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected: done, batch 5g), T-F522 (P3, the commit's link check fails open: done, batch 5g), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`: done, batch 5d), T-F526 (P3, the helper refused by CFA through an unread channel: done, batch 5k), T-F527 (P3, an entry its owner cannot delete: done within a measured limit, batch 5k), T-F528 (P2, one owner of work folders: done, batch 5d), T-F532 (P3, a merge takes the staging's inheritable entries: done, batch 5k), T-F533 (P3, a root left under a `\\?\` name Windows trims: done, batch 5g), T-F534 (P3, the fast path's re-inheritance has no cancel: done, batch 5k), T-F529 (P2, reading in batches, batch 5e), T-F535 (P2, the App's browser holds a tree of every entry: done, batch 5f), T-F536 (P2, a scan of many small entries: done, batch 5f), T-F544 (P2, a scan's result held every clean finding: done, batch 5f), T-F545 (P3, batch 5f's reviewer's findings: done, batch 5h; the second `-t` is T-F550: done, batch 5j), T-F546 (P2, a held helper copy kept the quarantine: done, the ARM64 canary), T-F547 (P3, `TempOwner.TryRemove` and a read-only name Windows trims: done, batch 5h), T-F549 (P3, batch 5g's reviewer's findings: done, batch 5h), T-F551 (P3, a crafted owner still shifts a row: done, batch 5j), T-F552 (P3, batch 5h's reviewer's findings: done, batch 5i), T-F537 (P3, the tar budget test measures less than a list holds, batch 5e), T-F538 (P2, names and data from two directories, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
@@ -96,7 +96,7 @@ above stays as the record of what each stream holds.
 | 5k | Work folders' security | T-F532, T-F534, T-F527, T-F526 | the security descriptors and the place of Pakko's work folders: inheritance on a merge and its cancel, an entry its owner cannot delete, the helper refused by CFA | plan mode; PakkoW10 for CFA; an opus reviewer |
 | 5l | Trimmed names in ZIP | T-F531 (done, 2026-11-18) | every key built from a source path carries its `\\?\` spelling | done on `batch-5l`: ZIP archives such names by `\\?\`, a source that is or holds one is kept, never deleted (`CLI-054`, `CLI-070`, `SHL-019`); T-F556, T-F557 filed |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530, T-F553 (SonarCloud's 48 open on `main`), T-F554 (`--numeric-owner` on 3.3.2, a size that does not parse), T-F555 (batch 5k's reviewer's P3s), T-F557 (batch 5l's reviewer's P3s) | calibration and the CI image | one series on an idle machine; T-F553, T-F554, T-F555, T-F557, T-F480, T-F476 and T-F558 (found by T-F476's probe) done, T-F530's Fastest half closed by measurement (2026-11-18); T-F481 closed by measurement and T-F491 as not reproduced (2026-11-19); T-F559, T-F560, T-F561 filed |
-| 7 | Z | T-F493, T-F530's password half | crypto: its own gates and its own opus reviewer | as stream Z says |
+| 7 | Z | T-F493, T-F530's password half: both closed 2026-11-19, no product code (the BCL measured; Pakko's reader and writer stay) | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the device checks fixed tasks still wait for (T-F427, T-F428, T-F432, T-F434, T-F435, T-F437, T-F439, T-F444, T-F446, T-F456), T-F254's regional display language, `APP-005` on a tar (T-F550: an App selection keeps the first `-t`'s lines), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
 
@@ -1541,39 +1541,6 @@ re-measured with T-F346's script before and after.
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
-### T-F493 - ZIP encryption through the BCL, where it is backward compatible with ours (P2, v1.11.0 stream Z)
-
-- [ ] **Status:** open. The user, 2026-11-11: "switch to the built-in ZIP encryption, and check it
-  is backward compatible with ours". .NET 11's `System.IO.Compression` has `ZipEncryptionMethod`
-  (`None`, `ZipCrypto`, `Aes128`, `Aes192`, `Aes256`, `Unknown`), `ZipArchive.CreateEntry(name,
-  [level,] ReadOnlySpan<char> password, method)`, `ZipArchiveEntry.Open([access,] password)`,
-  `IsEncrypted` and `EncryptionMethod` (read from the GA reference pack's metadata, 2026-11-11).
-  Ours: the reader in `Services/Zip/Decryption` (about 1,200 lines) and `WinZipAesEncryptStream`
-  (AE-2, AES-256) in the sequential and the parallel writer. Unknown until measured: which AE
-  version the BCL writes, how it encodes a `char` password, and whether it checks the HMAC before
-  the first plaintext byte.
-  1. **Matrix first (tests that stay):** archives of `pakko.exe` v1.10.0 and of today's writer
-     read by the BCL; the BCL's archives read by today's reader, v1.10.0 and 7za; the fixtures
-     (ZipCrypto, AES-128/192, AE-1, data descriptors, other tools' archives) through both; a
-     password in cp866, cp1251, cp437 and UTF-8; a wrong password and one that passes the 2-byte
-     verifier but not the HMAC; a forged HMAC, a truncated entry, a lying size (T-F231); a million
-     entries and one large file against the parallel writer; FIPS policy. Results in
-     `docs/DECISIONS.md`, "T-F493 measured".
-  2. **Gate:** reading moves to the BCL only for consumers that commit after a clean end of stream
-     if the BCL hands out bytes before the HMAC (extraction stages, T-F161; `pakko x -so` stages,
-     `CliStreamStaging.cs`; preview, the AMSI scan, Hash and Test each checked); our reader stays
-     where a consumer streams on, so the deletion of our code is not promised. Writing moves only
-     if v1.10.0 and 7za read it, the BCL writes AE-2 (AE-1 puts the plaintext's CRC-32 in the
-     header, a confidentiality loss against today), and the matrix's timing is within 10 % of
-     T-F114's ceiling; otherwise `WinZipAesEncryptStream` stays and the reason is recorded.
-  3. **Then:** one owner of entry decryption (an internal interface, today's code its first
-     backend, an owner test in the style of `SandboxedReaderOwnerTests`); the BCL backend chosen in
-     one place; the full suite under both; the switch; our reader kept one release as the matrix's
-     oracle; creating ZipCrypto refused by a test; the v1.10.0 and 7za rows as permanent tests.
-     `SECURITY.md` needs the user's separate OK. Key zeroing inside the BCL cannot be checked from
-     outside: an accepted residual, not a gate row.
-- **Reported by:** the user, 2026-11-11.
-
 ### T-F494 - The device checks the v1.10.0 release did not walk (P3, v1.11.0 stream D)
 
 - [ ] **Status:** open (`docs/DECISIONS.md`, "v1.10.0 - the release record"): the Explorer menu on
@@ -1610,8 +1577,8 @@ re-measured with T-F346's script before and after.
      Web on the kept file.
   4. Only the decoded bytes: nothing is guessed, padded or zero-filled past the break.
   5. Encrypted entries: a file is kept only if the password was verified (AES's HMAC failing on a
-     damaged block is the damage; a wrong password is not and keeps nothing). The decision is
-     recorded with T-F493's gate, since the BCL reader may hand out bytes before the HMAC.
+     damaged block is the damage; a wrong password is not and keeps nothing). Pakko's reader
+     checks the HMAC first; T-F493 kept it (the BCL's hands out bytes before the HMAC, batch 7).
   6. Test, Hash, preview and the AMSI scan never use it: they report the damage as today.
   7. tar, 7z, RAR and the read-only formats: first measure what the archive helper and `tar.exe`
      leave on disk for a damaged entry today, on both tar builds (Win11 3.8.x and PakkoW10 3.5.2);
@@ -1972,24 +1939,6 @@ re-measured with T-F346's script before and after.
   spelling; it could pass the `\\?\` form. Deletion of such a source stays forbidden either way
   (`docs/DECISIONS.md`, "Batch 5l").
 - **Reported by:** the agent (batch 5l), 2026-11-18.
-
-### T-F530 - A large file written once with a password or Fastest, not through a chunk and a copy (P3, the user's question, 2026-11-14)
-
-- [~] **Status:** measured 2026-11-18 (batch 6, `docs/DECISIONS.md`, "Batch 6"): one 4 GiB file is
-  written twice as filed (4.26 GiB for a 2.13 GiB archive), but the second pass is 1-9 % of the time
-  at Fastest and 2-5 % with AES, under the plan's 20 %: the Fastest half is closed with no writer
-  change. Left: the password half, in batch 7 with T-F493, where the writer changes anyway (a
-  ZipCrypto header's last byte must be known before the data is encrypted); the free space stays
-  twice the compressed size.
-- **As filed:** open, batch 6 (measure first). `RequiresHandRolledWriter` (a password, or Fastest)
-  sends every archive through `ParallelSingleArchiveWriter`, and each file over 1 MiB
-  (`InMemoryCompressByteThreshold`) is compressed (and encrypted) into a chunk file, then copied into
-  the archive (`WriteCompressedEntryFromStreamAsync`): every such byte is written twice and needs
-  its size free twice. Memory is not the reason (the chunk is on disk); the local header carries
-  the sizes before the data. Where a large file is written alone (one file, or a disk with a seek
-  penalty, T-F359), it can go straight into the temp archive - Pakko's own file, so the header's
-  sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
-  first (one 4 GiB file with a password: time, bytes written, free space needed).
 
 ### T-F523 - Every operation's sandbox is one AppContainer: one reader can open another (P2, from T-F474)
 

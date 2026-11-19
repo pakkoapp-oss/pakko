@@ -150,6 +150,7 @@
  *     mixed_zipcrypto_and_plain.zip   — MANUAL, requires 7-Zip (T-F417, plain + ZipCrypto entry)
  *     encrypted_two_passwords.zip     — MANUAL, requires 7-Zip (T-F417, two AES entries, two passwords)
  *     encrypted_aes256_bzip2.zip      — MANUAL, requires 7-Zip (T-F194, unsupported method)
+ *     encrypted_aes256_pakko_v1_10_0.zip — MANUAL, the released v1.10.0's pakko a -tzip -ptestpassword (T-F493)
  *     encrypted_aes256_eicar.zip      — MANUAL, SYNTHETIC stdin + byte-patch (T-F194, real AMSI)
  *     legacy_oem866_7za.zip           — MANUAL, requires 7-Zip (T-F234, cp866 names + 0x7075)
  *     created_by_7zip.zip             — MANUAL

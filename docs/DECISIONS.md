@@ -14983,6 +14983,55 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 7 - T-F493 measured: ZIP encryption through the BCL (T-F493, T-F530; 2026-11-19)
+
+.NET 11.0.0 (`Microsoft.NETCore.App` 11.0.0), the source read at the `v11.0.0` tag of dotnet/runtime
+(`System.IO.Compression`: `WinZipAesStream.cs`, `WinZipAesKeyMaterial.cs`, `ZipCryptoStream.cs`,
+`ZipArchiveEntry.cs`); measured on the host (Windows 11 26300, Dev Drive), with dev package 1.10.0.39's
+`pakko`, the released v1.10.0's (`pakko-win-x64.zip`, SHA-256 checked against `SHA256SUMS`) and 7za.
+
+**What the BCL does.**
+- It writes AE-2 (`0x9901` version 2, CRC 0 in the headers), strength 3 for `Aes256`.
+- A password goes in as UTF-8, for AES and ZipCrypto alike. The API takes `char`s, so an old archive
+  whose password was encoded in cp866, cp1251 or cp437 cannot be opened unless those bytes happen
+  to be valid UTF-8.
+- The authentication code is compared at the end of the stream. A 512 MiB entry with one byte
+  flipped in the middle, or in the code alone, handed out 535,817,216 bytes of plaintext before
+  `InvalidDataException`. Pakko's reader checks the code before the first byte.
+- A wrong password throws `InvalidDataException` at `Open`, the type a damaged entry throws.
+- An empty entry at `CompressionLevel.Optimal` is marked Deflate with no Deflate data (28 bytes:
+  salt, verifier, code). 7za refuses it ("Data Error in encrypted file. Wrong password?", exit 2);
+  at `NoCompression` 7za reads it. Pakko and v1.10.0 read both. Not found in dotnet/runtime's issues.
+  Pakko's own writer stores every empty entry (`.claude/rules/core.md`), which 7za reads.
+- With a Cyrillic password (UTF-8) 7za reports a wrong password; Pakko reads it. Pakko refuses such
+  a password when it creates an archive anyway (T-F193).
+
+**Both ways.** The BCL reads Pakko's AES archives (sequential and parallel paths, Store and Deflate,
+empty, above the in-memory limit, a Cyrillic name) and v1.10.0's byte for byte; Pakko and v1.10.0 read
+the BCL's AES-128/192/256 and ZipCrypto, 7za its 512 MiB AES archive. One 512 MiB file with AES-256 at
+Optimal, twice each: the BCL wrote it in 10.1 and 8.4 s, `pakko a` in 9.0 and 10.8 s (the same
+269,130,490 bytes); reading, the BCL 0.9 and 0.8 s, `pakko t` 1.2 and 1.4 s with its process start.
+
+**The gate (stream Z).**
+- *Reading stays Pakko's.* Every consumer would need the plaintext held back until the stream ends.
+  Preview, the scan and `-so` stream on. And the encodings Pakko tries for old passwords cannot be
+  passed. The one exception type would turn "wrong password" into a guess from a message. A BCL
+  backend beside Pakko's own would add code, not remove it.
+- *Writing stays Pakko's.* The parallel writer encrypts entries apart and writes raw bytes, which
+  `ZipArchive` cannot take. The BCL's empty Deflate entry is one 7-Zip refuses. And there is no time
+  to gain on one file.
+- So T-F493's request (switch, where it is compatible) is answered by measurement: the switch is
+  not made. What stays is `BclZipEncryptionInteropTests`, which keeps the compatibility both ways and
+  pins the two BCL facts above. A red pin means the decision is due again. Mutation-checked:
+  dropping UTF-8 from the encodings Pakko tries, and a wrong verifier byte in Pakko's writer.
+- No `SECURITY.md` change: Pakko's crypto code is unchanged. The residual named for a switch (key
+  zeroing inside the BCL) does not arise.
+
+**T-F530's password half.** It waited for this batch because the writer was to change here. It did
+not, and the ZipCrypto header byte batch 6 named never applied: Pakko writes no ZipCrypto. AES's
+second pass was 2-5 % of the time (batch 6), under the plan's 20 %, so it closes by the rule that
+closed Fastest. The free space stays twice the compressed size.
+
 ## Batch 6 - measurements and CI (T-F553, T-F557, T-F554, T-F555, T-F530, T-F480; 2026-11-18)
 
 **T-F554 - what `-tv --numeric-owner` prints, per format.** Before refusing a listing whose owner or
@@ -15024,7 +15073,8 @@ timed as an unbuffered copy of the archive (`robocopy /J`) on the same volume:
 Every byte is written twice, as filed, but the second write is under the plan's 20 % on this SSD: the
 time goes to Deflate and AES, not to the copy. The Fastest half is closed without a writer change.
 The password half moves to batch 7 with T-F493 (encryption on the BCL), where the writer changes
-anyway. For it: a ZipCrypto header's last byte (the CRC's high byte, or with bit 3 the time's) must be
+anyway. (Corrected in batch 7: the writer did not change, and Pakko writes no ZipCrypto,
+so the header byte below never applied; the password half closed by the same 20 % rule.) For it: a ZipCrypto header's last byte (the CRC's high byte, or with bit 3 the time's) must be
 known before the data is encrypted, so it cannot be written after the data as the sizes can. The cost
 that stays is the free space: twice the compressed size on the destination's volume.
 
