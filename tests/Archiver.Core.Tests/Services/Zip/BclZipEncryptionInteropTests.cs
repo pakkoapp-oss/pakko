@@ -95,9 +95,13 @@ public sealed class BclZipEncryptionInteropTests : IDisposable
         return destination;
     }
 
-    private static string FileUnder(string root, string relative) =>
-        Directory.GetFiles(root, Path.GetFileName(relative), SearchOption.AllDirectories)
+    private static string FileUnder(string root, string relative)
+    {
+        string tail = Path.DirectorySeparatorChar + relative.Replace('/', Path.DirectorySeparatorChar);
+        return Directory.GetFiles(root, Path.GetFileName(relative), SearchOption.AllDirectories)
+            .Where(path => path.EndsWith(tail, StringComparison.Ordinal))
             .Should().ContainSingle(relative).Subject;
+    }
 
     // ── Pakko writes, the BCL reads ─────────────────────────────────────────
 
@@ -155,11 +159,15 @@ public sealed class BclZipEncryptionInteropTests : IDisposable
     [InlineData("encrypted_aes128.zip")]
     [InlineData("encrypted_aes256_ae1.zip")]
     [InlineData("encrypted_zipcrypto_real.zip")]
-    public void SevenZipWrittenFixture_BclReadsWhatPakkoReads(string fixture)
+    public async Task SevenZipWrittenFixture_BclAndPakkoReadTheSameBytes(string fixture)
     {
-        Dictionary<string, byte[]> read = ReadWithBcl(FixtureHelper.Archive(fixture), "testpassword");
+        byte[] expected = File.ReadAllBytes(Path.Combine(FixtureHelper.FilesDir, "compressible.txt"));
 
-        read["compressible.txt"].Should().Equal(File.ReadAllBytes(Path.Combine(FixtureHelper.FilesDir, "compressible.txt")));
+        Dictionary<string, byte[]> read = ReadWithBcl(FixtureHelper.Archive(fixture), "testpassword");
+        string destination = await ExtractWithPakkoAsync(FixtureHelper.Archive(fixture), "testpassword");
+
+        read["compressible.txt"].Should().Equal(expected);
+        File.ReadAllBytes(FileUnder(destination, "compressible.txt")).Should().Equal(expected);
     }
 
     // ── The BCL writes, Pakko reads ─────────────────────────────────────────
@@ -235,7 +243,7 @@ public sealed class BclZipEncryptionInteropTests : IDisposable
             while ((n = stream.Read(buffer)) > 0)
                 handedOut += n;
         };
-        bclRead.Should().Throw<InvalidDataException>();
+        bclRead.Should().ThrowExactly<InvalidDataException>();
         handedOut.Should().BeGreaterThan(0, "the BCL checks the authentication code only at the end of the stream (T-F493)");
 
         string destination = Path.Combine(_temp.Path, "out-tampered");
@@ -247,21 +255,30 @@ public sealed class BclZipEncryptionInteropTests : IDisposable
             ResolvePasswordAsync = FixedPassword(Password),
         });
         result.Success.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Message.Contains("authentication failed"),
+            "Pakko tells a damaged entry from a wrong password");
         (Directory.Exists(destination) ? Directory.GetFiles(destination, "*", SearchOption.AllDirectories) : [])
             .Should().BeEmpty("a failed entry leaves nothing; that Pakko's reader hands out no byte of it is EncryptedZipEntryReaderTests' tampered row");
     }
 
     [Fact]
-    public void WrongPassword_BclThrowsTheTypeItThrowsForCorruption()
+    public void WrongPassword_BclThrowsExactlyTheTypeItThrowsForCorruption()
     {
-        string zipPath = WriteWithBcl(new() { ["a.txt"] = [1, 2, 3] }, Password, ZipEncryptionMethod.Aes256, CompressionLevel.Optimal);
-
-        Action open = () =>
+        // A fixture, not a fresh archive: with a fresh salt a wrong password passes the 2-byte
+        // verifier once in 65,536 runs, and the BCL then throws only at the end of the stream.
+        Action wrongPassword = () =>
         {
-            using ZipArchive zip = ZipFile.OpenRead(zipPath);
-            using Stream stream = zip.Entries[0].Open("not the password");
+            using ZipArchive zip = ZipFile.OpenRead(FixtureHelper.Archive("encrypted_aes256.zip"));
+            using Stream stream = zip.GetEntry("compressible.txt")!.Open("not the password");
+        };
+        Action damaged = () =>
+        {
+            using ZipArchive zip = ZipFile.OpenRead(FixtureHelper.Archive("encrypted_aes256_tampered.zip"));
+            using Stream stream = zip.GetEntry("compressible.txt")!.Open("testpassword");
+            stream.CopyTo(Stream.Null);
         };
 
-        open.Should().Throw<InvalidDataException>("a wrong password and a damaged entry share one exception type in the BCL");
+        wrongPassword.Should().ThrowExactly<InvalidDataException>("a wrong password and a damaged entry share one exception type in the BCL");
+        damaged.Should().ThrowExactly<InvalidDataException>();
     }
 }

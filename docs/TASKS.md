@@ -1577,8 +1577,10 @@ re-measured with T-F346's script before and after.
      Web on the kept file.
   4. Only the decoded bytes: nothing is guessed, padded or zero-filled past the break.
   5. Encrypted entries: a file is kept only if the password was verified (AES's HMAC failing on a
-     damaged block is the damage; a wrong password is not and keeps nothing). Pakko's reader
-     checks the HMAC first; T-F493 kept it (the BCL's hands out bytes before the HMAC, batch 7).
+     damaged block is the damage; a wrong password is not and keeps nothing). Open: Pakko's
+     reader, kept by T-F493 (batch 7), checks the HMAC before any byte and returns no stream when
+     it fails (`EncryptedZipEntryReader`), so a damaged AES entry has nothing to keep until this
+     task gives the reader a path that decodes it anyway; decide that here.
   6. Test, Hash, preview and the AMSI scan never use it: they report the damage as today.
   7. tar, 7z, RAR and the read-only formats: first measure what the archive helper and `tar.exe`
      leave on disk for a damaged entry today, on both tar builds (Win11 3.8.x and PakkoW10 3.5.2);

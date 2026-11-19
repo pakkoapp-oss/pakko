@@ -15737,7 +15737,7 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   parallel writer, and the BCL's empty Deflate entry is refused by 7-Zip). What stays as tests:
   `BclZipEncryptionInteropTests` - Pakko's archives read by the BCL, the BCL's AES-128/192/256 and
   ZipCrypto read by Pakko, the released v1.10.0's archive read by both, and the two BCL facts the
-  decision rests on. Rows of the matrix not run, since no switch is made: passwords in cp866, cp1251 and cp437
+  decision rests on (BCL issue: dotnet/runtime#137945). Rows of the matrix not run, since no switch is made: passwords in cp866, cp1251 and cp437
   (the UTF-8-only encoding is read from the source), a password that passes the verifier but
   not the code, a lying size or a truncated entry, a million entries, Zip64 above 4 GiB, FIPS
   policy; and the consumers (preview, the scan, Hash, Test, `-so`) were not checked one by one.
