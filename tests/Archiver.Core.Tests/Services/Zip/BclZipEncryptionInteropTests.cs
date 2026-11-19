@@ -248,7 +248,7 @@ public sealed class BclZipEncryptionInteropTests : IDisposable
         });
         result.Success.Should().BeFalse();
         (Directory.Exists(destination) ? Directory.GetFiles(destination, "*", SearchOption.AllDirectories) : [])
-            .Should().BeEmpty("Pakko checks the code before the first plaintext byte");
+            .Should().BeEmpty("a failed entry leaves nothing; that Pakko's reader hands out no byte of it is EncryptedZipEntryReaderTests' tampered row");
     }
 
     [Fact]
