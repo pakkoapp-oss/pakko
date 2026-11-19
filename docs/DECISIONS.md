@@ -15006,17 +15006,20 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - With a Cyrillic password (UTF-8) 7za reports a wrong password; Pakko reads it. Pakko refuses such
   a password when it creates an archive anyway (T-F193).
 
-**Both ways.** The BCL reads Pakko's AES archives (sequential and parallel paths, Store and Deflate,
-empty, above the in-memory limit, a Cyrillic name) and v1.10.0's byte for byte; Pakko and v1.10.0 read
-the BCL's AES-128/192/256 and ZipCrypto, 7za its 512 MiB AES archive. One 512 MiB file with AES-256 at
+**Both ways.** The BCL reads Pakko's AES archives (a password always goes through the parallel
+writer: its in-memory entries and its chunk path above 1 MiB; Store and Deflate, empty, a Cyrillic
+name) and v1.10.0's byte for byte; Pakko and v1.10.0 (`pakko t`, exit 0) read the BCL's
+AES-128/192/256 and ZipCrypto at Optimal and NoCompression, 7za its 512 MiB AES archive. One 512 MiB file with AES-256 at
 Optimal, twice each: the BCL wrote it in 10.1 and 8.4 s, `pakko a` in 9.0 and 10.8 s (the same
 269,130,490 bytes); reading, the BCL 0.9 and 0.8 s, `pakko t` 1.2 and 1.4 s with its process start.
 
 **The gate (stream Z).**
-- *Reading stays Pakko's.* Every consumer would need the plaintext held back until the stream ends.
-  Preview, the scan and `-so` stream on. And the encodings Pakko tries for old passwords cannot be
-  passed. The one exception type would turn "wrong password" into a guess from a message. A BCL
-  backend beside Pakko's own would add code, not remove it.
+- *Reading stays Pakko's.* Every consumer would need the plaintext held back until the stream ends,
+  where Pakko's reader hands out none of a tampered entry
+  (`EncryptedZipEntryReaderTests.TryOpen_TamperedAesCiphertext_HmacRejectsEvenWithCorrectPassword`).
+  The encodings Pakko tries for old passwords cannot be passed, and the one exception type would
+  turn "wrong password" into a guess from a message, so Pakko's reader would stay for those
+  archives anyway: a BCL backend beside it would add code, not remove it.
 - *Writing stays Pakko's.* The parallel writer encrypts entries apart and writes raw bytes, which
   `ZipArchive` cannot take. The BCL's empty Deflate entry is one 7-Zip refuses. And there is no time
   to gain on one file.
@@ -15024,6 +15027,11 @@ Optimal, twice each: the BCL wrote it in 10.1 and 8.4 s, `pakko a` in 9.0 and 10
   not made. What stays is `BclZipEncryptionInteropTests`, which keeps the compatibility both ways and
   pins the two BCL facts above. A red pin means the decision is due again. Mutation-checked:
   dropping UTF-8 from the encodings Pakko tries, and a wrong verifier byte in Pakko's writer.
+- Rows of the matrix not run, since no switch is made: passwords in cp866, cp1251 and cp437
+  (the UTF-8-only encoding is read from the source), a password that passes the verifier but
+  not the code, a lying size or a truncated entry, a million entries, Zip64 above 4 GiB, FIPS
+  policy; and the consumers (preview, the scan, Hash, Test, `-so`) were not checked one by one.
+  They are the matrix's first step again if a switch is ever weighed.
 - No `SECURITY.md` change: Pakko's crypto code is unchanged. The residual named for a switch (key
   zeroing inside the BCL) does not arise.
 
