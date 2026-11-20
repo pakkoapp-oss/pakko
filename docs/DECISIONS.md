@@ -15009,12 +15009,20 @@ Asked by the user for the Store description: the general ratios, compression lev
     a few seconds; `media` mx1 103 / 8.8 / 8.3, mx9 185 / 35 / 34.
   - size against NanaZip: -4 % at mx1, +4 to 5 % at mx5, +13 to 19 % at mx9; equal on `media`.
   - extract: `many` 16.9-17.7 / 2.6-4.5 / 7.7-8.6, `one` 6.7-7.9 / 0.8-2.3 / 0.8-2.2.
-- **Reading:** ZIP, the format Pakko writes itself, extracts within about 10 % of NanaZip's time (faster than 7za) and is 1.6 to 13
-  times faster to create at mx5 and mx9, for archives 4 to 6 % larger; Deflate's smallest-size level
-  takes few extra passes where 7-Zip's mx9 takes many. tar and 7z go through Windows' own tar.exe in
-  a sandbox: 3 to 12 times slower to create a 7z, 2 to 10 times slower to extract either; the
-  extract side is T-F565. The App runs the same Core as `pakko`, NanaZip's window the same engine as
-  its console, so the window was not timed apart.
+- **Levels are the same number, not the same work.** Pakko's ZIP levels are zlib's 1, 6 and 9
+  (`System.IO.Compression`); 7-Zip's own Deflate searches far longer at mx5 and mx9. Pakko's 7z
+  levels are tar.exe's 1, 6 and 9 against 7-Zip's presets (another dictionary, multi-threaded
+  LZMA2). So at the same `-mx` Pakko's ZIP is faster for a larger archive, and that ratio says
+  little. At the same archive size: `many` Pakko mx5 197 MB in 4.8 s against 7za mx1 196 MB in
+  2.1 s; `one` Pakko mx5 188 MB in 8.8 s against 7za mx1 187 MB in 8.5 s, Pakko mx9 182 MB in
+  20.6 s against 7za mx5 177 MB in 37 s.
+- **Reading:** ZIP, the format Pakko writes itself, is on a par with 7-Zip at the same archive
+  size for one large file and about half its speed on many small files; it extracts within about
+  10 % of NanaZip's time (faster than 7za). tar and 7z go through Windows' own tar.exe in a
+  sandbox: 3 to 12 times slower to create a 7z, 2 to 10 times slower to extract either; the extract
+  side is T-F565. The App runs the same Core as `pakko`, NanaZip's window the same engine as its
+  console, so the window was not timed apart. The user asked whether the levels were the same; the
+  first reading ("1.6 to 13 times faster") compared the same number, not the same work.
 
 ## v1.11.0 - the release record (2026-11-20)
 
