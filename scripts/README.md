@@ -427,6 +427,22 @@ produced is `docs/CLI.md`'s "7-Zip compatibility matrix".
 
 ---
 
+## Measuring against NanaZip and 7-Zip (T-F565)
+
+```powershell
+.\scripts\Measure-Comparison.ps1 -Root D:\bench -Csv D:\bench\results.csv -Prepare
+.\scripts\Measure-Comparison.ps1 -Root C:\bench -Csv C:\bench\results.csv -Formats tar,7z -Levels 1,9
+```
+
+Creates, extracts and tests with the installed `pakko`, NanaZip's console (`NanaZipC.exe`) and the
+vendored `7za.exe` on three data sets (`-Prepare` builds them under `-Root\src`: a copy of the newest
+installed .NET SDK, the same as one tar file, and 300 MB of random bytes), the tools taking turns in
+each run. One CSV line per step, seconds with a dot. No pass/fail: compare runs on the same machine,
+with real-time protection on, once on a Dev Drive and once on plain NTFS, and compare the tools at
+the same archive size, not the same `-mx` (`docs/DECISIONS.md`, "Pakko against NanaZip and 7-Zip").
+
+---
+
 ## Agent hook (T-F370)
 
 `.claude/settings.json` (tracked) runs `hooks/Test-AgentBashCommand.ps1` before every Bash-tool
