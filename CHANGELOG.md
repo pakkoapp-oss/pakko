@@ -10,6 +10,86 @@ the technical account of any task named here.
 
 ---
 
+## v1.11.0 — 2026-11-20
+
+Pakko runs on .NET 11. Large archives cost far less memory: a ZIP's directory and a tar's listing
+are read in batches, the App's archive view keeps one compact row an entry, and the ZIP writer
+releases each small file's bytes once written. Many small files are archived and extracted faster.
+A file or folder whose name Windows trims (a trailing space or dot, such as `a.txt ` or `abc.`) is
+no longer archived with its twin's bytes or deleted in its twin's place. Every operation's sandbox
+is its own, and its work folders sit next to the destination.
+
+### Changed
+
+- **T-F492** - Pakko is built on .NET 11 (SDK 11.0.100) and C# 15; the shipped exes
+  are Native AOT as before.
+- **T-F529, T-F538, T-F513, T-F473** - a ZIP's central directory is read as a stream and handed to
+  .NET's reader a batch at a time; a tar-family listing keeps one compact entry each. An archive may
+  hold up to 4,000,000 entries and 134,217,728 characters of names in all, each limit with its own
+  message; a listing near the limit no longer takes over 2 GiB.
+- **T-F540, T-F535, T-F536, T-F544, T-F539, T-F541, T-F542** - `pakko l` prints its rows as they
+  are read, the App's archive view keeps one row an entry instead of a tree, and a scan keeps only
+  what was not clean.
+- **T-F318, T-F497, T-F501, T-F502, T-F503** - the parallel ZIP writer keeps one compressor per
+  worker and releases each small file's compressed bytes once written (2,000 files of 900 KB peaked
+  at 2.5 GB before, 165 MiB now); "one archive per item" makes 2,000 archives in about 4 s.
+- **T-F505, T-F507, T-F481** - extracting many small files takes about half the time it did in
+  v1.10.0; tar.exe and the archive helper start without a console.
+- **T-F523, T-F524, T-F474, T-F528** - each operation runs in an AppContainer of its own, deleted
+  with it; an extraction's quarantine goes next to its destination when that is another fixed
+  volume, sealed after each run, and each file is checked and moved through one handle; every
+  folder an operation works in has one owner and is swept after a crash.
+- **T-F526, T-F527, T-F532, T-F534** - the helper blocked by Controlled Folder Access next to the
+  destination runs once more from `%TEMP%`; a work folder's permissions are inherited as its
+  destination's.
+- **T-F506** - the antivirus scan clears its buffer after each entry and no longer keeps large ones.
+- **T-F504, T-F505** - a password-protected ZIP takes about a sixth of the memory to create and a
+  third to extract; extracting 20,000 small files allocates 207 MiB instead of 1.76 GB.
+
+### Fixed
+
+- **T-F509, T-F510, T-F512, T-F519, T-F531** - a source whose name Windows trims (`a.txt ` next to
+  `a.txt`, a folder `abc.`) was archived with its twin's bytes, and "Delete after" or `-sdel` could
+  delete the twin. ZIP now archives such a name as spelled, through `\\?\`, and the source is never
+  deleted; tar refuses it with its reason.
+- **T-F515, T-F517** - in a case-sensitive folder `-sdel` no longer deletes `A.TXT` for `a.txt`,
+  and `a cs\*` keeps both.
+- **T-F475, T-F558** - an archive or destination named as a device (`CON.zip`, `NUL`) is refused as
+  not found, on Windows 10 too, instead of "Unexpected error" or a hang.
+- **T-F521, T-F518** - a damaged encrypted ZIP, or a damaged 7z with "encrypt" in an entry's name,
+  reads as damaged, not as password-protected.
+- **T-F548** - the Explorer commands show Pakko's messages in the user's language again.
+- **T-F477** - a name typed in the App gets the format's extension once (`case4.zip`, not
+  `case4.zip.zip`).
+- **T-F478** - Test's "structure only" warning no longer names tar.exe when the archive helper read
+  the archive.
+- **T-F484** - Ukrainian: the PAR2 messages use the right plural form for every count.
+- **T-F520** - a few of Core's own messages reached the user in English; they are translated.
+- **T-F482** - Enter on a row of the main list opens it, as a double click does.
+- **T-F485** - high contrast: the accent button's text no longer sits on a dark box.
+- **T-F550, T-F551, T-F554, T-F545** - a tar selection is checked against the first listing's lines
+  instead of a second pass over the archive; a crafted owner or a size that does not parse refuses
+  the listing.
+- **T-F522** - a folder whose attributes cannot be read is refused at the commit, not taken as a
+  plain folder.
+- **T-F546** - on ARM64 an extraction's quarantine was left on disk.
+- **T-F457** - the Explorer menu shows a `.tlz` while lzma or lzip is allowed.
+
+### Known issues
+
+- **T-F562** - on ARM64 Pakko still reads tar-family archives with tar.exe: Windows on ARM64 has
+  its own `archiveint.dll` (measured for this release), and the helper on it comes in a later
+  release.
+- **T-F556** - from Explorer or the App, a name Windows trims is archived as Explorer lists it.
+- **T-F559** - on Windows 10, a device-named file inside a source folder.
+- **T-F561** - tar.exe's output has no cap tied to the archive's declared size.
+- **T-F563** - a file dragged onto the App whose name ends in a space is left out of the list with
+  only a log line.
+- **T-F564** - an operation that waits for an answer or fails at 0 % shows no yellow or red on
+  the taskbar button, only its grey track.
+
+---
+
 ## v1.10.0 — 2026-11-11
 
 Pakko reads tar, 7z and the other tar-family archives through Windows' own `archiveint.dll` in a

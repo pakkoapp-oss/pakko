@@ -35,12 +35,11 @@ zip sa lozinkom
 otvoreni kod
 
 [What's new in this version]
-• Novo: arhive ISO, CAB, cpio, ar (.deb), tar.Z i lzip mogu da se otvore, raspakuju i testiraju (samo za čitanje; lzip ne u sistemu Windows 10).
-• Arhive TAR, 7-Zip i RAR sada čita sopstvena biblioteka sistema Windows u malom pomoćnom programu u sandbox okruženju: nazivi datoteka na bilo kom jeziku stižu tačno onako kako su sačuvani.
-• Novo: dugme na traci zadataka i ikona u oblasti za obaveštenja prikazuju napredak operacije.
-• „Proveri pretnje” više ne javlja „ništa nije pronađeno” kada nije mogla da proveri svaku datoteku ili kada antivirusni program ne javlja poznate probne pretnje.
-• Ispravljeno: datoteke u TAR fasciklama čiji naziv završava razmakom ili tačkom raspakuju se i proveravaju.
-• Ispravljeno: kada arhivu čita tar.exe sistema Windows, naziv van jezika sistema nikada se ne raspakuje pod pogrešnim nazivom.
-• Ispravljeno: premeštanje izvora u Korpu za otpatke više ih ne zadržava sve kada se jedan izvor preskoči, a svaka zadržana stavka ima sopstveni razlog.
-• Ispravljeno: otkazivanje odmah zaustavlja tar.exe, a prozor ponovo staje na monitor sa manjom radnom oblašću.
-• Ispravljeno: odsečen ili pomeren tekst na arapskom, hebrejskom, urdu, hindi i još osam jezika.
+• Pakko sada radi na .NET 11.
+• Velike arhive se otvaraju uz mnogo manje memorije.
+• Arhiviranje mnogo malih datoteka je brže i troši mnogo manje memorije.
+• Raspakivanje mnogo malih datoteka traje otprilike upola kraće.
+• Svaka operacija radi u sopstvenom izolovanom okruženju, a njene privremene datoteke nalaze se pored odredišta.
+• Ispravljeno: datoteka čiji naziv se završava razmakom ili tačkom više se ne arhivira sa sadržajem druge datoteke niti se briše umesto nje.
+• Ispravljeno: oštećena šifrovana arhiva prijavljuje se kao oštećena, a ne kao zaštićena lozinkom.
+• Ispravljeno: komande Istraživača ponovo se prikazuju na vašem jeziku, a Enter otvara izabranu stavku.

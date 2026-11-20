@@ -35,12 +35,11 @@ zip yenye nenosiri
 chanzo huria
 
 [What's new in this version]
-• Mpya: kumbukumbu za ISO, CAB, cpio, ar (.deb), tar.Z na lzip hufunguliwa, hutolewa na hujaribiwa (kusoma tu; lzip si kwenye Windows 10).
-• Kumbukumbu za TAR, 7-Zip na RAR sasa husomwa kwa maktaba ya Windows yenyewe ndani ya programu ndogo ya msaada katika sanduku la mchanga: majina ya faili kwa lugha yoyote hufika kama yalivyohifadhiwa.
-• Mpya: kitufe kwenye upau wa kazi na aikoni katika eneo la arifa huonyesha maendeleo ya operesheni.
-• "Chunguza vitisho" hairipoti tena "hakuna kilichopatikana" iliposhindwa kukagua kila faili, au antivirusi isiporipoti vitisho vya majaribio vinavyojulikana.
-• Imerekebishwa: faili ndani ya folda za TAR ambazo jina lake linaishia kwa nafasi au nukta hutolewa na kuchunguzwa.
-• Imerekebishwa: tar.exe ya Windows inaposoma kumbukumbu, jina lililo nje ya lugha ya mfumo halitolewi kamwe kwa jina lisilo sahihi.
-• Imerekebishwa: kuhamisha vyanzo kwenye Recycle Bin hakuvihifadhi tena vyote chanzo kimoja kinaporukwa, na kila kipengee kilichobaki kina sababu yake.
-• Imerekebishwa: kughairi husimamisha tar.exe mara moja, na dirisha linatosha tena kwenye skrini yenye eneo dogo la kazi.
-• Imerekebishwa: maandishi yaliyokatwa au yaliyohamishwa katika Kiarabu, Kiebrania, Kiurdu, Kihindi na lugha nyingine nane.
+• Pakko sasa inaendeshwa kwenye .NET 11.
+• Kumbukumbu kubwa hufunguka kwa kutumia kumbukumbu ya mfumo kidogo zaidi.
+• Kuweka faili nyingi ndogo kwenye kumbukumbu ni haraka zaidi na hutumia kumbukumbu ya mfumo kidogo zaidi.
+• Kutoa faili nyingi ndogo huchukua takriban nusu ya muda.
+• Kila operesheni huendeshwa katika sanduku lake la mchanga, na faili zake za muda huwekwa kando ya mahali pa kwenda.
+• Imerekebishwa: faili ambalo jina lake linaishia kwa nafasi au nukta halihifadhiwi tena na maudhui ya faili jingine wala halifutwi badala yake.
+• Imerekebishwa: kumbukumbu iliyosimbwa iliyoharibika inaripotiwa kuwa imeharibika, si kuwa imelindwa kwa nenosiri.
+• Imerekebishwa: amri za Kichunguzi cha Faili zinaonyeshwa tena kwa lugha yako, na Enter hufungua kipengee kilichochaguliwa.

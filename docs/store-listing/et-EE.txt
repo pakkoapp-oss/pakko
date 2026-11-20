@@ -35,12 +35,11 @@ parooliga zip
 avatud lähtekood
 
 [What's new in this version]
-• Uus: ISO, CAB, cpio, ar (.deb), tar.Z ja lzip arhiive saab avada, lahti pakkida ja testida (ainult lugemiseks; lzip mitte Windows 10-s).
-• TAR-, 7-Zip- ja RAR-arhiive loetakse nüüd Windowsi enda arhiiviteegiga väikeses liivakastis abiprogrammis: failinimed mis tahes keeles jõuavad kohale täpselt nii, nagu need on salvestatud.
-• Uus: tegumiriba nupp ja teavitusala ikoon näitavad toimingu edenemist.
-• „Kontrolli ohte“ ei teata enam „midagi ei leitud“, kui see ei saanud iga faili kontrollida või kui viirusetõrje ei teata tuntud testohtudest.
-• Parandatud: TAR-kaustades, mille nimi lõpeb tühiku või punktiga, olevad failid pakitakse lahti ja kontrollitakse.
-• Parandatud: kui arhiivi loeb Windowsi tar.exe, ei pakita süsteemikeelest väljapoolset nime kunagi lahti vale nimega.
-• Parandatud: lähtefailide teisaldamine Prügikasti ei jäta neid enam kõiki alles, kui üks jäetakse vahele, ja igal allesjäänud üksusel on oma põhjus.
-• Parandatud: tühistamine lõpetab tar.exe kohe ja aken mahub taas väiksema tööalaga monitorile.
-• Parandatud: kärbitud või nihkunud tekst araabia, heebrea, urdu, hindi ja veel kaheksas keeles.
+• Pakko töötab nüüd .NET 11 peal.
+• Suured arhiivid avanevad palju väiksema mälukasutusega.
+• Paljude väikeste failide arhiveerimine on kiirem ja vajab palju vähem mälu.
+• Paljude väikeste failide lahti pakkimine võtab umbes poole vähem aega.
+• Iga toiming töötab oma liivakastis ja selle ajutised failid asuvad sihtkoha kõrval.
+• Parandatud: faili, mille nimi lõpeb tühiku või punktiga, ei arhiveerita enam teise faili sisuga ega kustutata selle asemel.
+• Parandatud: kahjustatud krüptitud arhiivist teatatakse kui kahjustatud arhiivist, mitte kui parooliga kaitstud arhiivist.
+• Parandatud: Exploreri käsud kuvatakse taas teie keeles ja Enter avab valitud üksuse.

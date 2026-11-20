@@ -35,12 +35,11 @@ zip con password
 open source
 
 [What's new in this version]
-• Novità: gli archivi ISO, CAB, cpio, ar (.deb), tar.Z e lzip si aprono, si estraggono e si testano (sola lettura; lzip non su Windows 10).
-• Gli archivi TAR, 7-Zip e RAR ora vengono letti con la libreria di Windows stesso in un piccolo programma di supporto nella sandbox: i nomi dei file in qualsiasi lingua arrivano esattamente come sono stati salvati.
-• Novità: il pulsante sulla barra delle applicazioni e l'icona nell'area di notifica mostrano l'avanzamento di un'operazione.
-• "Verifica minacce" non segnala più "nessuna minaccia trovata" quando non ha potuto controllare ogni file, o quando l'antivirus non segnala le minacce di prova note.
-• Corretto: i file nelle cartelle TAR il cui nome termina con uno spazio o un punto vengono estratti e verificati.
-• Corretto: dove il tar.exe di Windows legge un archivio, un nome fuori dalla lingua del sistema non viene mai estratto con un nome sbagliato.
-• Corretto: spostare le origini nel Cestino non le conserva più tutte quando una viene saltata, e ogni elemento conservato ha il proprio motivo.
-• Corretto: l'annullamento chiude subito tar.exe, e la finestra torna a stare su un monitor con un'area di lavoro più piccola.
-• Corretto: testo tagliato o fuori posto in arabo, ebraico, urdu, hindi e altre otto lingue.
+• Pakko ora funziona su .NET 11.
+• Gli archivi di grandi dimensioni si aprono con molta meno memoria.
+• L'archiviazione di molti file piccoli è più veloce e usa molta meno memoria.
+• L'estrazione di molti file piccoli richiede circa la metà del tempo.
+• Ogni operazione viene eseguita nella propria sandbox e i suoi file temporanei restano accanto alla destinazione.
+• Corretto: un file il cui nome termina con uno spazio o un punto non viene più archiviato con il contenuto di un altro file né eliminato al suo posto.
+• Corretto: un archivio crittografato danneggiato viene segnalato come danneggiato, non come protetto da password.
+• Corretto: i comandi di Esplora file sono di nuovo nella tua lingua e Invio apre l'elemento selezionato.

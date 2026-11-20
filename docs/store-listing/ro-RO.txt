@@ -35,12 +35,11 @@ zip cu parolă
 open source
 
 [What's new in this version]
-• Nou: arhivele ISO, CAB, cpio, ar (.deb), tar.Z și lzip se deschid, se extrag și se testează (numai citire; lzip nu pe Windows 10).
-• Arhivele TAR, 7-Zip și RAR sunt citite acum cu biblioteca sistemului Windows într-un mic program ajutător dintr-un sandbox: numele fișierelor în orice limbă ajung exact cum au fost stocate.
-• Nou: butonul din bara de activități și pictograma din zona de notificare arată progresul unei operații.
-• „Verifică amenințările” nu mai raportează „nu s-a găsit nimic” când nu a putut verifica fiecare fișier sau când antivirusul nu raportează amenințările de test cunoscute.
-• Remediat: fișierele din folderele TAR al căror nume se termină cu un spațiu sau un punct sunt extrase și scanate.
-• Remediat: acolo unde tar.exe din Windows citește o arhivă, un nume din afara limbii sistemului nu mai este extras niciodată sub un nume greșit.
-• Remediat: mutarea surselor în Coșul de reciclare nu le mai păstrează pe toate când una este omisă, iar fiecare element păstrat are propriul motiv.
-• Remediat: anularea oprește tar.exe imediat, iar fereastra încape din nou pe un monitor cu o zonă de lucru mai mică.
-• Remediat: text tăiat sau deplasat în arabă, ebraică, urdu, hindi și alte opt limbi.
+• Pakko rulează acum pe .NET 11.
+• Arhivele mari se deschid cu mult mai puțină memorie.
+• Arhivarea multor fișiere mici este mai rapidă și folosește mult mai puțină memorie.
+• Extragerea multor fișiere mici durează cam jumătate din timp.
+• Fiecare operațiune rulează în propriul mediu izolat, iar fișierele ei temporare stau lângă destinație.
+• Remediat: un fișier al cărui nume se termină cu un spațiu sau un punct nu mai este arhivat cu conținutul altui fișier și nici șters în locul lui.
+• Remediat: o arhivă criptată deteriorată este raportată ca deteriorată, nu ca protejată prin parolă.
+• Remediat: comenzile Explorer apar din nou în limba dvs., iar Enter deschide elementul selectat.

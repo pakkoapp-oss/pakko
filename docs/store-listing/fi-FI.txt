@@ -35,12 +35,11 @@ zip salasanalla
 avoin lähdekoodi
 
 [What's new in this version]
-• Uutta: ISO-, CAB-, cpio-, ar- (.deb), tar.Z- ja lzip-arkistot voi avata, purkaa ja testata (vain luku; lzip ei Windows 10:ssä).
-• TAR-, 7-Zip- ja RAR-arkistot luetaan nyt Windowsin omalla arkistokirjastolla pienessä hiekkalaatikon apuohjelmassa: tiedostonimet millä tahansa kielellä saapuvat täsmälleen tallennetussa muodossa.
-• Uutta: tehtäväpalkin painike ja ilmaisinalueen kuvake näyttävät toiminnon edistymisen.
-• "Tarkista uhat" ei enää ilmoita "mitään ei löytynyt", kun se ei voinut tarkistaa jokaista tiedostoa tai kun virustorjunta ei ilmoita tunnetuista testiuhista.
-• Korjattu: TAR-kansioiden tiedostot, joiden nimi päättyy välilyöntiin tai pisteeseen, puretaan ja tarkistetaan.
-• Korjattu: kun arkiston lukee Windowsin tar.exe, järjestelmän kielen ulkopuolista nimeä ei koskaan pureta väärällä nimellä.
-• Korjattu: lähteiden siirto Roskakoriin ei enää jätä niitä kaikkia, kun yksi lähde ohitetaan, ja jokainen jätetty kohde saa oman syynsä.
-• Korjattu: peruutus lopettaa tar.exe:n heti, ja ikkuna mahtuu taas näytölle, jonka työalue on pienempi.
-• Korjattu: katkennut tai väärään kohtaan siirtynyt teksti arabiaksi, hepreaksi, urduksi, hindiksi ja kahdeksalla muulla kielellä.
+• Pakko toimii nyt .NET 11:llä.
+• Suuret arkistot avautuvat paljon pienemmällä muistilla.
+• Monien pienten tiedostojen arkistointi on nopeampaa ja vie paljon vähemmän muistia.
+• Monien pienten tiedostojen purkaminen vie noin puolet ajasta.
+• Jokainen toiminto suoritetaan omassa eristyksessään, ja sen väliaikaiset tiedostot ovat kohteen vieressä.
+• Korjattu: tiedostoa, jonka nimi päättyy välilyöntiin tai pisteeseen, ei enää arkistoida toisen tiedoston sisällöllä eikä poisteta sen sijaan.
+• Korjattu: vahingoittunut salattu arkisto ilmoitetaan vahingoittuneeksi, ei salasanalla suojatuksi.
+• Korjattu: Resurssienhallinnan komennot näkyvät taas omalla kielelläsi, ja Enter avaa valitun kohteen.

@@ -35,12 +35,11 @@ zip z hasłem
 otwarty kod źródłowy
 
 [What's new in this version]
-• Nowość: archiwa ISO, CAB, cpio, ar (.deb), tar.Z i lzip można otwierać, wypakowywać i testować (tylko odczyt; lzip nie w Windows 10).
-• Archiwa TAR, 7-Zip i RAR są teraz odczytywane przez własną bibliotekę Windows w małym programie pomocniczym w piaskownicy: nazwy plików w każdym języku docierają dokładnie takie, jak zapisano.
-• Nowość: przycisk na pasku zadań i ikona w obszarze powiadomień pokazują postęp operacji.
-• „Skanuj w poszukiwaniu zagrożeń” nie zgłasza już „nic nie znaleziono”, gdy nie mogło sprawdzić każdego pliku albo gdy program antywirusowy nie zgłasza znanych zagrożeń testowych.
-• Naprawiono: pliki w folderach TAR, których nazwa kończy się spacją lub kropką, są wypakowywane i skanowane.
-• Naprawiono: gdy archiwum odczytuje tar.exe z Windows, nazwa spoza języka systemu nigdy nie jest wypakowywana pod błędną nazwą.
-• Naprawiono: przenoszenie źródeł do Kosza nie zostawia już wszystkich, gdy jedno źródło zostaje pominięte, a każdy zostawiony element ma własny powód.
-• Naprawiono: anulowanie od razu zatrzymuje tar.exe, a okno znów mieści się na monitorze o mniejszym obszarze roboczym.
-• Naprawiono: ucięty lub przesunięty tekst po arabsku, hebrajsku, w urdu, hindi i ośmiu innych językach.
+• Pakko działa teraz na platformie .NET 11.
+• Duże archiwa otwierają się przy znacznie mniejszym zużyciu pamięci.
+• Archiwizowanie wielu małych plików jest szybsze i wymaga znacznie mniej pamięci.
+• Wypakowywanie wielu małych plików trwa mniej więcej o połowę krócej.
+• Każda operacja działa we własnej piaskownicy, a jej pliki tymczasowe są przechowywane obok miejsca docelowego.
+• Naprawiono: plik, którego nazwa kończy się spacją lub kropką, nie jest już archiwizowany z zawartością innego pliku ani usuwany zamiast niego.
+• Naprawiono: uszkodzone zaszyfrowane archiwum jest zgłaszane jako uszkodzone, a nie jako chronione hasłem.
+• Naprawiono: polecenia Eksploratora znów są wyświetlane w Twoim języku, a Enter otwiera zaznaczony element.

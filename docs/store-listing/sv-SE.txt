@@ -35,12 +35,11 @@ zip med lösenord
 7zip-alternativ
 
 [What's new in this version]
-• Nytt: ISO-, CAB-, cpio-, ar- (.deb), tar.Z- och lzip-arkiv kan öppnas, extraheras och testas (skrivskyddat; lzip inte på Windows 10).
-• TAR-, 7-Zip- och RAR-arkiv läses nu med Windows eget arkivbibliotek i ett litet hjälpprogram i en sandlåda: filnamn på alla språk kommer fram exakt som de sparades.
-• Nytt: knappen i aktivitetsfältet och ikonen i meddelandefältet visar förloppet för en åtgärd.
-• "Sök efter hot" rapporterar inte längre "inget hittades" när den inte kunde kontrollera varje fil, eller när antivirusprogrammet inte rapporterar kända testhot.
-• Åtgärdat: filer i TAR-mappar vars namn slutar med ett blanksteg eller en punkt extraheras och genomsöks.
-• Åtgärdat: där Windows tar.exe läser ett arkiv extraheras ett namn utanför systemspråket aldrig under fel namn.
-• Åtgärdat: att flytta källorna till Papperskorgen behåller dem inte längre alla när en källa hoppas över, och varje behållet objekt får sin egen orsak.
-• Åtgärdat: avbryt stoppar tar.exe direkt, och fönstret får åter plats på en skärm med mindre arbetsyta.
-• Åtgärdat: avkortad eller förskjuten text på arabiska, hebreiska, urdu, hindi och åtta andra språk.
+• Pakko körs nu på .NET 11.
+• Stora arkiv öppnas med mycket mindre minne.
+• Att arkivera många små filer går snabbare och kräver mycket mindre minne.
+• Att extrahera många små filer tar ungefär halva tiden.
+• Varje åtgärd körs i en egen sandlåda, och dess tillfälliga filer ligger bredvid målet.
+• Åtgärdat: en fil vars namn slutar med ett blanksteg eller en punkt arkiveras inte längre med en annan fils innehåll och tas inte bort i dess ställe.
+• Åtgärdat: ett skadat krypterat arkiv rapporteras som skadat, inte som lösenordsskyddat.
+• Åtgärdat: Utforskarens kommandon visas åter på ditt språk, och Retur öppnar det markerade objektet.

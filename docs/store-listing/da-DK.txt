@@ -35,12 +35,11 @@ zip med adgangskode
 open source
 
 [What's new in this version]
-• Nyt: ISO-, CAB-, cpio-, ar- (.deb), tar.Z- og lzip-arkiver kan åbnes, udpakkes og testes (kun læsning; lzip ikke på Windows 10).
-• TAR-, 7-Zip- og RAR-arkiver læses nu med Windows' eget arkivbibliotek i en lille hjælper i en sandkasse: filnavne på alle sprog kommer frem præcis, som de er gemt.
-• Nyt: knappen på proceslinjen og ikonet i meddelelsesområdet viser en handlings fremskridt.
-• "Scan for trusler" siger ikke længere "intet fundet", når den ikke kunne kontrollere hver fil, eller når antivirusprogrammet ikke rapporterer kendte testtrusler.
-• Rettet: filer i TAR-mapper, hvis navn slutter med et mellemrum eller et punktum, udpakkes og scannes.
-• Rettet: hvor Windows' tar.exe læser et arkiv, udpakkes et navn uden for systemets sprog aldrig under et forkert navn.
-• Rettet: flytning af kilderne til Papirkurven beholder dem ikke længere alle, når én kilde springes over, og hvert beholdt element får sin egen årsag.
-• Rettet: annullering afslutter tar.exe med det samme, og vinduet passer igen på en skærm med et mindre arbejdsområde.
-• Rettet: afskåret eller forskudt tekst på arabisk, hebraisk, urdu, hindi og otte andre sprog.
+• Pakko kører nu på .NET 11.
+• Store arkiver åbnes med langt mindre hukommelse.
+• Arkivering af mange små filer er hurtigere og bruger langt mindre hukommelse.
+• Udpakning af mange små filer tager omtrent halvt så lang tid.
+• Hver handling kører i sin egen sandkasse, og dens midlertidige filer ligger ved siden af destinationen.
+• Rettet: En fil, hvis navn slutter med et mellemrum eller et punktum, arkiveres ikke længere med en anden fils indhold eller slettes i dens sted.
+• Rettet: Et beskadiget krypteret arkiv rapporteres som beskadiget, ikke som beskyttet med adgangskode.
+• Rettet: Stifinder-kommandoerne vises igen på dit sprog, og Enter åbner det valgte element.

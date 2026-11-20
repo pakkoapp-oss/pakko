@@ -35,12 +35,11 @@ ZIP s heslem
 ZIP kompresní nástroj
 
 [What's new in this version]
-• Nové: archivy ISO, CAB, cpio, ar (.deb), tar.Z a lzip lze otevřít, extrahovat a otestovat (jen pro čtení; lzip ne ve Windows 10).
-• Archivy TAR, 7-Zip a RAR teď čte vlastní knihovna archivů Windows v malém pomocníkovi v sandboxu: názvy souborů v jakémkoli jazyce dorazí přesně tak, jak jsou uložené.
-• Nové: tlačítko na hlavním panelu a ikona v oznamovací oblasti ukazují průběh operace.
-• „Zkontrolovat hrozby“ už nehlásí „nic nenalezeno“, když nemohla zkontrolovat každý soubor nebo když antivirus nehlásí známé testovací hrozby.
-• Opraveno: soubory ve složkách TAR, jejichž název končí mezerou nebo tečkou, se extrahují i kontrolují.
-• Opraveno: kde archiv čte tar.exe z Windows, název mimo jazyk systému se nikdy neextrahuje pod chybným názvem.
-• Opraveno: přesun zdrojů do Koše už je nenechá všechny, když je jeden zdroj přeskočen, a každá ponechaná položka má vlastní důvod.
-• Opraveno: zrušení hned ukončí tar.exe a okno se opět vejde na monitor s menší pracovní plochou.
-• Opraveno: oříznutý nebo posunutý text v arabštině, hebrejštině, urdštině, hindštině a dalších osmi jazycích.
+• Pakko nyní běží na .NET 11.
+• Velké archivy se otevírají s mnohem menší spotřebou paměti.
+• Archivace mnoha malých souborů je rychlejší a potřebuje mnohem méně paměti.
+• Extrahování mnoha malých souborů trvá zhruba poloviční dobu.
+• Každá operace běží ve vlastním izolovaném prostoru a její dočasné soubory leží vedle cíle.
+• Opraveno: soubor, jehož název končí mezerou nebo tečkou, se již neukládá do archivu s obsahem jiného souboru ani se neodstraní místo něj.
+• Opraveno: poškozený šifrovaný archiv je hlášen jako poškozený, nikoli jako chráněný heslem.
+• Opraveno: příkazy Průzkumníka se opět zobrazují ve vašem jazyce a Enter otevře vybranou položku.

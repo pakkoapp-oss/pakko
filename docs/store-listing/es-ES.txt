@@ -35,12 +35,11 @@ zip con contraseña
 código abierto
 
 [What's new in this version]
-• Novedad: los archivos comprimidos ISO, CAB, cpio, ar (.deb), tar.Z y lzip se abren, se extraen y se prueban (solo lectura; lzip no en Windows 10).
-• Los archivos comprimidos TAR, 7-Zip y RAR se leen ahora con la biblioteca del propio Windows en un pequeño asistente en un espacio aislado: los nombres de archivo en cualquier idioma llegan tal como se guardaron.
-• Novedad: el botón de la barra de tareas y el icono del área de notificación muestran el progreso de una operación.
-• «Buscar amenazas» ya no dice «no se encontró nada» cuando no pudo revisar todos los archivos o cuando el antivirus no informa de las amenazas de prueba conocidas.
-• Corregido: los archivos de carpetas TAR cuyo nombre termina en un espacio o un punto se extraen y se analizan.
-• Corregido: cuando el tar.exe de Windows lee un archivo comprimido, un nombre fuera del idioma del sistema nunca se extrae con un nombre equivocado.
-• Corregido: mover los orígenes a la Papelera de reciclaje ya no los conserva todos cuando se omite uno, y cada elemento conservado tiene su propio motivo.
-• Corregido: cancelar detiene tar.exe al instante, y la ventana vuelve a caber en un monitor con un área de trabajo más pequeña.
-• Corregido: texto cortado o descolocado en árabe, hebreo, urdu, hindi y otros ocho idiomas.
+• Pakko ahora funciona con .NET 11.
+• Los archivos comprimidos grandes se abren con mucha menos memoria.
+• Comprimir muchos archivos pequeños es más rápido y usa mucha menos memoria.
+• Extraer muchos archivos pequeños tarda aproximadamente la mitad.
+• Cada operación se ejecuta en su propio espacio aislado, y sus archivos temporales se guardan junto al destino.
+• Corregido: un archivo cuyo nombre termina en un espacio o un punto ya no se comprime con el contenido de otro archivo ni se elimina en su lugar.
+• Corregido: un archivo comprimido cifrado y dañado se indica como dañado, no como protegido con contraseña.
+• Corregido: los comandos del Explorador vuelven a mostrarse en su idioma, y Entrar abre el elemento seleccionado.

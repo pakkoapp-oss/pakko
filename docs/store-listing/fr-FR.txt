@@ -35,12 +35,11 @@ extraction fichiers sécurisée
 open source
 
 [What's new in this version]
-• Nouveau : les archives ISO, CAB, cpio, ar (.deb), tar.Z et lzip s'ouvrent, s'extraient et se testent (lecture seule ; lzip pas sous Windows 10).
-• Les archives TAR, 7-Zip et RAR sont désormais lues par la bibliothèque de Windows lui-même dans un petit assistant en bac à sable : les noms de fichiers de toute langue arrivent exactement tels qu'enregistrés.
-• Nouveau : le bouton de la barre des tâches et l'icône de la zone de notification affichent la progression d'une opération.
-• « Rechercher des menaces » n'indique plus « rien trouvé » quand tous les fichiers n'ont pas pu être vérifiés, ou quand l'antivirus ne signale pas les menaces de test connues.
-• Corrigé : les fichiers des dossiers TAR dont le nom se termine par une espace ou un point sont extraits et analysés.
-• Corrigé : quand le tar.exe de Windows lit une archive, un nom hors de la langue du système n'est jamais extrait sous un mauvais nom.
-• Corrigé : déplacer les sources vers la Corbeille ne les garde plus toutes quand l'une est ignorée, et chaque élément conservé a sa propre raison.
-• Corrigé : l'annulation arrête tar.exe aussitôt, et la fenêtre tient de nouveau sur un écran à zone de travail plus petite.
-• Corrigé : texte coupé ou mal placé en arabe, hébreu, ourdou, hindi et huit autres langues.
+• Pakko fonctionne désormais sur .NET 11.
+• Les grandes archives s'ouvrent avec beaucoup moins de mémoire.
+• L'archivage de nombreux petits fichiers est plus rapide et utilise beaucoup moins de mémoire.
+• L'extraction de nombreux petits fichiers prend environ deux fois moins de temps.
+• Chaque opération s'exécute dans son propre bac à sable, et ses fichiers temporaires sont placés à côté de la destination.
+• Corrigé : un fichier dont le nom se termine par une espace ou un point n'est plus archivé avec le contenu d'un autre fichier ni supprimé à sa place.
+• Corrigé : une archive chiffrée endommagée est signalée comme endommagée, et non comme protégée par mot de passe.
+• Corrigé : les commandes de l'Explorateur s'affichent de nouveau dans votre langue, et Entrée ouvre l'élément sélectionné.

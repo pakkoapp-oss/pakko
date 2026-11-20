@@ -154,7 +154,7 @@ with `gh attestation verify` (see `SECURITY.md`, "Component List"). Production c
 
 ## Status
 
-Latest release: v1.10.0. Per-release history: [`CHANGELOG.md`](CHANGELOG.md). Roadmap:
+Latest release: v1.11.0. Per-release history: [`CHANGELOG.md`](CHANGELOG.md). Roadmap:
 [`docs/SPEC.md`](docs/SPEC.md), "Future Roadmap". Open work: [`docs/TASKS.md`](docs/TASKS.md).
 
 **Known issue:** the context menu may flicker on the first right-click in a newly opened Explorer

@@ -35,12 +35,11 @@ zip mật khẩu
 mã nguồn mở
 
 [What's new in this version]
-• Mới: mở, giải nén và kiểm tra tệp nén ISO, CAB, cpio, ar (.deb), tar.Z và lzip (chỉ đọc; lzip không có trên Windows 10).
-• Tệp nén TAR, 7-Zip và RAR giờ được đọc bằng thư viện của chính Windows trong một chương trình trợ giúp nhỏ trong hộp cát: tên tệp bằng mọi ngôn ngữ đến đúng như khi được lưu.
-• Mới: nút trên thanh tác vụ và biểu tượng trong vùng thông báo hiển thị tiến độ của thao tác.
-• "Quét mối đe dọa" không còn báo "không tìm thấy gì" khi không kiểm tra được mọi tệp, hoặc khi phần mềm diệt vi-rút không báo các mối đe dọa thử nghiệm đã biết.
-• Đã sửa: các tệp trong thư mục TAR có tên kết thúc bằng dấu cách hoặc dấu chấm được giải nén và quét.
-• Đã sửa: khi tar.exe của Windows đọc tệp nén, tên nằm ngoài ngôn ngữ hệ thống không bao giờ bị giải nén với tên sai.
-• Đã sửa: chuyển tệp nguồn vào Thùng rác không còn giữ lại tất cả khi một nguồn bị bỏ qua, và mỗi mục được giữ lại có lý do riêng.
-• Đã sửa: hủy sẽ dừng tar.exe ngay lập tức, và cửa sổ lại vừa với màn hình có vùng làm việc nhỏ hơn.
-• Đã sửa: văn bản bị cắt hoặc lệch chỗ trong tiếng Ả Rập, Do Thái, Urdu, Hindi và tám ngôn ngữ khác.
+• Pakko giờ chạy trên .NET 11.
+• Tệp nén lớn mở ra với ít bộ nhớ hơn nhiều.
+• Nén nhiều tệp nhỏ nhanh hơn và dùng ít bộ nhớ hơn nhiều.
+• Giải nén nhiều tệp nhỏ chỉ mất khoảng một nửa thời gian.
+• Mỗi thao tác chạy trong hộp cát riêng, và các tệp tạm của nó nằm cạnh đích.
+• Đã sửa: tệp có tên kết thúc bằng dấu cách hoặc dấu chấm không còn bị nén với nội dung của tệp khác hay bị xóa thay cho tệp đó.
+• Đã sửa: tệp nén được mã hóa bị hỏng được báo là bị hỏng, không phải là được bảo vệ bằng mật khẩu.
+• Đã sửa: các lệnh trong File Explorer lại hiển thị bằng ngôn ngữ của bạn, và Enter mở mục đã chọn.

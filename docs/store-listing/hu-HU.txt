@@ -35,12 +35,11 @@ tar gz
 jelszavas zip
 
 [What's new in this version]
-• Új: az ISO, CAB, cpio, ar (.deb), tar.Z és lzip archívumok megnyithatók, kibonthatók és tesztelhetők (csak olvasás; lzip nem Windows 10-en).
-• A TAR-, 7-Zip- és RAR-archívumokat mostantól a Windows saját archívumkönyvtára olvassa egy kis, sandboxban futó segédprogramban: a fájlnevek bármely nyelven pontosan úgy érkeznek, ahogy tárolták őket.
-• Új: a tálcán lévő gomb és az értesítési terület ikonja mutatja a művelet előrehaladását.
-• A „Fenyegetések keresése” már nem jelzi, hogy „nem talált semmit”, ha nem tudott minden fájlt ellenőrizni, vagy ha a víruskereső nem jelzi az ismert tesztfenyegetéseket.
-• Javítva: a szóközre vagy pontra végződő nevű TAR-mappák fájljai kibonthatók és ellenőrizhetők.
-• Javítva: ahol a Windows tar.exe eszköze olvassa az archívumot, a rendszer nyelvén kívüli név soha nem bontható ki hibás néven.
-• Javítva: a forrásfájlok Lomtárba helyezése már nem tartja meg mindet, ha egy forrás kimarad, és minden megtartott elem saját okot kap.
-• Javítva: a megszakítás azonnal leállítja a tar.exe-t, és az ablak ismét elfér a kisebb munkaterületű monitoron.
-• Javítva: levágott vagy elcsúszott szöveg arab, héber, urdu, hindi és további nyolc nyelven.
+• A Pakko mostantól .NET 11 alatt fut.
+• A nagy archívumok sokkal kevesebb memóriával nyílnak meg.
+• Sok kis fájl archiválása gyorsabb, és sokkal kevesebb memóriát használ.
+• Sok kis fájl kibontása nagyjából feleannyi ideig tart.
+• Minden művelet a saját elkülönített környezetében fut, ideiglenes fájljai pedig a cél mellett vannak.
+• Javítva: a szóközre vagy pontra végződő nevű fájl már nem egy másik fájl tartalmával kerül az archívumba, és nem is törlődik helyette.
+• Javítva: a sérült titkosított archívumot sérültként jelzi, nem jelszóval védettként.
+• Javítva: az Intéző parancsai ismét az Ön nyelvén jelennek meg, és az Enter megnyitja a kijelölt elemet.
