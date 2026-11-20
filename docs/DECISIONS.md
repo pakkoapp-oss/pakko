@@ -14983,6 +14983,39 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Pakko against NanaZip and 7-Zip, measured 2026-11-20 (for the Store listing)
+
+Asked by the user for the Store description: the general ratios, compression levels set the same.
+
+- **Setup:** AMD Ryzen 5 PRO 4650U (6 cores, 12 threads, a laptop), 30 GB, Windows 11 build 26300,
+  the data and the archives on a Dev Drive, Defender's real-time protection on. `pakko` of the
+  1.10.0.40 dev package (the `src` of v1.11.0), NanaZip 7.0 (2610.2) console, 7-Zip 26.02 `7za`; each
+  tool with its own defaults (threads included), `-mx=1/5/9` for ZIP and 7z, tar unset. Three runs,
+  the tools taking turns, the median kept; a run is create, extract, test. A first series with
+  real-time protection off was dropped.
+- **Data:** `many` - the .NET SDK 11.0.100 folder (3,619 files, 465 MB); `one` - the same as one
+  468 MB tar file; `media` - 30 files of 10 MB of random bytes (photos, video).
+- **ZIP** (seconds, Pakko / NanaZip / 7za; 7za and NanaZip write the same bytes):
+  - create `many`: mx1 2.1 / 2.3 / 2.1, mx5 4.8 / 7.8 / 6.9, mx9 10.3 / 50.9 / 47.1; `one`: mx1 3.2 /
+    8.8 / 8.5, mx5 8.8 / 38.8 / 37.1, mx9 20.6 / 265 / 252; `media` mx9 1.6 / 19.0 / 17.5.
+  - size against NanaZip: +25 % at mx1 (Deflate's fastest level against 7-Zip's), +4 to 6 % at
+    mx5 and mx9, equal on `media`.
+  - extract: `many` 5.1-5.8 / 4.6-5.8 / 8.2-10.4, `one` 1.9-2.1 / 2.5-2.7 / 2.5-2.6, `media` 0.5 /
+    0.3 / 0.3; test: Pakko 0.6 of NanaZip's time (0.3 against 0.2 s on `media`).
+- **tar** (Pakko through tar.exe): create `many` 1.2 / 0.7 / 0.6, `one` 0.6 / 0.4 / 0.4; extract
+  `many` 14.8 / 2.0 / 7.7, `one` 0.8 / 0.3 / 0.3.
+- **7z** (Pakko through tar.exe, one thread):
+  - create `many`: mx1 43 / 6.1 / 5.9, mx5 151 / 32 / 32, mx9 191 / 67 / 67; `one` the same within
+    a few seconds; `media` mx1 103 / 8.8 / 8.3, mx9 185 / 35 / 34.
+  - size against NanaZip: -4 % at mx1, +4 to 5 % at mx5, +13 to 19 % at mx9; equal on `media`.
+  - extract: `many` 16.9-17.7 / 2.6-4.5 / 7.7-8.6, `one` 6.7-7.9 / 0.8-2.3 / 0.8-2.2.
+- **Reading:** ZIP, the format Pakko writes itself, extracts within about 10 % of NanaZip's time (faster than 7za) and is 1.6 to 13
+  times faster to create at mx5 and mx9, for archives 4 to 6 % larger; Deflate's smallest-size level
+  takes few extra passes where 7-Zip's mx9 takes many. tar and 7z go through Windows' own tar.exe in
+  a sandbox: 3 to 12 times slower to create a 7z, 2 to 10 times slower to extract either; the
+  extract side is T-F565. The App runs the same Core as `pakko`, NanaZip's window the same engine as
+  its console, so the window was not timed apart.
+
 ## v1.11.0 - the release record (2026-11-20)
 
 - **Commits.** PR #264 (`8d996932`: T-F562..T-F564 filed; `787dc948`: Identity 1.11.0.0, CHANGELOG
