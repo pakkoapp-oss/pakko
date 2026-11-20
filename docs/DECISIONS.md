@@ -15058,8 +15058,10 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **Left to the user** (one checklist, 2026-11-20): `POL-*`/`PKG-005` with `-Hold` and `POL-009`/
   `POL-010` under each held policy; `PKG-010`'s "Show more options"; T-F427 with real-time
   protection off; the tray icon by eye; the Explorer menu on PakkoW10 (T-F494); one real drag of
-  `b.txt ` (T-F563); T-F254's language pack and sign-out (optional). The elevated `POL-*` run is
-  asked before the tag; the rest go to their tasks.
+  `b.txt ` (T-F563); T-F254's language pack and sign-out (optional). The elevated `POL-*`/`PKG-005`/
+  `PKG-010` run was asked before the tag; the user went ahead without it ("Вперед з тегом",
+  2026-11-20), so this release's policy rows rest on the script rows' policy-free runs and on
+  v1.10.0's elevated run; the policy reader is unchanged since v1.10.0 (three callers refactored, covered by the default suite). The rest go to their tasks.
 - **The tag** goes on this record's merge, whose `src` is that of `787dc948`, after the user's OK.
 
 ## Batch 7 - T-F493 measured: ZIP encryption through the BCL (T-F493, T-F530; 2026-11-19)
