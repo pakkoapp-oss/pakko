@@ -366,6 +366,66 @@ internal static partial class QuarantineAcl
         }
     }
 
+    /// <summary>
+    /// T-F565: what <paramref name="folder"/> passes down to a folder made in it and to a file made in it,
+    /// each entry with the flags the child's copy gets, as one string to compare: two folders with the same
+    /// string give a child folder and everything below it the same entries. Null when the DACL cannot be
+    /// read. The integrity label's inheritable entries count too (the merge writes them, T-F532).
+    /// </summary>
+    public static string? InheritableEntries(string folder)
+    {
+        const int SE_FILE_OBJECT = 1;
+        const uint DACL_SECURITY_INFORMATION = 0x00000004;
+        const uint LABEL_SECURITY_INFORMATION = 0x00000010;
+
+        if (!OperatingSystem.IsWindows()
+            || NativeMethods.GetNamedSecurityInfoW(folder, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | LABEL_SECURITY_INFORMATION,
+                IntPtr.Zero, IntPtr.Zero, out _, IntPtr.Zero, out IntPtr securityDescriptor) != 0)
+            return null;
+        try
+        {
+            byte[] bytes = new byte[NativeMethods.GetSecurityDescriptorLength(securityDescriptor)];
+            Marshal.Copy(securityDescriptor, bytes, 0, bytes.Length);
+            var descriptor = new System.Security.AccessControl.RawSecurityDescriptor(bytes, 0);
+            System.Security.AccessControl.RawAcl? dacl = descriptor.DiscretionaryAcl;
+            System.Security.AccessControl.RawAcl? label = descriptor.SystemAcl;
+            return PassedToFolders(dacl) + "|" + PassedToFiles(dacl) + "|" + PassedToFolders(label) + "|" + PassedToFiles(label);
+        }
+        finally
+        {
+            NativeMethods.LocalFree(securityDescriptor);
+        }
+    }
+
+    // A child folder's copy: an entry for folders keeps passing down unless it stops at the children
+    // (no-propagate); an entry for files only reaches the child folder as inherit-only, to pass to its files.
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static string PassedToFolders(System.Security.AccessControl.RawAcl? dacl)
+    {
+        const System.Security.AccessControl.AceFlags Object = System.Security.AccessControl.AceFlags.ObjectInherit;
+        const System.Security.AccessControl.AceFlags Container = System.Security.AccessControl.AceFlags.ContainerInherit;
+        const System.Security.AccessControl.AceFlags NoPropagate = System.Security.AccessControl.AceFlags.NoPropagateInherit;
+        var text = new System.Text.StringBuilder();
+        foreach (System.Security.AccessControl.GenericAce ace in dacl ?? new System.Security.AccessControl.RawAcl(2, 0))
+        {
+            System.Security.AccessControl.AceFlags flags = ace.AceFlags;
+            bool stops = (flags & NoPropagate) != 0;
+            System.Security.AccessControl.AceFlags childFlags;
+            if ((flags & Container) != 0)
+                childFlags = stops ? System.Security.AccessControl.AceFlags.None : flags & (Object | Container);
+            else if ((flags & Object) != 0 && !stops)
+                childFlags = Object | System.Security.AccessControl.AceFlags.InheritOnly;
+            else
+                continue;
+            System.Security.AccessControl.GenericAce copy = ace.Copy();
+            copy.AceFlags = childFlags;
+            byte[] form = new byte[copy.BinaryLength];
+            copy.GetBinaryForm(form, 0);
+            text.Append(Convert.ToHexString(form)).Append(';');
+        }
+        return text.ToString();
+    }
+
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static string PassedToFiles(System.Security.AccessControl.RawAcl? dacl)
     {
