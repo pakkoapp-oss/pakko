@@ -15109,7 +15109,26 @@ Asked by the user for the Store description: the general ratios, compression lev
     with "blocked by Group Policy". The `.tlz` case under `BlockedFormats=lzip` was not held.
   - `PKG-010` (`PKG-009 -PackageLifecycle -Hold`, 1 OK): with the package removed, a ZIP's menu and
     "Show more options" (read through `MN_GETHMENU`) hold no Pakko item.
-- **The tag** goes on this record's merge, whose `src` is that of `787dc948`, after the user's OK.
+- **The tag** `v1.11.0` went on `40d5c3b1` (#266, the merge that recorded the elevated rows), whose
+  `src` is that of `787dc948`, with the user's OK.
+- **The GitHub Release** failed twice in the tag push's `release` job (run 44681533325, the rerun
+  too) with HTTP 404 on `Microsoft.WindowsAppRuntime.2.msix`: the build-msix artifacts now hold a
+  flat `.msix` and `Dependencies\<arch>\` framework packages beside each bundle, and the job's
+  recursive `*.msix` glob uploaded same-named files from both legs (the v1.4.6 collision). The tag
+  cannot move and the job runs the tag's `build.yml`, so the release was created by hand from that
+  run's artifacts with the job's own notes step: the two bundles, the two CLI zips, `SHA256SUMS`
+  (checked against the zips) and the four SBOMs, the nine files v1.10.0 shipped. v1.10.0's bundle
+  carries the same `Microsoft.WindowsAppRuntime.2` dependency, so nothing a GitHub user installs
+  changed. `build.yml` now takes exactly the two bundles.
+- **The `store` tier** on the tag's files (Store bundle run 44681566192): 207 rows, 125 OK, 1 FAIL,
+  1 skipped, 80 manual. `REL-001` passed 48 again; `REL-002` skipped, as it looks for a canary on the
+  checked-out docs commit (the release commit's is 44665368413 above). `STO-002` failed on a meant
+  difference: the package's `inProcessServer` extension for `Microsoft.Web.WebView2.Core.dll` lists 6
+  activatable classes instead of 1, on both architectures. The files are the same and WebView2 is
+  1.0.3719.77 in both; `Microsoft.Windows.SDK.BuildTools.MSIX` went from 1.7.251221100 to
+  1.7.261102100 with T-F492 and writes every class of the winmd. The classes are registered for the
+  package only, no capability changed; Pakko does not use WebView2. `STO-004` (the upload) is the
+  user's.
 
 ## Batch 7 - T-F493 measured: ZIP encryption through the BCL (T-F493, T-F530; 2026-11-19)
 
