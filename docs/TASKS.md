@@ -1899,6 +1899,39 @@ re-measured with T-F346's script before and after.
   потрібно"; then "Біля призначення"). Left: the device run, the bench and the closing review.
 - **Reported by:** the T-F474 bench (10,000 files onto D: copied out of `%TEMP%`), 2026-11-13.
 
+### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 8)
+
+- [ ] **Status:** open. Found 2026-11-20 by `APP-031`/`OPW-006` (T-F432) on 1.10.0.40, Windows 11
+  26300. An operation that waits for a conflict answer or fails while its percent is still 0 shows
+  only the grey track: a 4 KB damaged ZIP failing at once, and a single-file extraction asking
+  "the file exists", in both the App and the operation window. Near 100 % red is full width, so the
+  state reaches the button; the value does not. `OperationIndicator.Finished` keeps `_percent` and
+  `TaskbarButton.Apply` sets the value, then the state. Next: Error and Paused shown whatever the
+  percent (for instance the value at least a small visible part, or 100 for Error), in
+  `OperationIndicator` and `OperationWindowModel.IndicatorState` alike, test first.
+- **Reported by:** the agent (batch 8), 2026-11-20.
+
+### T-F563 - A dropped name Windows trims leaves the App's list with only a log line (P3, batch 8)
+
+- [ ] **Status:** open. Found 2026-11-20 by `SHL-019` (T-F509): the App given `b.txt ` (a trailing
+  space) next to its folder, as a drop or `--open-ui --archive` hands it, lists the folder and drops
+  the file with only "Skipped unreadable path" in the log (`FileItem.TryCreate`, T-F232); nothing on
+  screen says why. The Explorer verb and the Shell name the reason. Next: the App shows the same
+  reason the Shell does (one line in the list's status or a dialog), or takes the `\\?\` spelling
+  with T-F556.
+- **Reported by:** the agent (batch 8), 2026-11-20.
+
+### T-F562 - The archive helper on ARM64 (P3, batch 8)
+
+- [ ] **Status:** open. Measured 2026-11-20 on the `windows-11-arm` runner: Windows on ARM64 ships
+  its own `C:\Windows\System32\archiveint.dll` (libarchive 3.8.9, the same codecs as x64; the
+  "no ARM64 build" in `docs/DECISIONS.md`, "T-F470", was a gap in Winbindex). A native ARM64
+  `Archiver.ArchiveHelper.exe` outside an AppContainer: `probe` exit 0, every format, and a tar.gz
+  listed. v1.11.0 ships unchanged: `ArchiveintGate` sends ARM64 to tar.exe. Next: the gate admits
+  native ARM64, the MSIX carries the ARM64 helper, the helper tests run native on `canary-arm64`
+  (`NativeX64Fact`), and one run in an AppContainer on a real ARM64 machine.
+- **Reported by:** the agent (batch 8), 2026-11-20.
+
 ### T-F561 - tar.exe's output has no cap tied to the declared total (P3, batch 6's review)
 
 - [ ] **Status:** open. T-F554 refuses a `-tv` line whose size does not parse, but the bomb check
