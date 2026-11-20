@@ -1,6 +1,6 @@
 # TASKS.md — Active and Future Tasks
 
-> Open work only: what v1.11.0 carried over first, then the future tasks. Finished tasks live in
+> Open work only: the v1.12.0 wave first, then the future tasks. Finished tasks live in
 > [`TASKS_DONE.md`](TASKS_DONE.md); each graduation below names its section there.
 >
 > **Graduated 2026-11-20 (after v1.11.0):** section "Graduated 2026-11-20 (after v1.11.0)" of
@@ -52,25 +52,39 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ---
 
-## After v1.11.0 - what the release carried over (2026-11-20)
+## v1.12.0 wave - tar.exe in its sandbox made fast, and the open tasks (planned 2026-11-20)
 
-v1.11.0 was tagged from the wave above, whose plan now lives in [`TASKS_DONE.md`](TASKS_DONE.md),
-section "Graduated 2026-11-20 (after v1.11.0)". Open tasks of that wave, each with why it stayed:
+The user, 2026-11-20: the next release works on the speed of what goes through the sandbox (tar,
+7z and the other formats tar.exe handles), multi-threading and tar.exe's options, plus every open
+task. The first measure (`docs/DECISIONS.md`, "Pakko against NanaZip and 7-Zip") put tar and 7z
+2 to 12 times behind 7-Zip; the bare tar.exe extracts the same 3,619-file tar in 1.6 s where Pakko
+takes 16.5 s, so most of it is Pakko's own. Creating tar, tar.gz and tar.zst through .NET (T-F514)
+is a real candidate; reading stays in the sandbox. Plan and inventory: `docs/DECISIONS.md`,
+"v1.12.0 wave plan".
 
-- **T-F432** - `APP-032` (the tray icon) not seen in the overflow flyout; the user looks by eye.
-  The yellow and red at 0 % are T-F564.
-- **T-F444** - `SHL-015` is a `store`-tier row (a third-party antivirus on PakkoW10), not run.
-- **T-F446** - no provider that answers "blocked by the administrator" to run the row on.
-- **T-F494** - the Explorer menu on PakkoW10 needs a session as `tester`; the agent's way in was
-  refused (a stored credential), so it waits for the user.
-- **T-F508** - the canary nights before its gate, and the two device measurements.
-- **T-F254** - a regional display language pack and a sign-out, again not taken.
-- **T-F317** - winget's outward step, only with the user's OK.
-- **T-F556, T-F559, T-F560, T-F561, T-F562, T-F563, T-F564** - P3s found during the wave, for the
-  next one.
-- The tasks the wave plan named "not in this wave" (T-F447, T-F464, T-F469, T-F496, T-F514 and the
-  rest of that list) stay future tasks, unchanged.
+Same rules as the v1.11.0 wave: one branch and one PR per batch, one commit per task, Sonar's rules
+checked before the push; a speed change is measured before and after with
+`scripts/Measure-Comparison.ps1` on the same data, real-time protection on, on a Dev Drive and on
+plain NTFS, and against 7-Zip at the same archive size, never the same `-mx`; every change to the tar
+path runs on both tar builds (3.8.x here, 3.5.2 on PakkoW10); the sandbox boundary gets an opus
+reviewer at the batch's close, with the user's OK.
 
+| # | Batch | Tasks | Checked once per batch |
+|---|---|---|---|
+| 1 | Where the time goes | T-F565 step 1: bare tar.exe and the helper against Pakko on the same archives; Pakko's phases (scope, profile, scans, listings, the move out of the quarantine, the commit) | A table in DECISIONS, both volumes, both tar builds; it decides what batches 2 and 3 hold |
+| 2 | Extraction through the sandbox | T-F565 (extraction), T-F445, T-F561, T-F560; T-F464 if batch 1 shows the second listing or the name prediction costs | Measured before and after, the quiet suite, both tar builds, an opus reviewer |
+| 3 | Creation | T-F565 (creation: libarchive's options, threads where a filter has them); T-F514 (`TarWriter` with `GZipStream`/`ZstandardStream` for tar, tar.gz, tar.zst; the user decides after the spike; `TarReader` read again at the SDK's 11.0.x tag for the three faults that rejected it on 10.0.14) | Same archive size against 7-Zip; every archive read by 7-Zip and both tar builds; `HardLinkMode` against T-F392; `SECURITY.md` only with the user's OK |
+| 4 | ARM64 helper | T-F562 | `canary-arm64` native; one AppContainer run on an ARM64 machine if there is one |
+| 5 | Names | T-F556, T-F563, T-F559 | One deploy, `SHL-019`, PakkoW10 for T-F559 |
+| 6 | Taskbar | T-F564 | `APP-031`, `OPW-006` on the device |
+| 7 | A damaged entry kept | T-F496 | The failure matrix (CRC, length, deflate) at every test level, one deploy |
+| 8 | Device, user, release | T-F432 (`APP-032` by eye), T-F494, T-F444, T-F446, T-F447, T-F254, T-F508, T-F317 (only with the user's OK); `STO-005`, `STO-006`, `STO-008` for 1.11.0 after certification; the release tier; the tag after the user's OK | As batch 8 of v1.11.0 |
+
+Order: this plan, then batch 1, then 2 and 3; 4 to 7 between them while no long series runs; 8 last.
+
+Not in this wave, unchanged: T-F453, T-F461, T-F469 (P4, the tar.exe fallback; touched only if batch
+2 changes the same code); T-F02, T-F10, T-F91, T-F119, T-F121, T-F127, T-F132, T-F144, T-F152, T-F202,
+T-F328, T-F329, T-F331, T-F332, T-F359, T-F393.
 ---
 
 ## Future Tasks

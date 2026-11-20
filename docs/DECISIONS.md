@@ -14983,6 +14983,35 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.12.0 wave plan (2026-11-20)
+
+The user, 2026-11-20, after the comparison below: no figures in the Store listing for now; the next
+release works on the sandbox around tar.exe, multi-threading and tar.exe's other options, with every
+open task. Asked whether tar could go to .NET as ZIP does, the user chose creation only: tar, tar.gz
+and tar.zst written through .NET (T-F514) in batch 3, reading kept in the sandbox (the hard rule in
+`CLAUDE.md` and `TarReader`'s rejection, "T-F441 and T-F424"). That rejection read .NET 10.0.14;
+batch 3 reads `TarReader` again at the SDK's 11.0.x tag, and reading through .NET inside the sandbox
+would be a separate decision of the user's. bz2, xz, lzma and 7z stay on tar.exe: the BCL has none.
+
+- **Where the time goes is measured first (batch 1).** Pakko's path (`docs/ARCHITECTURE.md`,
+  `TarSandboxScope`): the signature check, an AppContainer profile per scope (T-F523), the
+  quarantine, the `-tv` pre-scan and a second `-t` when names go back, the folders made by Pakko,
+  `-x` into the quarantine, each file moved out with a handle check (`QuarantineFiles`, T-F474) into
+  `ExtractionStaging`, `CommitInto`. On x64 the helper over `archiveint.dll` reads and extracts;
+  tar.exe is the fallback and the only writer. The bare tar.exe, outside the sandbox, on the same
+  archives is the floor; the gap is Pakko's. First reading on the Dev Drive: a tar of the 3,619 SDK
+  files extracts in 1.6 s with the bare tar.exe and 16.5 s through Pakko.
+- **Hypotheses to check:** the move out of the quarantine (several file operations per file); the
+  profile made and deleted per operation; passes over the archive repeated (for a 7z each is a full
+  one-thread LZMA decode); Defender scanning the quarantine and the destination (plain NTFS only;
+  on a Dev Drive the quarantine sits next to the destination, T-F524, and Defender defers); a pass of
+  Pakko's own after creating a 7z (103 s for 300 MB of random bytes at mx1, about 3 MB/s, is not yet
+  shown to be tar.exe's LZMA).
+- **Phase times:** `pakko.log` is the App's, with whole seconds, and Core does not log (hard rule), so
+  phase times come from a temporary stopwatch on a measuring branch, never merged.
+- **Inventory:** every task the v1.11.0 release carried over is in a batch or named as not in this
+  wave in `docs/TASKS.md`'s wave section; T-F427 was graduated after the tag.
+
 ## Pakko against NanaZip and 7-Zip, measured 2026-11-20 (for the Store listing)
 
 Asked by the user for the Store description: the general ratios, compression levels set the same.
