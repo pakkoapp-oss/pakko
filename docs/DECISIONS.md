@@ -15058,10 +15058,24 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **Left to the user** (one checklist, 2026-11-20): `POL-*`/`PKG-005` with `-Hold` and `POL-009`/
   `POL-010` under each held policy; `PKG-010`'s "Show more options"; T-F427 with real-time
   protection off; the tray icon by eye; the Explorer menu on PakkoW10 (T-F494); one real drag of
-  `b.txt ` (T-F563); T-F254's language pack and sign-out (optional). The elevated `POL-*`/`PKG-005`/
-  `PKG-010` run was asked before the tag; the user went ahead without it ("Вперед з тегом",
-  2026-11-20), so this release's policy rows rest on the script rows' policy-free runs and on
-  v1.10.0's elevated run; the policy reader is unchanged since v1.10.0 (three callers refactored, covered by the default suite). The rest go to their tasks.
+  `b.txt ` (T-F563); T-F254's language pack and sign-out (optional). These go to their tasks.
+- **The elevated rows** (the user confirmed UAC; 1.10.0.40, the `src` of the release commit):
+  `Invoke-Smoke.ps1 -Tier release -Only POL-*,PKG-005,PKG-010 -Hold`: 9 OK, 0 FAIL (`POL-001..008`,
+  `PKG-005`: appcert PASS, only the two known findings). Walked through the `windows` MCP server under
+  each held policy:
+  - `POL-009`: `EnforceMOTW` 0/1/2: the download-mark box locked off/on/on with "set by your
+    organization's policy"; `AllowedFormats=zip`: Format list ZIP only, a tar.gz refused on open;
+    `BlockedFormats=zip`: no ZIP, the card on 7Z, a ZIP refused on open; `sevenzip,rar`: no 7Z, Down on
+    the closed box at ZIP lands on TAR; `DisableTarExtraction`: ZIP only; `DisableRecoveryData`: no PAR2
+    option, an archive with a set opens without the PAR2 line or Repair. FIPS on: the App starts.
+  - `POL-010`: `BlockedFormats=zip`: the ZIP has only Compress and the hashes, its `.par2` keeps Check
+    and Repair, a folder has no Add to X.zip; `sevenzip,rar`: a `.7z` has no Extract, Test or Add to
+    X.7z, a folder no Add to X.7z; `DisableTarExtraction`: a `.7z` has no Test and no Add to X.tar/X.7z;
+    `DisableRecoveryData`: a `.par2` has no PAR2 item. Under `AllowedFormats=zip` a tar.gz keeps its
+    items, as `docs/POLICIES.md` says (the policy is enforced after the click): its Test refused it
+    with "blocked by Group Policy". The `.tlz` case under `BlockedFormats=lzip` was not held.
+  - `PKG-010` (`PKG-009 -PackageLifecycle -Hold`, 1 OK): with the package removed, a ZIP's menu and
+    "Show more options" (read through `MN_GETHMENU`) hold no Pakko item.
 - **The tag** goes on this record's merge, whose `src` is that of `787dc948`, after the user's OK.
 
 ## Batch 7 - T-F493 measured: ZIP encryption through the BCL (T-F493, T-F530; 2026-11-19)
