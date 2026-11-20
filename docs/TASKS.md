@@ -69,6 +69,8 @@ section "Graduated 2026-11-20 (after v1.11.0)". Open tasks of that wave, each wi
 - **T-F317** - winget's outward step, only with the user's OK.
 - **T-F556, T-F559, T-F560, T-F561, T-F562, T-F563, T-F564** - P3s found during the wave, for the
   next one.
+- The tasks the wave plan named "not in this wave" (T-F447, T-F464, T-F469, T-F496, T-F514 and the
+  rest of that list) stay future tasks, unchanged.
 
 ---
 
