@@ -14983,6 +14983,85 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.11.0 - the release record (2026-11-20)
+
+- **Commits.** PR #264 (`8d996932`: T-F562..T-F564 filed; `787dc948`: Identity 1.11.0.0, CHANGELOG
+  dated 2026-11-20, the Store listing's "What's new" in 37 languages, README/README.uk latest
+  release, SPEC released) changed no `src` code after the smoke below; the manifest's Identity is
+  the only `src` file. The site pages name no version and no new format, so they are unchanged.
+  This record's pull request graduates the tasks the smoke closed. SDK: `release-metadata` 11.0's
+  latest is SDK 11.0.100 / runtime 11.0.0 (2026-11-10), the one `global.json` pins; no bump.
+- **Smoke on the host** (Windows 11 26300, tar.exe 3.8.9), dev package 1.10.0.40 of `e23dbe1c`
+  (`Deploy.ps1`; `src` the same as the release commit's but the Identity):
+  - `Invoke-Smoke.ps1 -Tier release`, every `script` row but `POL-*`, `REL-*`, `PKG-005..010`:
+    103 of 103 OK (586 s), `SHL-006` (T-F437) and `OPW-004` (T-F456) among them.
+  - Through the `windows` MCP server, the rows the batch names (the other `mcp` rows of the tier
+    were left "manual", as for v1.10.0):
+    - `APP-038` (T-F519): a junction to the literal `abc.` (`FSCTL_SET_REPARSE_POINT`; `mklink /J`
+      normalizes the dot away), recycle on: the ZIP holds the dot folder's own file, the twin is
+      untouched, nothing recycled, the dialog names the reason.
+    - `SHL-019` (T-F509): the Explorer menu's Compress on a folder holding `a.txt` and `a.txt `,
+      recycle on: each archived with its own bytes, both kept with the trimmed-name reason, nothing
+      recycled; "Add to b.zip" on `b.txt `: refused with its reason, no file. The App given `b.txt `
+      as a drop hands it (`--open-ui --archive`; the MCP server's synthetic drag delivered nothing)
+      drops it with only a log line: T-F563.
+    - `APP-027` (T-F434), all four cases, done while a 600 MB run compressed (a clean run shows no
+      summary and recycles at once): a file added, a file edited, the destination a junction into
+      the source, and a source with a junction beside a clean one; each kept with its reason, the
+      clean one recycled after OK. `APP-028`/`APP-030` (T-F435): a ZIP holding one name twice with
+      Overwrite, and the archive moved away while the summary was open: kept with their reasons.
+    - `APP-005` on a tar (T-F550): the selection extracted exactly; the log names the archive
+      helper as the reader. tar.exe's leg cannot be reached from the App where the helper's probe
+      passes (3.8.9 here, 3.5.2 on PakkoW10), so it rests on batch 5j's integration tests on both
+      tar builds.
+    - `APP-024` (T-F428): a tar.gz of 100,000 files of 200 B cancelled mid-extraction: the helper
+      gone 144 ms after Cancel, no partial output, the sandbox folder empty. (600 MB and 2.4 GB
+      tar.gz extract in under 2 s, nothing to cancel.)
+    - `APP-025` (T-F483): 7Z in the Format list, every method (LZMA2, LZMA, BZip2, Deflate, Copy)
+      from a Cyrillic folder holding a nested one, read back by NanaZip's `7z l -slt`: every archive
+      has the nested folder's entry; Copy greys out the level; PAR2 files written, `pakko t` intact.
+    - `APP-031`/`OPW-006` (T-F432), the taskbar read by screen capture: normal progress grows in the
+      system's accent colour (Windows 11 26300 draws normal progress in the accent, not green), a
+      waiting conflict yellow, a ZIP damaged near its end red over the whole width, cleared on
+      Cancel and after OK; the operation window's bar covers a batch of three ZIPs. **Found:** a
+      conflict or a failure while the percent is still 0 shows only the grey track, in both windows
+      (T-F564, P3).
+    - `APP-032` (tray): the icon is registered (`NotifyIconSettings`) but was not in the overflow
+      flyout during a run; left to the user to look by eye (T-F432 stays open for it).
+    - `APP-014` (T-F439) at 150 % and 175 %, the scale changed with the App open: the floor is
+      900x520 effective in the main and archive views, also on a fresh window, the About dialog
+      uncut; back at 100 % they shrink to the floor. 200 % is not offered on this 1920x1080
+      display, and no monitor with a smaller work area was attached: both not walked.
+    - `APP-013` (T-F485/T-F486) at 950x560: High Contrast (Night sky), light and dark switched with
+      both views open: nothing cut, the accent button's label on the theme's highlight with no dark
+      box; no empty window. Restored: no contrast, dark mode, 100 %.
+    - `CLI-042`/`CLI-043` with NanaZip's `7z.exe` 2610.2 in place of `7za`: OK, bytes compared by hash.
+    - T-F427 with real-time protection on: both `AntivirusScanServiceEicarTests` pass; the half
+      with it off waits for the user.
+- **ARM64** (`windows-11-arm` runner, a throwaway branch, run 44640387699): Windows on ARM64 ships
+  its own `archiveint.dll` (2,600,960 B, 3.8.9, Microsoft-signed, PE machine 0xAA64); a native ARM64
+  `Archiver.ArchiveHelper.exe` outside an AppContainer passes `probe` for every format and lists a
+  tar.gz. T-F470's "no ARM64 build" came from a gap in Winbindex. v1.11.0 ships unchanged (ARM64
+  goes to tar.exe); T-F562 takes the helper there.
+- **PakkoW10** (Windows 10 19045, tar.exe 3.5.2, the CI bundle of `e23dbe1c`), PowerShell Direct:
+  `CLI-032`/`CLI-035` CLI half: `pakko i` lists zip, tar, tar.gz and the read-only formats, no
+  methods line, the helper on 3.5.2; `a` of tar.zst/tar.bz2/tar.xz/tar.lzma/7z exits 2 with Pakko's
+  text and no file, with the tracing stubs on `PATH` or not. **Not walked: the Explorer menu on the
+  VM** (T-F494): the way in tried, RDP as `tester` with a stored credential, was refused by the
+  agent's permission rules; it waits for the user.
+- **Gates on the release commit** (`787dc948`):
+  - `REL-001` on the branch commit `66198052` (the same tree): OK, 48 passed (1,465 s).
+  - Canary: run 44665368413, `headSha` `787dc948`: every job success, `canary-failed-day` skipped,
+    `canary-fuzz` success (`canary-slow` holds `Category=Slow` too).
+  - Build run 44665350934 green; its `pakko-msix-x64` (1.11.0.0) for `PKG-006..009` with
+    `-PackageLifecycle`, v1.10.0's release as the previous one: 4 of 4 OK (1.10.0.0 to 1.11.0.0).
+- **Left to the user** (one checklist, 2026-11-20): `POL-*`/`PKG-005` with `-Hold` and `POL-009`/
+  `POL-010` under each held policy; `PKG-010`'s "Show more options"; T-F427 with real-time
+  protection off; the tray icon by eye; the Explorer menu on PakkoW10 (T-F494); one real drag of
+  `b.txt ` (T-F563); T-F254's language pack and sign-out (optional). The elevated `POL-*` run is
+  asked before the tag; the rest go to their tasks.
+- **The tag** goes on this record's merge, whose `src` is that of `787dc948`, after the user's OK.
+
 ## Batch 7 - T-F493 measured: ZIP encryption through the BCL (T-F493, T-F530; 2026-11-19)
 
 .NET 11.0.0 (`Microsoft.NETCore.App` 11.0.0), the source read at the `v11.0.0` tag of dotnet/runtime
