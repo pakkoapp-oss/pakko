@@ -710,9 +710,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $msixAssets = Get-ChildItem -Path artifacts/msix -Recurse -Include *.msix, *.msixbundle | Select-Object -ExpandProperty FullName
-          if (-not $msixAssets) {
-            throw "No .msix/.msixbundle files found under artifacts/msix -- build-msix artifacts missing or layout changed."
+          # The bundles only: the build also leaves a flat .msix and Dependencies\<arch>\ framework
+          # packages beside them, whose identical names across the two legs fail the upload (HTTP 404,
+          # the v1.11.0 tag push; v1.4.6 before it).
+          $msixAssets = Get-ChildItem -Path artifacts/msix -Recurse -Include *.msixbundle | Select-Object -ExpandProperty FullName
+          if (@($msixAssets).Count -ne 2) {
+            throw "Expected 2 .msixbundle files under artifacts/msix, found $(@($msixAssets).Count)."
           }
           $assets = @(
             "artifacts/cli/pakko-win-x64.zip",
