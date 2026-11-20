@@ -35,12 +35,11 @@ zip com palavra-passe
 código aberto
 
 [What's new in this version]
-• Novo: os arquivos ISO, CAB, cpio, ar (.deb), tar.Z e lzip abrem-se, extraem-se e testam-se (só leitura; lzip não no Windows 10).
-• Os arquivos TAR, 7-Zip e RAR passam a ser lidos com a biblioteca do próprio Windows num pequeno programa auxiliar numa sandbox: os nomes de ficheiros em qualquer idioma chegam exatamente como foram guardados.
-• Novo: o botão na barra de tarefas e o ícone na área de notificação mostram o progresso de uma operação.
-• "Procurar ameaças" já não indica "nada encontrado" quando não conseguiu verificar todos os ficheiros, ou quando o antivírus não comunica as ameaças de teste conhecidas.
-• Corrigido: os ficheiros em pastas TAR cujo nome termina num espaço ou num ponto são extraídos e analisados.
-• Corrigido: quando o tar.exe do Windows lê um arquivo, um nome fora do idioma do sistema nunca é extraído com um nome errado.
-• Corrigido: mover as origens para a Reciclagem já não as mantém todas quando uma é ignorada, e cada item mantido tem o seu próprio motivo.
-• Corrigido: cancelar termina o tar.exe de imediato, e a janela volta a caber num monitor com uma área de trabalho mais pequena.
-• Corrigido: texto cortado ou fora do lugar em árabe, hebraico, urdu, hindi e outros oito idiomas.
+• O Pakko funciona agora com o .NET 11.
+• Os arquivos grandes abrem com muito menos memória.
+• Arquivar muitos ficheiros pequenos é mais rápido e usa muito menos memória.
+• Extrair muitos ficheiros pequenos demora cerca de metade do tempo.
+• Cada operação é executada na sua própria sandbox, e os seus ficheiros temporários ficam junto ao destino.
+• Corrigido: um ficheiro cujo nome termina num espaço ou num ponto já não é arquivado com o conteúdo de outro ficheiro nem eliminado no seu lugar.
+• Corrigido: um arquivo encriptado danificado é indicado como danificado, e não como protegido por palavra-passe.
+• Corrigido: os comandos do Explorador voltam a aparecer no seu idioma, e Enter abre o item selecionado.

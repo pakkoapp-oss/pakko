@@ -35,12 +35,11 @@ zip ar paroli
 atvērtais pirmkods
 
 [What's new in this version]
-• Jaunums: ISO, CAB, cpio, ar (.deb), tar.Z un lzip arhīvus var atvērt, izvilkt un testēt (tikai lasīšanai; lzip ne Windows 10).
-• TAR, 7-Zip un RAR arhīvi tagad tiek lasīti ar pašas Windows arhīvu bibliotēku nelielā palīgprogrammā smilškastē: failu nosaukumi jebkurā valodā nonāk tieši tādi, kādi saglabāti.
-• Jaunums: uzdevumjoslas poga un paziņojumu apgabala ikona rāda darbības norisi.
-• „Pārbaudīt draudus“ vairs neziņo „nekas nav atrasts“, ja nevarēja pārbaudīt katru failu vai ja pretvīrusu programma neziņo par zināmiem testa draudiem.
-• Labots: faili TAR mapēs, kuru nosaukums beidzas ar atstarpi vai punktu, tiek izvilkti un pārbaudīti.
-• Labots: ja arhīvu lasa Windows tar.exe, nosaukums ārpus sistēmas valodas nekad netiek izvilkts ar nepareizu nosaukumu.
-• Labots: avotu pārvietošana uz Atkritni vairs nepatur tos visus, ja viens avots ir izlaists, un katram paturētajam vienumam ir savs iemesls.
-• Labots: atcelšana uzreiz aptur tar.exe, un logs atkal ietilpst monitorā ar mazāku darba apgabalu.
-• Labots: nogriezts vai nobīdīts teksts arābu, ivritā, urdu, hindi un vēl astoņās valodās.
+• Pakko tagad darbojas ar .NET 11.
+• Lieli arhīvi tiek atvērti, izmantojot daudz mazāk atmiņas.
+• Daudzu mazu failu arhivēšana ir ātrāka un izmanto daudz mazāk atmiņas.
+• Daudzu mazu failu izvilkšana aizņem aptuveni uz pusi mazāk laika.
+• Katra darbība darbojas savā smilškastē, un tās pagaidu faili atrodas blakus mērķim.
+• Labots: fails, kura nosaukums beidzas ar atstarpi vai punktu, vairs netiek arhivēts ar cita faila saturu vai izdzēsts tā vietā.
+• Labots: bojāts šifrēts arhīvs tiek norādīts kā bojāts, nevis kā aizsargāts ar paroli.
+• Labots: Explorer komandas atkal tiek rādītas jūsu valodā, un taustiņš Enter atver atlasīto vienumu.

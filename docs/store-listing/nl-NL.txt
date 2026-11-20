@@ -35,12 +35,11 @@ tar gz
 zip met wachtwoord
 
 [What's new in this version]
-• Nieuw: ISO-, CAB-, cpio-, ar- (.deb), tar.Z- en lzip-archieven openen, uitpakken en testen (alleen lezen; lzip niet op Windows 10).
-• TAR-, 7-Zip- en RAR-archieven worden nu gelezen met de eigen bibliotheek van Windows in een klein hulpprogramma in een sandbox: bestandsnamen in elke taal komen precies zo aan als ze zijn opgeslagen.
-• Nieuw: de knop op de taakbalk en het pictogram in het systeemvak tonen de voortgang van een bewerking.
-• "Scannen op bedreigingen" meldt niet langer "niets gevonden" als niet elk bestand kon worden gecontroleerd, of als de antivirussoftware bekende testbedreigingen niet meldt.
-• Opgelost: bestanden in TAR-mappen waarvan de naam eindigt op een spatie of een punt, worden uitgepakt en gescand.
-• Opgelost: waar de tar.exe van Windows een archief leest, wordt een naam buiten de systeemtaal nooit onder een verkeerde naam uitgepakt.
-• Opgelost: bronnen naar de Prullenbak verplaatsen houdt ze niet langer allemaal als één bron wordt overgeslagen, en elk behouden item krijgt een eigen reden.
-• Opgelost: annuleren stopt tar.exe meteen, en het venster past weer op een monitor met een kleiner werkgebied.
-• Opgelost: afgekapte of verschoven tekst in het Arabisch, Hebreeuws, Urdu, Hindi en acht andere talen.
+• Pakko draait nu op .NET 11.
+• Grote archieven openen met veel minder geheugen.
+• Het archiveren van veel kleine bestanden gaat sneller en gebruikt veel minder geheugen.
+• Het uitpakken van veel kleine bestanden duurt ongeveer half zo lang.
+• Elke bewerking draait in een eigen sandbox, en de tijdelijke bestanden staan naast de bestemming.
+• Opgelost: een bestand waarvan de naam eindigt op een spatie of een punt wordt niet meer gearchiveerd met de inhoud van een ander bestand of in plaats daarvan verwijderd.
+• Opgelost: een beschadigd versleuteld archief wordt gemeld als beschadigd, niet als beveiligd met een wachtwoord.
+• Opgelost: de Verkenner-opdrachten staan weer in uw taal, en Enter opent het geselecteerde item.

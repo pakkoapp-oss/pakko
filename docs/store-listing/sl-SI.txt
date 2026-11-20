@@ -35,12 +35,11 @@ zip z geslom
 odprta koda
 
 [What's new in this version]
-• Novo: arhive ISO, CAB, cpio, ar (.deb), tar.Z in lzip je mogoče odpreti, razširiti in preizkusiti (samo za branje; lzip ne v sistemu Windows 10).
-• Arhive TAR, 7-Zip in RAR zdaj bere lastna knjižnica sistema Windows v majhnem pomožnem programu v peskovniku: imena datotek v katerem koli jeziku pridejo natanko takšna, kot so shranjena.
-• Novo: gumb v opravilni vrstici in ikona v območju za obvestila prikazujeta napredek opravila.
-• »Preveri grožnje« ne sporoča več »nič ni bilo najdeno«, ko ni mogla preveriti vsake datoteke ali ko protivirusni program ne sporoča znanih preskusnih groženj.
-• Odpravljeno: datoteke v mapah TAR, katerih ime se konča s presledkom ali piko, se razširijo in pregledajo.
-• Odpravljeno: ko arhiv bere tar.exe sistema Windows, se ime zunaj jezika sistema nikoli ne razširi pod napačnim imenom.
-• Odpravljeno: premik virov v Koš jih ne obdrži več vseh, ko je en vir preskočen, in vsak obdržani element dobi svoj razlog.
-• Odpravljeno: preklic takoj ustavi tar.exe, okno pa se znova prilega zaslonu z manjšim delovnim območjem.
-• Odpravljeno: odrezano ali premaknjeno besedilo v arabščini, hebrejščini, urdujščini, hindijščini in osmih drugih jezikih.
+• Pakko zdaj deluje na .NET 11.
+• Veliki arhivi se odprejo z veliko manj pomnilnika.
+• Arhiviranje številnih majhnih datotek je hitrejše in porabi veliko manj pomnilnika.
+• Razširjanje številnih majhnih datotek traja približno pol manj časa.
+• Vsaka operacija se izvaja v svojem peskovniku, njene začasne datoteke pa so ob cilju.
+• Popravljeno: datoteka, katere ime se konča s presledkom ali piko, se ne arhivira več z vsebino druge datoteke in se ne izbriše namesto nje.
+• Popravljeno: poškodovan šifriran arhiv je prikazan kot poškodovan, ne kot zaščiten z geslom.
+• Popravljeno: ukazi Raziskovalca so spet prikazani v vašem jeziku, Enter pa odpre izbrani element.

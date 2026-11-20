@@ -35,12 +35,11 @@ zip dengan kata sandi
 sumber terbuka
 
 [What's new in this version]
-• Baru: arsip ISO, CAB, cpio, ar (.deb), tar.Z, dan lzip dapat dibuka, diekstrak, dan diuji (hanya baca; lzip tidak di Windows 10).
-• Arsip TAR, 7-Zip, dan RAR kini dibaca dengan pustaka arsip milik Windows dalam program pembantu kecil di sandbox: nama file dalam bahasa apa pun tiba persis seperti yang disimpan.
-• Baru: tombol di taskbar dan ikon di area notifikasi menampilkan kemajuan operasi.
-• "Pindai ancaman" tidak lagi melaporkan "tidak ada yang ditemukan" bila tidak dapat memeriksa setiap file, atau bila antivirus tidak melaporkan ancaman uji yang dikenal.
-• Diperbaiki: file dalam folder TAR yang namanya diakhiri spasi atau titik diekstrak dan dipindai.
-• Diperbaiki: bila tar.exe milik Windows membaca arsip, nama di luar bahasa sistem tidak pernah diekstrak dengan nama yang salah.
-• Diperbaiki: memindahkan sumber ke Recycle Bin tidak lagi menyimpan semuanya bila satu sumber dilewati, dan setiap item yang disimpan mendapat alasannya sendiri.
-• Diperbaiki: pembatalan langsung menghentikan tar.exe, dan jendela kembali muat pada monitor dengan area kerja lebih kecil.
-• Diperbaiki: teks yang terpotong atau salah letak dalam bahasa Arab, Ibrani, Urdu, Hindi, dan delapan bahasa lain.
+• Pakko kini berjalan di .NET 11.
+• Arsip besar dibuka dengan memori yang jauh lebih sedikit.
+• Mengarsipkan banyak file kecil lebih cepat dan memakai memori yang jauh lebih sedikit.
+• Mengekstrak banyak file kecil hanya memakan sekitar separuh waktu.
+• Setiap operasi berjalan di sandbox-nya sendiri, dan file sementaranya disimpan di samping tujuan.
+• Diperbaiki: file yang namanya diakhiri spasi atau titik tidak lagi diarsipkan dengan isi file lain atau dihapus sebagai gantinya.
+• Diperbaiki: arsip terenkripsi yang rusak dilaporkan sebagai rusak, bukan sebagai dilindungi kata sandi.
+• Diperbaiki: perintah File Explorer kembali tampil dalam bahasa Anda, dan Enter membuka item yang dipilih.

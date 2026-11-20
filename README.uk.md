@@ -30,7 +30,8 @@
 
 ## Встановлення
 
-Застосунку потрібна Windows 10 версії 2004 (збірка 19041) або новіша чи Windows 11, x64 або ARM64.
+Застосунку потрібна Windows 10 версії 2004 (збірка 19041) або новіша чи Windows 11, x64 або ARM64; на x64 процесор
+із SSE4.2 і POPCNT (x86-64-v2, якого вимагає .NET 11; їх має кожен процесор, що його підтримує Windows 11).
 Окремий zip `pakko` перевірено на Windows 10 22H2, Windows 11 і Windows Server 2022.
 
 - **Microsoft Store** (рекомендовано): https://apps.microsoft.com/detail/9p5mw010d8pr або
@@ -154,7 +155,7 @@ PAR2), з ключами на кшталт `-p`, `-ao`, `-sdel`, `-rr`. Кома
 
 ## Стан
 
-Останній реліз: v1.10.0. Історія релізів: [`CHANGELOG.md`](CHANGELOG.md) (англійською). План
+Останній реліз: v1.11.0. Історія релізів: [`CHANGELOG.md`](CHANGELOG.md) (англійською). План
 розвитку: [`docs/SPEC.md`](docs/SPEC.md), «Future Roadmap». Відкриті задачі:
 [`docs/TASKS.md`](docs/TASKS.md).
 
@@ -166,7 +167,7 @@ PAR2), з ключами на кшталт `-p`, `-ao`, `-sdel`, `-rr`. Кома
 ## Участь у розробці
 
 Збірка, розгортання й тести: [`CONTRIBUTING.md`](CONTRIBUTING.md) і
-[`scripts/README.md`](scripts/README.md) (англійською). Технології: C# 14 на .NET 10 LTS, WinUI 3 і
+[`scripts/README.md`](scripts/README.md) (англійською). Технології: C# 15 на .NET 11, WinUI 3 і
 Windows App SDK, Native AOT; меню Провідника — DLL на C++ з `IExplorerCommand`.
 
 ---

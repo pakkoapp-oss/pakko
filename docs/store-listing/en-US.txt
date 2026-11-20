@@ -35,12 +35,11 @@ sandboxed archive extraction
 open source
 
 [What's new in this version]
-• New: ISO, CAB, cpio, ar (.deb), tar.Z and lzip archives open, extract and test (read-only; lzip not on Windows 10).
-• TAR, 7-Zip and RAR archives are now read with Windows' own archive library in a small sandboxed helper: file names in any language arrive exactly as stored.
-• New: the taskbar button and the tray icon show the progress of an operation.
-• "Scan for threats" no longer reports "nothing found" when it could not check every file, or when the antivirus does not report known test threats.
-• Fixed: files in TAR folders whose name ends in a space or a dot are extracted and scanned.
-• Fixed: where Windows' tar.exe reads an archive, a name outside the system language is never extracted under a wrong name.
-• Fixed: moving sources to the Recycle Bin no longer keeps them all when one source is skipped, and each kept item gets its own reason.
-• Fixed: cancelling ends tar.exe at once, and the window fits again on a monitor with a smaller work area.
-• Fixed: text that was cut off or misplaced in Arabic, Hebrew, Urdu, Hindi and eight other languages.
+• Pakko now runs on .NET 11.
+• Large archives open with far less memory.
+• Archiving many small files is faster and uses much less memory.
+• Extracting many small files takes about half the time.
+• Each operation runs in its own sandbox, and its temporary files are kept next to the destination.
+• Fixed: a file whose name ends in a space or a dot is no longer archived with another file's contents or deleted in its place.
+• Fixed: a damaged encrypted archive is reported as damaged, not as protected by a password.
+• Fixed: the Explorer commands are shown in your language again, and Enter opens the selected item.

@@ -35,12 +35,11 @@ tar gz
 zip su slaptažodžiu
 
 [What's new in this version]
-• Nauja: ISO, CAB, cpio, ar (.deb), tar.Z ir lzip archyvus galima atverti, išskleisti ir testuoti (tik skaityti; lzip ne „Windows 10“).
-• TAR, 7-Zip ir RAR archyvai dabar skaitomi pačios „Windows“ archyvų biblioteka mažoje pagalbinėje programoje smėlio dėžėje: failų vardai bet kuria kalba atkeliauja tiksliai tokie, kokie išsaugoti.
-• Nauja: užduočių juostos mygtukas ir pranešimų srities piktograma rodo operacijos eigą.
-• „Tikrinti grėsmes“ nebepraneša „nieko nerasta“, kai nepavyko patikrinti kiekvieno failo arba kai antivirusinė programa nepraneša apie žinomas bandomąsias grėsmes.
-• Pataisyta: failai TAR aplankuose, kurių pavadinimas baigiasi tarpu arba tašku, išskleidžiami ir tikrinami.
-• Pataisyta: kai archyvą skaito „Windows“ tar.exe, vardas už sistemos kalbos ribų niekada neišskleidžiamas klaidingu vardu.
-• Pataisyta: šaltinių perkėlimas į Šiukšlinę nebepalieka jų visų, kai vienas praleidžiamas, o kiekvienas paliktas elementas gauna savo priežastį.
-• Pataisyta: atšaukimas iškart sustabdo tar.exe, o langas vėl telpa monitoriuje su mažesne darbo sritimi.
-• Pataisyta: nukirptas ar pasislinkęs tekstas arabų, hebrajų, urdu, hindi ir dar aštuoniomis kalbomis.
+• Pakko dabar veikia su .NET 11.
+• Dideli archyvai atidaromi naudojant daug mažiau atminties.
+• Daugelio mažų failų archyvavimas greitesnis ir naudoja daug mažiau atminties.
+• Daugelio mažų failų išskleidimas trunka maždaug perpus trumpiau.
+• Kiekviena operacija vykdoma savo smėlio dėžėje, o jos laikinieji failai laikomi šalia paskirties vietos.
+• Pataisyta: failas, kurio pavadinimas baigiasi tarpu arba tašku, nebearchyvuojamas su kito failo turiniu ir nebeištrinamas vietoj jo.
+• Pataisyta: sugadintas šifruotas archyvas nurodomas kaip sugadintas, o ne kaip apsaugotas slaptažodžiu.
+• Pataisyta: Naršyklės komandos vėl rodomos jūsų kalba, o Enter atidaro pasirinktą elementą.

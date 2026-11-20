@@ -35,12 +35,11 @@ tar gz
 zip med passord
 
 [What's new in this version]
-• Nytt: ISO-, CAB-, cpio-, ar- (.deb), tar.Z- og lzip-arkiver kan åpnes, pakkes ut og testes (bare lesing; lzip ikke på Windows 10).
-• TAR-, 7-Zip- og RAR-arkiver leses nå med Windows' eget arkivbibliotek i et lite hjelpeprogram i en sandkasse: filnavn på alle språk kommer frem nøyaktig slik de er lagret.
-• Nytt: knappen på oppgavelinjen og ikonet i varslingsområdet viser fremdriften for en operasjon.
-• "Se etter trusler" melder ikke lenger "ingenting funnet" når den ikke kunne sjekke hver fil, eller når antivirusprogrammet ikke melder kjente testtrusler.
-• Rettet: filer i TAR-mapper der navnet slutter med mellomrom eller punktum, pakkes ut og skannes.
-• Rettet: der Windows' tar.exe leser et arkiv, pakkes et navn utenfor systemspråket aldri ut under feil navn.
-• Rettet: flytting av kildene til Papirkurven beholder dem ikke lenger alle når én kilde hoppes over, og hvert beholdt element får sin egen årsak.
-• Rettet: avbryting avslutter tar.exe med en gang, og vinduet får igjen plass på en skjerm med mindre arbeidsområde.
-• Rettet: avkortet eller forskjøvet tekst på arabisk, hebraisk, urdu, hindi og åtte andre språk.
+• Pakko kjører nå på .NET 11.
+• Store arkiver åpnes med langt mindre minne.
+• Arkivering av mange små filer går raskere og bruker langt mindre minne.
+• Utpakking av mange små filer tar omtrent halve tiden.
+• Hver operasjon kjører i sin egen sandkasse, og de midlertidige filene ligger ved siden av målet.
+• Rettet: En fil der navnet slutter med et mellomrom eller et punktum, arkiveres ikke lenger med innholdet i en annen fil eller slettes i stedet for den.
+• Rettet: Et skadet kryptert arkiv rapporteres som skadet, ikke som passordbeskyttet.
+• Rettet: Filutforsker-kommandoene vises igjen på ditt språk, og Enter åpner det valgte elementet.

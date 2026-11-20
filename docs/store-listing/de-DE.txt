@@ -35,12 +35,11 @@ Zip mit Passwort
 Open Source
 
 [What's new in this version]
-• Neu: ISO-, CAB-, cpio-, ar- (.deb), tar.Z- und lzip-Archive lassen sich öffnen, extrahieren und testen (nur lesend; lzip nicht unter Windows 10).
-• TAR-, 7-Zip- und RAR-Archive werden jetzt mit der Windows-eigenen Archivbibliothek in einem kleinen Hilfsprogramm in der Sandbox gelesen: Dateinamen in jeder Sprache kommen genau so an, wie sie gespeichert sind.
-• Neu: die Schaltfläche in der Taskleiste und das Symbol im Infobereich zeigen den Fortschritt eines Vorgangs.
-• „Auf Bedrohungen prüfen“ meldet nicht mehr „nichts gefunden“, wenn nicht jede Datei geprüft werden konnte oder das Antivirenprogramm bekannte Testbedrohungen nicht meldet.
-• Behoben: Dateien in TAR-Ordnern, deren Name auf ein Leerzeichen oder einen Punkt endet, werden extrahiert und geprüft.
-• Behoben: wo das tar.exe von Windows ein Archiv liest, wird ein Name außerhalb der Systemsprache nie unter einem falschen Namen extrahiert.
-• Behoben: das Verschieben der Quellen in den Papierkorb behält nicht mehr alle, wenn eine Quelle übersprungen wird, und jedes behaltene Element bekommt einen eigenen Grund.
-• Behoben: Abbrechen beendet tar.exe sofort, und das Fenster passt wieder auf einen Bildschirm mit kleinerem Arbeitsbereich.
-• Behoben: abgeschnittener oder verschobener Text auf Arabisch, Hebräisch, Urdu, Hindi und acht weiteren Sprachen.
+• Pakko läuft jetzt auf .NET 11.
+• Große Archive öffnen sich mit deutlich weniger Arbeitsspeicher.
+• Das Archivieren vieler kleiner Dateien ist schneller und braucht viel weniger Arbeitsspeicher.
+• Das Extrahieren vieler kleiner Dateien dauert etwa halb so lange.
+• Jeder Vorgang läuft in seiner eigenen Sandbox, und seine temporären Dateien liegen neben dem Ziel.
+• Behoben: Eine Datei, deren Name auf ein Leerzeichen oder einen Punkt endet, wird nicht mehr mit dem Inhalt einer anderen Datei archiviert oder an deren Stelle gelöscht.
+• Behoben: Ein beschädigtes verschlüsseltes Archiv wird als beschädigt gemeldet, nicht als passwortgeschützt.
+• Behoben: Die Explorer-Befehle erscheinen wieder in Ihrer Sprache, und die Eingabetaste öffnet das ausgewählte Element.

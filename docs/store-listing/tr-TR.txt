@@ -35,12 +35,11 @@ parolalı zip
 açık kaynak
 
 [What's new in this version]
-• Yeni: ISO, CAB, cpio, ar (.deb), tar.Z ve lzip arşivleri açılır, ayıklanır ve test edilir (salt okunur; lzip Windows 10'da yok).
-• TAR, 7-Zip ve RAR arşivleri artık korumalı alandaki küçük bir yardımcı programda Windows'un kendi arşiv kitaplığıyla okunur: her dildeki dosya adları tam olarak kaydedildiği gibi gelir.
-• Yeni: görev çubuğu düğmesi ve bildirim alanı simgesi bir işlemin ilerlemesini gösterir.
-• "Tehditleri tara", her dosyayı denetleyemediğinde veya virüsten koruma programı bilinen test tehditlerini bildirmediğinde artık "hiçbir şey bulunamadı" demez.
-• Düzeltildi: adı boşluk veya noktayla biten TAR klasörlerindeki dosyalar ayıklanır ve taranır.
-• Düzeltildi: arşivi Windows'un tar.exe aracı okuduğunda, sistem dilinin dışındaki bir ad asla yanlış bir adla ayıklanmaz.
-• Düzeltildi: kaynakları Geri Dönüşüm Kutusu'na taşımak, bir kaynak atlandığında artık hepsini tutmaz ve tutulan her öğenin kendi nedeni vardır.
-• Düzeltildi: iptal tar.exe'yi hemen durdurur ve pencere daha küçük çalışma alanlı bir monitöre yeniden sığar.
-• Düzeltildi: Arapça, İbranice, Urduca, Hintçe ve diğer sekiz dilde kesilen veya kayan metin.
+• Pakko artık .NET 11 üzerinde çalışıyor.
+• Büyük arşivler çok daha az bellekle açılıyor.
+• Çok sayıda küçük dosyayı arşivlemek daha hızlı ve çok daha az bellek kullanıyor.
+• Çok sayıda küçük dosyayı ayıklamak yaklaşık yarı sürede tamamlanıyor.
+• Her işlem kendi korumalı alanında çalışır ve geçici dosyaları hedefin yanında tutulur.
+• Düzeltildi: adı boşluk veya noktayla biten bir dosya artık başka bir dosyanın içeriğiyle arşivlenmiyor ve onun yerine silinmiyor.
+• Düzeltildi: hasarlı şifreli bir arşiv, parola korumalı olarak değil, hasarlı olarak bildiriliyor.
+• Düzeltildi: Dosya Gezgini komutları yeniden sizin dilinizde görünüyor ve Enter seçili öğeyi açıyor.

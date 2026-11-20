@@ -4,7 +4,7 @@ The text of Pakko's Store listing (Partner Center, "Store listings"), one file p
 2026-10-05 this text lived only in Partner Center; it is kept here so that a change is reviewed,
 diffed and pasted from a file, not from a chat window or a terminal.
 
-The files hold the text **for the v1.10.0 submission** (v1.8.0 and v1.8.1 were never submitted): the PAR2
+The files hold the text **for the v1.11.0 submission** (v1.8.0 and v1.8.1 were never submitted): the PAR2
 feature line is from 2026-10-10, the 7-Zip line and the sentence on creating 7-Zip and TAR in the
 description from 2026-10-15 (T-F342), the rest of the features is the v1.7.0 text. "What's new"
 covers v1.8.0, v1.8.1 and v1.9.0 together, because the Store serves 1.7.2: 7-Zip creation, Test for every
@@ -14,7 +14,10 @@ tar over a hard-link pair (T-F392) and the CLI's 7-Zip switches (T-F410, T-F411,
 (T-F331). For v1.10.0 (2026-11-10): "What's new" is replaced by nine lines on v1.10.0 (six read-only
 formats, the archive helper, taskbar progress, scan verdicts, the fixes), feature 4 names the six
 formats, and the description's second paragraph says that archives are read with Windows' own
-`archiveint.dll` rather than through tar.exe. What is live in the Store can be read
+`archiveint.dll` rather than through tar.exe. For v1.11.0 (2026-11-20): "What's new" is replaced by
+eight lines on v1.11.0 (.NET 11, memory of large archives, many small files archived and extracted
+faster, a sandbox per operation, names Windows trims, damaged encrypted archives, the Explorer
+commands' language and Enter). What is live in the Store can be read
 without signing in:
 `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=9P5MW010D8PR&market=CZ&languages=cs-CZ`
 (`ProductDescription`, `ShortDescription`, `SearchTitles`, and `Features` under the SKU).
@@ -30,7 +33,7 @@ each pasted into the Partner Center field of the same name:
 | `[Short description]` | 1,000; some views show only the first 270 | one paragraph, at most 270 characters |
 | `[Product features]` | 20 items, 200 characters each | 13 lines, one feature per line |
 | `[Search terms]` | 7 terms | 7 lines, each at most 30 characters, 21 words in all |
-| `[What's new in this version]` | 1,500 characters | 9 lines, each starting with a bullet |
+| `[What's new in this version]` | 1,500 characters | 8 lines, each starting with a bullet |
 
 The first four limits are from Microsoft's "Add and edit Store listing info" page; the limits on
 search terms are the ones the files were checked against, not read from that page.
