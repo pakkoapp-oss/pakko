@@ -1282,7 +1282,7 @@ re-measured with T-F346's script before and after.
      Measure both, and fix only what is felt.
 - **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
-### T-F565 - Extracting a tar or a 7z takes 2 to 10 times 7-Zip's time (P3)
+### T-F565 - tar and 7z through tar.exe take 2 to 12 times 7-Zip's time (P3, next release)
 
 - [ ] **Status:** open. Measured 2026-11-20 (`docs/DECISIONS.md`, "Pakko against NanaZip and
   7-Zip"): extracting a tar of the 3,619-file .NET SDK took Pakko 14.8 s against NanaZip's 2.0 s
@@ -1291,6 +1291,10 @@ re-measured with T-F346's script before and after.
   times), but that is tar.exe's one-thread LZMA, not ours. Next: split the time of one extraction
   into the sandbox's start, the unsafe-entry scan, tar.exe or the helper, and placing the files,
   then decide what can go. Not a regression: v1.10.0 was not measured this way.
+- **2026-11-20, the user:** no figures in the Store listing for now; the next release works on the
+  sandbox around tar.exe, multi-threading and tar.exe's other options, creation included (libarchive's
+  per-format `--options`, e.g. threads for xz and zstd, where its 7z writer has none). Measure with
+  the same data and script as the record, comparing at the same archive size, not the same `-mx`.
 - **Reported by:** the agent, from the user's request for Store figures, 2026-11-20.
 ### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 8)
 
