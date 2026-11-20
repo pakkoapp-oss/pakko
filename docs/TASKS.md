@@ -57,7 +57,6 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 v1.11.0 was tagged from the wave above, whose plan now lives in [`TASKS_DONE.md`](TASKS_DONE.md),
 section "Graduated 2026-11-20 (after v1.11.0)". Open tasks of that wave, each with why it stayed:
 
-- **T-F427** - the half with Defender's real-time protection off needs the user to switch it.
 - **T-F432** - `APP-032` (the tray icon) not seen in the overflow flyout; the user looks by eye.
   The yellow and red at 0 % are T-F564.
 - **T-F444** - `SHL-015` is a `store`-tier row (a third-party antivirus on PakkoW10), not run.
@@ -1110,25 +1109,6 @@ re-measured with T-F346's script before and after.
 - **Reported by:** the user's decision, 2026-10-06.
 
 ## After v1.7.2
-
-### T-F427 — The AMSI EICAR tests decide once whether AMSI is live, then fail when it stops (P3, stream B)
-
-- [ ] **Status:** fixed 2026-10-31, merged in #138 (`fix/stream-b-launcher-amsi`), awaiting the device check (stream E): when a scan misses EICAR, both
-  tests probe AMSI again as the attribute does; AMSI not detecting now (not ready, or degraded to
-  Clean as in T-F177) means not judged, with the reason in the test output (xUnit 2 has no run-time
-  skip); AMSI healthy means the strict checks. `ScanAsync_AmsiStopsBeingReadyMidScan_...` pins the
-  service's answer with a fake (0x80070015 after the first scan: the threat is Inconclusive, never
-  Clean). Both real tests passed on the dev machine with real-time protection on. History:
-  `AntivirusScanServiceEicarTests.ScanAsync_RealEicarInZipArchive_ReturnsThreatDetected`
-  failed in a full local run on 2026-10-25 (T-F426's branch, no AMSI code touched); right after,
-  both EICAR tests skipped with `AmsiScanBuffer failed (HRESULT 0x80070015)` (`ERROR_NOT_READY`): AMSI
-  was not ready on the dev machine. `SkipIfTarOrAmsiUnavailableAttribute` probes AMSI when the test
-  is discovered; AMSI stopped being ready between that probe and the scan. Next: decide what a scan that finds AMSI not ready means for these tests (skip at run
-  time, or the result `AntivirusScanService` already gives a caller when AMSI is gone), with a test
-  that turns AMSI off by a fake, not by changing the machine's antivirus. The failure's own message was not kept.
-  2026-10-31: `Get-MpComputerStatus` reads real-time protection on again, so the real path can be
-  checked; run both EICAR tests once to confirm before relying on it.
-- **Reported by:** stream B's full run, 2026-10-25.
 
 ### T-F432 — Pakko's taskbar button shows no progress, as Explorer's copy does (P3)
 

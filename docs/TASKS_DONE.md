@@ -16652,3 +16652,27 @@ except the next submission), T-F202 (the old UI gate, replaced by `docs/SMOKE.md
     sampled, against 1-3 for an empty one). A first series without the foreground check measured a
     browser window on top instead and is void. Stays open; `APP-013` in batch 8 repeats the starts.
   - **Reported by:** the agent, 2026-11-10.
+
+### T-F427 - The AMSI EICAR tests decide once whether AMSI is live, then fail when it stops (P3, stream B)
+
+- [x] **Status:** done 2026-11-20 on the device: with Defender's real-time protection off (the user
+  switched it) both `AntivirusScanServiceEicarTests` were not judged, each with `AmsiScanBuffer failed
+  (HRESULT 0x80070015)` as the reason, and none failed; with it back on both passed.
+- **Graduated 2026-11-20:** after v1.11.0 (`docs/DECISIONS.md`, "v1.11.0 - the release record").
+- **As filed:**
+  - [ ] **Status:** fixed 2026-10-31, merged in #138 (`fix/stream-b-launcher-amsi`), awaiting the device check (stream E): when a scan misses EICAR, both
+    tests probe AMSI again as the attribute does; AMSI not detecting now (not ready, or degraded to
+    Clean as in T-F177) means not judged, with the reason in the test output (xUnit 2 has no run-time
+    skip); AMSI healthy means the strict checks. `ScanAsync_AmsiStopsBeingReadyMidScan_...` pins the
+    service's answer with a fake (0x80070015 after the first scan: the threat is Inconclusive, never
+    Clean). Both real tests passed on the dev machine with real-time protection on. History:
+    `AntivirusScanServiceEicarTests.ScanAsync_RealEicarInZipArchive_ReturnsThreatDetected`
+    failed in a full local run on 2026-10-25 (T-F426's branch, no AMSI code touched); right after,
+    both EICAR tests skipped with `AmsiScanBuffer failed (HRESULT 0x80070015)` (`ERROR_NOT_READY`): AMSI
+    was not ready on the dev machine. `SkipIfTarOrAmsiUnavailableAttribute` probes AMSI when the test
+    is discovered; AMSI stopped being ready between that probe and the scan. Next: decide what a scan that finds AMSI not ready means for these tests (skip at run
+    time, or the result `AntivirusScanService` already gives a caller when AMSI is gone), with a test
+    that turns AMSI off by a fake, not by changing the machine's antivirus. The failure's own message was not kept.
+    2026-10-31: `Get-MpComputerStatus` reads real-time protection on again, so the real path can be
+    checked; run both EICAR tests once to confirm before relying on it.
+  - **Reported by:** stream B's full run, 2026-10-25.
