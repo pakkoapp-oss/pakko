@@ -14983,6 +14983,89 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.12.0 batch 1 - where the time goes (measured 2026-11-20)
+
+T-F565 step 1. This machine (Windows 11 build 26300, tar.exe 3.8.x, the x64 helper over
+`archiveint.dll`), real-time protection on, D: a Dev Drive (ReFS), C: plain NTFS. Data: the 3,619
+files of a .NET SDK copy (465 MiB) as a tar and as a 7z (`7za -mx=5`), and that tar as the one file
+of a 7z; 300 MB of random bytes for creation. Medians of three runs; the bare
+`C:\Windows\System32\tar.exe` outside any sandbox on the same files is the floor.
+
+| Case | D: tar.exe | D: Pakko | C: tar.exe | C: Pakko |
+|---|---|---|---|---|
+| Extract the tar (3,619 files) | 1.5 s | 16.3 s | 2.7 s | 14.9 s |
+| Extract the 7z (3,619 files) | 8.5 s | 19.1 s | 9.9 s | 21.9 s |
+| Extract the 7z holding one tar | 6.6 s | 7.1 s | 6.6 s | 7.1 s |
+| Create 7z, level 1, the SDK files | 45.0 s | 46.0 s | 43.9 s | 44.3 s |
+| Create 7z, level 9, the SDK files | 192.4 s | 193.3 s | 195.6 s | 194.2 s |
+| Create 7z, level 1, random bytes | 104.6 s | 104.3 s | 102.0 s | 102.0 s |
+| Create 7z, level 9, random bytes | 189.2 s | 189.9 s | 189.3 s | 189.8 s |
+
+The Store's 1.11.0 package gives the same (tar 14.8 s on D:, 15.0 s on C:).
+
+- **Creation is tar.exe's own time.** Pakko runs at 1.0 times the bare tar.exe on both volumes, so
+  hypothesis 5 (a pass of Pakko's own after a 7z) is refuted. About 3 MB/s at level 1 on random
+  bytes is tar.exe's 7z writer; batch 3 can only change its options or threads, or write another way
+  (T-F514 for tar, tar.gz, tar.zst).
+- **Extraction loses time per file, not per byte.** One large file costs 0.5 s more than the bare
+  tar.exe; 3,619 files cost 11 to 15 s more.
+
+Phases of one extraction of the tar, from stopwatch marks on a measuring branch
+(`measure/v1.12.0-phases`, local, never merged), the CLI `pakko x -o`:
+
+| Phase | D: | C: |
+|---|---|---|
+| Signature check, quarantine, profile, helper probe, listing, scan | 0.4 s | 0.4 s |
+| The helper's `extract` (its own process time) | 8.4-9.3 s | 2.6-3.0 s |
+| After the helper exits, before Pakko reads its result | 0.3 s | 0.5-0.6 s |
+| The output folder checked (`EnsureOutDirHoldsExactly`) | 0.04 s | 0.1 s |
+| Move out of the quarantine, per file: the move by handle (`QuarantineFiles.TakeOut`) | 1.8 s | 3.7 s |
+| per file: the destination's permissions (`TryTakeDestinationPermissions`) | 0.9 s | 1.1 s |
+| per file: the staging folder, MOTW, the name and conflict rules | 0.6 s | 0.8 s |
+| Commit into the destination (`ExtractionStaging.CommitInto`, the per-file merge) | 1.3 s | 4.8 s |
+
+- **Hypotheses 2 and 3 are refuted for the helper's path:** the profile, the probe, the listing
+  and the scan take 0.4 s together. They are not measured on tar.exe's reading path (Windows 10's
+  3.5.2, ARM64 until T-F562), where every listing is a full decode: still open, on PakkoW10.
+- **On C: (plain NTFS, where most users' files are) 11 of the 15 s are Pakko's two moves per file**:
+  out of the quarantine into staging (with the permission rewrite), and from staging into the
+  destination.
+- **The commit never takes its fast path from `pakko x -o`.** The whole-folder rename (T-F161) needs
+  a destination that does not exist, and `DestinationFolder.TryCreate` makes the `-o` folder at the
+  start; an archive without a single root folder merges into it as well. Measured with the `-o` folder
+  there and not there: the same 1.3 s and 4.8 s. The `scripts/Measure-Comparison.ps1` series and the
+  batch-1 series both used `-o`, so ZIP's "many files" figure in "Pakko against NanaZip and
+  7-Zip" may hold the same merge (ZIP commits through the same `ExtractionStaging`): measure it again
+  in batch 2.
+- **The helper writes slowly on the Dev Drive only, and why is not known.** Outside the sandbox, run
+  by hand, it takes 8.4-8.8 s on D: (2.3 s of it CPU) and 3.4 s on C:. Not the cause, each measured:
+  the sandbox (same time without it); reading (`test` mode reads the same archive in 0.16 s; the
+  archive on C: and the output on D: is as slow); the write pattern (a small unsigned C program with
+  the helper's calls, CREATE_NEW, a seek and a write per block, SetEndOfFile, SetFileTime, real
+  data, blocks of 64 KiB, 65,024 and 10,240 bytes, writes the same 3,619 files in 2.2-2.6 s on D:
+  and 3.5-4.3 s on C:); the package's signature (the helper always runs from a copy under `%TEMP%`,
+  so the Store's package does not change the image that writes). Left after three approaches: a
+  Defender performance recording or a WPR trace, both elevated. On C: the helper is as fast as
+  that program, so it is not where batch 2 starts.
+
+**What goes into batch 2 (extraction), by size on C::** the commit's per-file merge (4.8 s: rename
+whole subtrees whose destination folder does not exist, keeping T-F161's per-file fallback, T-F298's
+folder times, T-F408's naming and T-F532's inheritance fix-up); then the move out of the quarantine
+(5.6 s: one rename per file is the floor while the handle checks of T-F470/T-F474 stay; the
+permission rewrite per file might become one per folder). Both are security-relevant and go through
+Plan mode and the advisor first.
+
+**The Store's 1.11.0 (STO-006, STO-008).** Installed with `winget install --id 9P5MW010D8PR
+--source msstore` after the development package was removed: winget said "Successfully installed"
+but only staged the package (AppXDeploymentServer event 400, a Stage operation); it was not
+registered until `Add-AppxPackage -RegisterByFamilyName -MainPackage
+PavloRybchenko.Pakko_955q7mnhfhmp4`. Then 1.11.0.0, `SignatureKind` Store, `pakko --version` names
+the package; CLI-002, SHL-001, PAR-001 (STO-006) and CLI-026, SHL-012 (STO-008, x64, a tar.exe that
+writes 7z) OK. Not done: STO-005 as written (the development package was removed first, and it is
+another package family, so nothing was updated); STO-008 on ARM64 and on a tar.exe without a 7z
+writer. The live listing (public catalog, all 37 languages): 36 match `docs/store-listing`; sv-SE
+still has its old features and the 1.10 "What's new".
+
 ## v1.12.0 wave plan (2026-11-20)
 
 The user, 2026-11-20, after the comparison below: no figures in the Store listing for now; the next
