@@ -83,8 +83,8 @@ is its own, and its work folders sit next to the destination.
 - **T-F556** - from Explorer or the App, a name Windows trims is archived as Explorer lists it.
 - **T-F559** - on Windows 10, a device-named file inside a source folder.
 - **T-F561** - tar.exe's output has no cap tied to the archive's declared size.
-- **T-F563** - a file dragged onto the App whose name ends in a space is left out of the list with
-  only a log line.
+- **T-F563** - a file whose name ends in a space, given to the App as a drop hands it, is left out
+  of the list with only a log line.
 - **T-F564** - an operation that waits for an answer or fails at 0 % shows no yellow or red on
   the taskbar button, only its grey track.
 

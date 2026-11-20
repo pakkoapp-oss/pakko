@@ -14988,7 +14988,7 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **Commits.** PR #264 (`8d996932`: T-F562..T-F564 filed; `787dc948`: Identity 1.11.0.0, CHANGELOG
   dated 2026-11-20, the Store listing's "What's new" in 37 languages, README/README.uk latest
   release, SPEC released) changed no `src` code after the smoke below; the manifest's Identity is
-  the only `src` file. The site pages name no version and no new format, so they are unchanged.
+  the only `src` file; SonarCloud did not analyze #264 (no code), and `main` has 0 open findings. The site pages name no version and no new format, so they are unchanged.
   This record's pull request graduates the tasks the smoke closed. SDK: `release-metadata` 11.0's
   latest is SDK 11.0.100 / runtime 11.0.0 (2026-11-10), the one `global.json` pins; no bump.
 - **Smoke on the host** (Windows 11 26300, tar.exe 3.8.9), dev package 1.10.0.40 of `e23dbe1c`
