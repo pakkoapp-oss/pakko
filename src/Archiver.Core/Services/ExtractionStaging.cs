@@ -101,9 +101,11 @@ internal sealed class ExtractionStaging : IDisposable
         }
     }
 
-    // T-F161: fast-path atomic rename if actualDest doesn't exist yet, otherwise a per-file merge
-    // so pre-existing files (e.g. skipped/renamed) are preserved. moveOverride exists purely for
-    // test injection (defaults to the real Directory.Move).
+    // T-F161: fast-path atomic rename if actualDest doesn't exist yet, otherwise a merge so
+    // pre-existing files (e.g. skipped/renamed) are preserved: T-F565, a folder not in actualDest
+    // yet moves whole by one rename where its permissions allow, everything else file by file.
+    // moveOverride exists purely for test injection (defaults to the real Directory.Move), and
+    // serves the whole-folder renames of both.
     //
     // The fast path's Directory.Move fails the WHOLE source tree with IOException — naming only
     // the staging folder, never the specific offending file — whenever ANY file anywhere inside
@@ -156,22 +158,135 @@ internal sealed class ExtractionStaging : IDisposable
             }
         }
 
-        // T-F197: folders first, so an empty one arrives too.
-        foreach (string folder in folders ?? StagedFolders())
-        {
-            string finalFolder = Destination(actualDest, folder);
-            if (LeftOut(finalFolder, actualDest, FolderName(System.IO.Path.GetRelativePath(Path, folder))))
-                continue;
-            Directory.CreateDirectory(finalFolder);
-            committed?.Invoke(FolderName(finalFolder));
-        }
-
-        List<string> lockedRelativePaths = MergeFiles(actualDest, files ?? StagedFiles(), committed);
+        HashSet<string> movedWhole = CommitFoldersNamingMoved(actualDest, folders, files, newFolderTimes, moveOverride, committed);
+        List<string> lockedRelativePaths = MergeFiles(
+            actualDest, movedWhole.Count == 0 ? files ?? StagedFiles() : [.. (files ?? StagedFiles()).Where(f => !BelowAny(movedWhole, f))], committed);
 
         // A file left behind above failed to move (locked); Dispose removes it with the rest of
         // the staging folder — it cannot reach its destination, and must not be left behind.
         ApplyFolderTimes(newFolderTimes);
         return lockedRelativePaths;
+    }
+
+    private HashSet<string> CommitFoldersNamingMoved(
+        string actualDest, List<string>? folders, List<string>? files, List<(string Folder, DateTime Utc)> newFolderTimes,
+        Action<string, string>? moveOverride, Action<string>? committed)
+    {
+        var movedWhole = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            CommitFolders(actualDest, folders ?? StagedFolders(), moveOverride, committed, movedWhole);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // T-F565: a folder that cannot be created ends the commit, as before; what moved whole
+            // ahead of it has arrived, so it keeps its folder times and is named below.
+            ApplyFolderTimes(newFolderTimes);
+            throw;
+        }
+        finally
+        {
+            if (committed is not null && folders is not null && files is not null && movedWhole.Count > 0)
+                NameMovedWhole(actualDest, movedWhole, folders, files, committed);
+        }
+        return movedWhole;
+    }
+
+    // T-F197: folders first, so an empty one arrives too; listed parents before children. T-F565: a
+    // folder not in the destination yet moves whole, as the fast path moves staging. Returns the staged
+    // folders moved whole into movedWhole as they go; what is below them has arrived with them. No file
+    // to rename away (T-F411) is ever below a folder not in the destination: such a file is there.
+    private void CommitFolders(
+        string actualDest, List<string> folders, Action<string, string>? moveOverride, Action<string>? committed, HashSet<string> movedWhole)
+    {
+        var passesDown = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (string folder in folders)
+        {
+            if (BelowAny(movedWhole, folder))
+                continue;
+            string finalFolder = Destination(actualDest, folder);
+            if (LeftOut(finalFolder, actualDest, FolderName(System.IO.Path.GetRelativePath(Path, folder))))
+                continue;
+            if (!Directory.Exists(finalFolder) && MayMoveWhole(folder, finalFolder, passesDown) && TryMoveWhole(folder, finalFolder, moveOverride))
+                movedWhole.Add(System.IO.Path.TrimEndingDirectorySeparator(folder));
+            else
+                Directory.CreateDirectory(finalFolder);
+            committed?.Invoke(FolderName(finalFolder));
+        }
+    }
+
+    // Whether a staged path is below a folder moved whole; walks up to staging, so bounded by the path's depth.
+    private bool BelowAny(HashSet<string> movedWhole, string staged)
+    {
+        if (movedWhole.Count == 0)
+            return false;
+        for (string? current = System.IO.Path.GetDirectoryName(staged);
+             current is not null && current.Length >= Path.Length;
+             current = System.IO.Path.GetDirectoryName(current))
+        {
+            if (movedWhole.Contains(current))
+                return true;
+        }
+        return false;
+    }
+
+    // T-F565: a rename keeps the DACLs of everything moved (T-F532), so a folder moves whole only where
+    // its folder in the destination passes down what its folder in staging did. Each parent is read once.
+    private static bool MayMoveWhole(string stagedFolder, string finalFolder, Dictionary<string, string?> passesDown)
+    {
+        string finalFull = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(finalFolder));
+        if (System.IO.Path.GetDirectoryName(stagedFolder) is not { } stagedParent || System.IO.Path.GetDirectoryName(finalFull) is not { } finalParent)
+            return false;
+        string? stagedGives = PassesDown(stagedParent, passesDown);
+        return stagedGives is not null && stagedGives == PassesDown(finalParent, passesDown);
+    }
+
+    // What a new child folder takes from its parent: the inheritable entries and integrity label, and
+    // the Encrypted and Compressed state. Null when any of it cannot be read; audit entries need a
+    // privilege Pakko does not hold and are not compared (a rename keeps a file's own in either path).
+    private static string? PassesDown(string folder, Dictionary<string, string?> known)
+    {
+        if (known.TryGetValue(folder, out string? cached))
+            return cached;
+        string literal = InputPaths.Literal(folder);
+        string? result = null;
+        if (QuarantineAcl.InheritableEntries(literal) is { } entries)
+        {
+            try
+            {
+                result = entries + "|" + (File.GetAttributes(literal) & (FileAttributes.Encrypted | FileAttributes.Compressed));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // unreadable: the folder is merged file by file, which needs none of it
+            }
+        }
+        known[folder] = result;
+        return result;
+    }
+
+    // T-F161: a file held open anywhere below fails the whole rename; the folder is then merged.
+    private static bool TryMoveWhole(string stagedFolder, string finalFolder, Action<string, string>? moveOverride)
+    {
+        try
+        {
+            (moveOverride ?? Directory.Move)(stagedFolder, finalFolder);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    // T-F408: what arrived inside the folders moved whole, each once; the folders themselves are named
+    // as they move.
+    private void NameMovedWhole(string actualDest, HashSet<string> movedWhole, List<string> folders, List<string> files, Action<string> committed)
+    {
+        foreach (string folder in folders.Where(f => BelowAny(movedWhole, f)))
+            committed(FolderName(Destination(actualDest, folder)));
+        foreach (string file in files.Where(f => BelowAny(movedWhole, f)))
+            committed(Destination(actualDest, file));
     }
 
     private void NameRenamedTree(string actualDest, List<string> folders, List<string> files, Action<string> committed)

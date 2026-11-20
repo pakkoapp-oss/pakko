@@ -922,7 +922,9 @@ public sealed class TarSandboxedService : ITarService
     // T-F395: what one file costs after tar.exe exits, in bytes of tar.exe's own output that take as
     // long. Measured 2026-10-29 on a 6000 x 256 KiB tar.gz: tar.exe 11.7 s for 1.5 GiB (~7.8 ms per
     // MiB), then 6.4 s moving out of the quarantine (~1.07 ms per file, ~140 KiB) and, into an
-    // existing folder, 3.7 s committing (~0.6 ms per file); a new folder is committed by one rename.
+    // existing folder, 3.7 s committing (~0.6 ms per file); a new folder is committed by one rename,
+    // and since T-F565 so is each new folder inside an existing one, so the merge share overstates
+    // most merges (a follow-up measures it again).
     private const long MoveBytesPerFile = 140 * 1024;
     private const long MergeBytesPerFile = 84 * 1024;
     private const int PostExtractionMinPercent = 5;

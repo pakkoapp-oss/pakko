@@ -14983,6 +14983,67 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.12.0 batch 2, step 1 - the commit moves new folders whole (2026-11-20)
+
+T-F565. `ExtractionStaging.CommitInto` merged every file into a destination that exists (the `-o`
+folder always does, `DestinationFolder.TryCreate` makes it first), one rename and several checks per
+file: 4.8 s for 3,619 files on C:. Now, in the merge, a staged folder whose destination is not there
+yet is moved whole by one rename, as the fast path (T-F161) moves all of staging, when:
+
+- no file to rename away (T-F411) is below it;
+- no link is on its way in the destination (`LeftOut`, T-F419/T-F522; a junction standing at its
+  name, dangling or not, is a link and stays out);
+- its folder in the destination passes down to a child folder and to a child file exactly what its
+  folder in staging did (`QuarantineAcl.InheritableEntries`, each entry with the flags the child's
+  copy gets: no-propagate, inherit-only). A rename keeps the DACLs below it (T-F532), so anything
+  else is merged file by file as before, and T-F532/T-F555 apply unchanged.
+
+A rename that fails (a file held open below it, T-F161) merges that folder; its neighbours still move
+whole. `committed` (T-F408) names each folder and file once; folder times (T-F298) are applied after,
+as before. Not tried: moving every new folder and writing its inheritance again after, since
+`SetNamedSecurityInfo` walks every file below it, which would move the per-file cost, not remove it.
+
+Measured with two standalone CLIs (`Publish-Cli.ps1`) from `main` (cc596e53) and the branch, taking
+turns, five runs each, `pakko x -o` into an existing folder, 3,619 files. Another user's process was
+using the CPU at the time, so single runs vary; medians:
+
+| Archive | C: before | C: after | D: before | D: after |
+|---|---|---|---|---|
+| tar | 15.4 s | 9.9 s | 17.3 s | 16.8 s |
+| 7z | 22.6 s | 16.4 s | 25.8 s | 19.5 s |
+| ZIP | 11.4 s | 7.1 s | 13.4 s | 10.0 s |
+
+The commit phase alone, from the stopwatch marks of the batch-1 measuring branch on both builds
+(same CPU load for both, three runs each, tar): 4.05 s before and 0.12 s after on C:, 1.47 s and
+0.12 s on D:. The 7z's -6.3 s on D: is mostly noise: the commit there never cost more than 1.5 s.
+ZIP gains as much on C:: it commits through the same `ExtractionStaging`.
+
+Covered elsewhere, not by a new test: a cancel cannot fall inside the commit (`CommitInto` takes no
+token; tar checks it just before the commit, ZIP once per entry before it), and `ExtractAsync_EntryPathTraversal_DoesNotLeaveOrphanedTempFolder`
+and the staging `Dispose` cover a failure before it); a failure inside it is the rename's `IOException`,
+tested per folder. The commit does not depend on which tar.exe filled staging (Pakko's own moves did),
+so the 3.5.2 run on PakkoW10 is left to the batch's close with the rest of batch 2.
+
+A separate read-only review of the change (2026-11-20) found, and the same commit fixes:
+
+- a folder that cannot be created (a file holds its name) still ends the commit, as before, but a
+  folder moved whole ahead of it had arrived unnamed (T-F408) and without its times (T-F298); both
+  now happen on that path too;
+- the comparison read the DACL only: a parent's inheritable integrity label and its Encrypted and
+  Compressed state now count too, each parent read once per commit. Audit entries (SACL) need
+  `SeSecurityPrivilege` and are not compared: a folder moved whole keeps staging's, which inherited
+  from the work root, not the destination's parent; accepted, as an audited subfolder of a folder
+  without the entry is rare and the files' own state is the same on both paths;
+- a guard for a file to rename away below a new folder could not trigger (such a file's folder is
+  there) and was removed with its test.
+
+Accepted: a junction swapped in for a destination folder between the link check and the rename puts
+the whole folder at its target, where the per-file merge checked again before each file. Swapping it
+needs the right to delete in the destination, the same race existed for each file before, and
+`Directory.Move` never replaces a link standing at the folder's own name (it fails and the folder
+is merged). Next in batch 2: the move out of
+the quarantine (`QuarantineFiles.TakeOut` and the permission rewrite per file, 5.6 s on C:).
+
 ## v1.12.0 batch 1 - where the time goes (measured 2026-11-20)
 
 T-F565 step 1. This machine (Windows 11 build 26300, tar.exe 3.8.x, the x64 helper over
@@ -15001,7 +15062,8 @@ of a 7z; 300 MB of random bytes for creation. Medians of three runs; the bare
 | Create 7z, level 1, random bytes | 104.6 s | 104.3 s | 102.0 s | 102.0 s |
 | Create 7z, level 9, random bytes | 189.2 s | 189.9 s | 189.3 s | 189.8 s |
 
-The Store's 1.11.0 package gives the same (tar 14.8 s on D:, 15.0 s on C:).
+The Pakko columns are the development package 1.10.0.40 that was installed; the Store's 1.11.0
+package gives the same (tar 14.8 s on D:, 15.0 s on C:).
 
 - **Creation is tar.exe's own time.** Pakko runs at 1.0 times the bare tar.exe on both volumes, so
   hypothesis 5 (a pass of Pakko's own after a 7z) is refuted. About 3 MB/s at level 1 on random

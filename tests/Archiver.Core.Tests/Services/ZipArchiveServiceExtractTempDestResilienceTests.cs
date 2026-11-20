@@ -112,7 +112,7 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
 
         IReadOnlyList<string> lockedRelativePaths = staging.CommitInto(actualDest, FailingMove);
 
-        moveAttempts.Should().Be(1);
+        moveAttempts.Should().Be(2, "the fast path, then Sub moved whole (T-F565), each failed and fell back");
         lockedRelativePaths.Should().BeEmpty("the fast path failed, but the per-file merge fallback moved every real file successfully");
         File.Exists(Path.Combine(actualDest, "loose1.txt")).Should().BeTrue();
         File.Exists(Path.Combine(actualDest, "Sub", "nested1.txt")).Should().BeTrue();

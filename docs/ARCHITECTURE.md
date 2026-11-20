@@ -1012,7 +1012,11 @@ public interface ILogService
   `IOException`, since Windows fails the whole `Directory.Move` if any single file anywhere in the
   source tree is transiently locked by another process (confirmed empirically — see `DECISIONS.md`'s
   T-F161 entry). `ExtractWithSmartFolderingAsync`'s entry-extraction loop also now cleans up
-  `tempDest` on any exception, not just `OperationCanceledException`.
+  `tempDest` on any exception, not just `OperationCanceledException`. T-F565: in the merge, a staged
+  folder not in `actualDest` yet moves whole by one rename (the same `moveOverride`) when no file to
+  rename away is below it, no link is on its way, and its folder in `actualDest` passes down what its
+  folder in staging did (`QuarantineAcl.InheritableEntries`); otherwise, or on `IOException`, it is
+  merged file by file.
 
 ---
 
