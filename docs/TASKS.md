@@ -91,8 +91,9 @@ T-F328, T-F329, T-F331, T-F332, T-F359, T-F393.
 
 ### T-F514 - Spike: `TarWriter` (.NET 11) for creating tar, tar.gz and tar.zst in place of tar.exe (P3, user, 2026-11-12)
 
-- [ ] **Status:** open; not in the v1.11.0 wave. A spike that ends in a recommendation for the
-  project owner, not in code.
+- [ ] **Status:** spike done 2026-11-21 (v1.12.0 batch 3, step 6); the recommendation in
+  `docs/DECISIONS.md` (tar.zst stays on tar.exe; tar and tar.gz possible, not worth it now) waits
+  for the project owner's decision. A spike that ends in a recommendation, not in code.
   - **Why it is open:** creation reads the user's own files, not a hostile archive, so the
     "no parser in-process" boundary (`SECURITY.md`, Trust Model; `docs/DECISIONS.md` T-F49) weighs
     less here than for reading. Reading stays decided: `TarReader` was rejected on its source
