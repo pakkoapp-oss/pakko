@@ -7,8 +7,8 @@ namespace Archiver.App.Core.Tests;
 public sealed class SevenZipMethodOptionTests
 {
     [Fact]
-    public void Names_AreTheSixMethods_Lzma2FirstZstandardLast() =>
-        SevenZipMethodOption.Names.Should().Equal("LZMA2", "LZMA", "BZip2", "Deflate", "Copy", "Zstandard");
+    public void Names_AreTheFiveMethods_Lzma2First() =>
+        SevenZipMethodOption.Names.Should().Equal("LZMA2", "LZMA", "BZip2", "Deflate", "Copy");
 
     [Fact]
     public void EveryMethod_HasARowAndComesBackFromIt()
@@ -24,14 +24,13 @@ public sealed class SevenZipMethodOptionTests
     [InlineData(SevenZipMethod.Lzma2, "LZMA2")]
     [InlineData(SevenZipMethod.BZip2, "BZip2")]
     [InlineData(SevenZipMethod.Copy, "Copy")]
-    [InlineData(SevenZipMethod.Zstd, "Zstandard")]
     public void Name_IsTheRowsText(SevenZipMethod method, string expected) =>
         SevenZipMethodOption.Name(method).Should().Be(expected);
 
     // A ComboBox reports -1 while it has no selection.
     [Theory]
     [InlineData(-1)]
-    [InlineData(6)]
+    [InlineData(5)]
     [InlineData(int.MaxValue)]
     [InlineData(int.MinValue)]
     public void FromIndex_OutOfRange_IsTheDefaultMethod(int index) =>
@@ -44,21 +43,11 @@ public sealed class SevenZipMethodOptionTests
     [Theory]
     [InlineData(ArchiveContainerFormat.SevenZip, SevenZipMethod.Lzma2, true)]
     [InlineData(ArchiveContainerFormat.SevenZip, SevenZipMethod.Copy, false)]
-    [InlineData(ArchiveContainerFormat.SevenZip, SevenZipMethod.Zstd, true)]
     [InlineData(ArchiveContainerFormat.Tar, SevenZipMethod.Lzma2, false)]
     [InlineData(ArchiveContainerFormat.Zip, SevenZipMethod.Copy, true)]
     [InlineData(ArchiveContainerFormat.TarGz, SevenZipMethod.Copy, true)]
     public void HasCompressionLevel_NotForPlainTarOrACopied7z(ArchiveContainerFormat format, SevenZipMethod method, bool expected) =>
         SevenZipMethodOption.HasCompressionLevel(format, method).Should().Be(expected);
-
-    // T-F565: the note that 7-Zip cannot open a Zstandard 7z shows for that choice alone.
-    [Theory]
-    [InlineData(ArchiveContainerFormat.SevenZip, SevenZipMethod.Zstd, true)]
-    [InlineData(ArchiveContainerFormat.SevenZip, SevenZipMethod.Lzma2, false)]
-    [InlineData(ArchiveContainerFormat.TarZst, SevenZipMethod.Zstd, false)]
-    [InlineData(ArchiveContainerFormat.Zip, SevenZipMethod.Zstd, false)]
-    public void ShowsZstdNote_OnlyForAZstandard7z(ArchiveContainerFormat format, SevenZipMethod method, bool expected) =>
-        SevenZipMethodOption.ShowsZstdNote(format, method).Should().Be(expected);
 
     // T-F403: the list holds only the methods this tar.exe can write; rows are positions in it.
     private static readonly SevenZipMethod[] NoBZip2 = [SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.Deflate, SevenZipMethod.Copy];

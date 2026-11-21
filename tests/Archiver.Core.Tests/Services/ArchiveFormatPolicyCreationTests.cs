@@ -80,44 +80,9 @@ public sealed class ArchiveFormatPolicyCreationTests
         foreach (ArchiveContainerFormat format in Enum.GetValues<ArchiveContainerFormat>())
         {
             foreach (SevenZipMethod method in Enum.GetValues<SevenZipMethod>())
-                ArchiveFormatPolicy.GetTarCreationRefusalReason(format, method, Windows11, zstdWriter: true).Should().BeNull($"{format} {method}");
+                ArchiveFormatPolicy.GetTarCreationRefusalReason(format, method, Windows11).Should().BeNull($"{format} {method}");
         }
     }
-
-    // --- T-F565: Zstandard in 7z, only where tar.exe was seen writing it ---
-
-    [Fact]
-    public void Zstd_TarSeenWritingIt_IsTheLastMethod() =>
-        ArchiveFormatPolicy.CreatableSevenZipMethods(Windows11, zstdWriter: true).Should().Equal(
-            SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.BZip2, SevenZipMethod.Deflate, SevenZipMethod.Copy, SevenZipMethod.Zstd);
-
-    [Fact]
-    public void Zstd_NotSeenWritingIt_IsNotOfferedAndIsRefused()
-    {
-        ArchiveFormatPolicy.CreatableSevenZipMethods(Windows11).Should().NotContain(SevenZipMethod.Zstd);
-        ArchiveFormatPolicy.CreatableSevenZipMethods(Windows11, zstdWriter: false).Should().NotContain(SevenZipMethod.Zstd);
-        ArchiveFormatPolicy.GetTarCreationRefusalReason(ArchiveContainerFormat.SevenZip, SevenZipMethod.Zstd, Windows11)!
-            .English.Should().Be("7-Zip Zstandard is not supported by this system's tar.exe (version 3.8.8).");
-    }
-
-    // The probe's "yes" alone is not enough: Pakko has to read the archive again.
-    [Fact]
-    public void Zstd_TarWithoutZstdReader_IsRefusedWhateverTheProbeSaid()
-    {
-        TarCapabilities noZstd = TarVersionParser.Parse("bsdtar 3.8.8 - libarchive 3.8.8 zlib/1.2.13 liblzma/5.8.1 bz2lib/1.0.8");
-
-        ArchiveFormatPolicy.CreatableSevenZipMethods(noZstd, zstdWriter: true).Should().NotContain(SevenZipMethod.Zstd);
-        ArchiveFormatPolicy.GetTarCreationRefusalReason(ArchiveContainerFormat.SevenZip, SevenZipMethod.Zstd, noZstd, zstdWriter: true)
-            .Should().NotBeNull();
-    }
-
-    [Fact]
-    public void Zstd_OnlyMattersForSevenZip() =>
-        ArchiveFormatPolicy.GetTarCreationRefusalReason(ArchiveContainerFormat.TarGz, SevenZipMethod.Zstd, Windows10).Should().BeNull();
-
-    [Fact]
-    public void Zstd_NameIsTheSameInEveryLanguage() =>
-        ArchiveFormatPolicy.SevenZipMethodName(SevenZipMethod.Zstd).Should().Be("Zstandard");
 
     [Fact]
     public void SevenZipWithoutBzip2_RefusesOnlyTheBZip2Method()

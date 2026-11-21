@@ -171,9 +171,6 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Μέθοδος:</value>
   </data>
-  <data name="SevenZipZstdNote.Text" xml:space="preserve">
-    <value>Το 7-Zip δεν ανοίγει τέτοιο αρχείο συμπίεσης. Το NanaZip και τα Windows 11 23H2 ή νεότερα το ανοίγουν.</value>
-  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Αν το αρχείο υπάρχει:</value>
   </data>

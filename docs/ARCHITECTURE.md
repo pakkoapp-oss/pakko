@@ -1425,11 +1425,6 @@ public interface ITarService
     // No answer is asked once more, is not kept, and is not "no". Default: the answer above.
     Task<bool?> AskSevenZipWriterAsync(CancellationToken cancellationToken = default);
 
-    // T-F565: after a yes above, runs tar.exe writing one entry as Zstandard into a 7z (a tar built
-    // in memory on its stdin) and keeps the answer like CanCreateSevenZipAsync; false without
-    // libzstd or under DisableTarExtraction. Default: false.
-    Task<bool> CanCreateSevenZipZstdAsync(CancellationToken cancellationToken = default);
-
     // T-F397: tar.exe reads every entry inside the sandbox and writes nothing ("-x -O"), after
     // extraction's own pre-scan. A pass in a format whose contents tar.exe does not verify
     // carries a TestedStructureOnly warning. Never throws, except on cancellation. T-F410:
@@ -1965,9 +1960,7 @@ the item only on a `0` measured on the tar.exe that is there now (`ShellExtUtils
 **The capability matrix (T-F403).** What this tar.exe can do is decided in one place,
 `ArchiveFormatPolicy`, from `TarCapabilities` (the libraries `tar --version` names and the
 version): `GetRefusalReason` for reading, `GetTarCreationRefusalReason(format, sevenZipMethod,
-capabilities, zstdWriter)` for making, `CreatableSevenZipMethods(capabilities, zstdWriter)` and
-`TarReadableRegistryNames`. `zstdWriter` (T-F565, default false) is the answer of
-`CanCreateSevenZipZstdAsync`: Zstandard in 7z is not in `tar --version`.
+capabilities)` for making, `CreatableSevenZipMethods` and `TarReadableRegistryNames`.
 `TarSandboxedService.CompressAsync` asks it before tar.exe starts; the App passes its
 `TarCapabilities` to `CreationFormatOption.IsOffered`/`Default` and builds the 7z method list
 from `CreatableSevenZipMethods`; `pakko i` prints the methods line from it; the snapshot's

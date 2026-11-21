@@ -544,13 +544,6 @@
                                           AutomationProperties.LabeledBy="{x:Bind SevenZipMethodLabelText}"
                                           IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                             </StackPanel>
-                            <!-- T-F565: who can open a Zstandard 7z, under the method that writes one. -->
-                            <TextBlock
-                                x:Uid="SevenZipZstdNote"
-                                Opacity="0.7"
-                                TextWrapping="Wrap"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Visibility="{x:Bind ViewModel.SevenZipZstdNoteVisibility, Mode=OneWay}"/>
                         </StackPanel>
 
                         <!-- T-F275: PAR2 recovery data next to the archive, any format. -->

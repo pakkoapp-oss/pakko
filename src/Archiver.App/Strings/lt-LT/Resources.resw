@@ -171,9 +171,6 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Metodas:</value>
   </data>
-  <data name="SevenZipZstdNote.Text" xml:space="preserve">
-    <value>7-Zip tokio archyvo neatidaro. NanaZip ir Windows 11 23H2 arba naujesnė versija atidaro.</value>
-  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Jei failas jau egzistuoja:</value>
   </data>

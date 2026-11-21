@@ -86,7 +86,7 @@ extensions directly:
 | `zstd` | `.zst`, `.tar.zst` |
 | `lzma` | `.lzma`, `.tar.lzma` |
 | `rar` | `.rar` (read-only in Pakko — no RAR creation) |
-| `sevenzip` | `.7z` (read, and created since Pakko 1.8.1 where Windows' tar.exe has the 7z writer, T-F342); a 7z compressed with Zstandard (T-F565) is this format too, not `zstd` |
+| `sevenzip` | `.7z` (read, and created since Pakko 1.8.1 where Windows' tar.exe has the 7z writer, T-F342) |
 | `iso` | `.iso`, an ISO 9660 image (read-only since 1.10, T-F442; a UDF image, as most Windows install ISOs are, is refused whatever the policy) |
 | `cab` | `.cab` (read-only since 1.10) |
 | `cpio` | `.cpio` (read-only since 1.10) |

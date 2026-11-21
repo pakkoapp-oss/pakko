@@ -582,11 +582,7 @@ static async Task<int> RunInfoAsync(PakkoServices services)
         && await services.TarService.CanCreateSevenZipAsync(CancellationToken.None).ConfigureAwait(false);
     await PrintFormatLineAsync("7z", CliInfoText.SevenZipActions(sevenZipWriter), ArchiveFormat.SevenZip).ConfigureAwait(false);
     if (sevenZipWriter && ArchiveFormatPolicy.GetTarCreationRefusalReason(ArchiveContainerFormat.SevenZip, SevenZipMethod.Copy, capabilities) is null)
-    {
-        // T-F565: Zstandard only where tar.exe was seen writing it.
-        bool zstdWriter = await services.TarService.CanCreateSevenZipZstdAsync(CancellationToken.None).ConfigureAwait(false);
-        await Console.Out.WriteLineAsync(CliInfoText.SevenZipMethodsLine(ArchiveFormatPolicy.CreatableSevenZipMethods(capabilities, zstdWriter))).ConfigureAwait(false);
-    }
+        await Console.Out.WriteLineAsync(CliInfoText.SevenZipMethodsLine(ArchiveFormatPolicy.CreatableSevenZipMethods(capabilities))).ConfigureAwait(false);
     await PrintFormatLineAsync("rar", CliInfoText.ExtractList, ArchiveFormat.Rar).ConfigureAwait(false);
     // T-F442: read-only formats tar.exe opens, each by what this tar.exe reads.
     await PrintFormatLineAsync("iso", CliInfoText.ExtractList, ArchiveFormat.Iso).ConfigureAwait(false);

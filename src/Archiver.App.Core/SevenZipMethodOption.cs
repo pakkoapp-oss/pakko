@@ -9,10 +9,10 @@ namespace Archiver.App.Core;
 public static class SevenZipMethodOption
 {
     private static readonly SevenZipMethod[] Methods =
-        [SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.BZip2, SevenZipMethod.Deflate, SevenZipMethod.Copy, SevenZipMethod.Zstd];
+        [SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.BZip2, SevenZipMethod.Deflate, SevenZipMethod.Copy];
 
-    /// <summary>The list's rows, in order; LZMA2, the default, first; Zstandard (T-F565) last.</summary>
-    public static IReadOnlyList<string> Names { get; } = ["LZMA2", "LZMA", "BZip2", "Deflate", "Copy", "Zstandard"];
+    /// <summary>The list's rows, in order; LZMA2, the default, first.</summary>
+    public static IReadOnlyList<string> Names { get; } = ["LZMA2", "LZMA", "BZip2", "Deflate", "Copy"];
 
     /// <summary>The method of row <paramref name="index"/>; LZMA2 for a row the list does not have.</summary>
     public static SevenZipMethod FromIndex(int index) =>
@@ -48,8 +48,4 @@ public static class SevenZipMethodOption
     /// </summary>
     public static bool HasCompressionLevel(ArchiveContainerFormat format, SevenZipMethod method) =>
         format != ArchiveContainerFormat.Tar && !(format == ArchiveContainerFormat.SevenZip && method == SevenZipMethod.Copy);
-
-    /// <summary>T-F565: whether the card says that 7-Zip cannot open the archive: a 7z compressed with Zstandard.</summary>
-    public static bool ShowsZstdNote(ArchiveContainerFormat format, SevenZipMethod method) =>
-        format == ArchiveContainerFormat.SevenZip && method == SevenZipMethod.Zstd;
 }

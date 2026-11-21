@@ -42,8 +42,7 @@ public sealed record ArchiveOptions
     /// <summary>
     /// T-F342: the compression method of a <see cref="ArchiveContainerFormat.SevenZip"/> archive;
     /// other formats ignore it. <see cref="CompressionLevel"/> sets its level (Fastest 1, Optimal 6,
-    /// SmallestSize 9; Zstandard, T-F565, takes zstd's own 1, 9 and 19); NoCompression stores, whatever
-    /// the method.
+    /// SmallestSize 9); NoCompression stores, whatever the method.
     /// </summary>
     public SevenZipMethod SevenZipMethod { get; init; } = SevenZipMethod.Lzma2;
 

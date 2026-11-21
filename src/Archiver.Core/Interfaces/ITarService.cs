@@ -43,15 +43,6 @@ public interface ITarService
         await CanCreateSevenZipAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>
-    /// T-F565: whether this system's tar.exe writes Zstandard into a 7z that Pakko can open again.
-    /// Found by having it write one entry (libarchive can take the method's name without its
-    /// encoder), and asked only after <see cref="CanCreateSevenZipAsync"/> says yes. Kept like that
-    /// answer; a run that gave no answer is "no" now and asked again next time. False under
-    /// DisableTarExtraction, without starting anything. The default is for an engine without it.
-    /// </summary>
-    Task<bool> CanCreateSevenZipZstdAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
-
-    /// <summary>
     /// Extracts one or more tar-family archives (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma,
     /// 7z, rar) via tar.exe. Never throws — errors are captured in ArchiveResult.Errors.
     /// IProgress&lt;ProgressReport&gt; (T-F142 — was IProgress&lt;int&gt;) to match

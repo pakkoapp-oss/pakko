@@ -171,9 +171,6 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>الطريقة:</value>
   </data>
-  <data name="SevenZipZstdNote.Text" xml:space="preserve">
-    <value>لا يستطيع 7-Zip فتح أرشيف كهذا. يستطيع ذلك NanaZip وWindows 11 23H2 أو أحدث.</value>
-  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>إذا كان الملف موجودًا:</value>
   </data>
