@@ -3,8 +3,9 @@ namespace Archiver.Core.Services;
 /// <summary>
 /// T-F565: how many threads libarchive compresses xz and zstd with, and the option that says so. The
 /// least of the cores, <see cref="Models.ArchiveOptions.MaxThreads"/> where given, and the memory
-/// budget divided by what one thread costs at the level (measured, docs/DECISIONS.md "v1.12.0 batch 3,
-/// step 0"); never fewer than one. Codecs without threads (gzip, bzip2, lzma) always get one.
+/// budget, less what the writer holds whatever the count, divided by what one thread costs at the
+/// level (measured, docs/DECISIONS.md "v1.12.0 batch 3, step 0"); never fewer than one. Codecs without
+/// threads (gzip, bzip2, lzma) always get one. "7zip-zstd" is Zstandard inside a 7z.
 /// </summary>
 internal static class CompressionThreads
 {
@@ -20,14 +21,15 @@ internal static class CompressionThreads
         internal static Limit ForThisMachine(int maxThreads) => new(maxThreads, Environment.ProcessorCount, MemoryBudget.ThisMachine);
     }
 
-    /// <summary>The thread count for <paramref name="codec"/> ("xz", "zstd") at <paramref name="level"/>.</summary>
+    /// <summary>The thread count for <paramref name="codec"/> ("xz", "zstd", "7zip-zstd") at <paramref name="level"/>.</summary>
     internal static int For(string codec, int level, Limit limit)
     {
         long cost = CostPerThread(codec, level);
         if (cost == 0)
             return 1;
 
-        long count = Math.Min(Math.Max(1, limit.ProcessorCount), Math.Max(1, limit.MemoryBudgetBytes / cost));
+        long forThreads = limit.MemoryBudgetBytes - FixedCost(codec, level);
+        long count = Math.Min(Math.Max(1, limit.ProcessorCount), Math.Max(1, forThreads / cost));
         if (limit.MaxThreads > 0)
             count = Math.Min(count, limit.MaxThreads);
         return (int)count;
@@ -36,8 +38,9 @@ internal static class CompressionThreads
     /// <summary>libarchive's option naming <paramref name="threads"/> for <paramref name="module"/>.</summary>
     internal static string Option(string module, int threads) => $"{module}:threads={threads}";
 
-    // The working set one more thread took at the levels Pakko uses, rounded up; a level between two
-    // measured ones costs what the higher one does. 0: the codec has no threads.
+    // At two and four threads, the larger of the peak working set and the peak commit divided by the
+    // count, rounded up, so the whole stays within the budget; a level between two measured ones costs
+    // what the higher one does. 0: the codec has no threads.
     private static long CostPerThread(string codec, int level) => codec switch
     {
         "xz" => level switch
@@ -47,7 +50,7 @@ internal static class CompressionThreads
             <= 4 => 96 * MiB,
             _ => 1024 * MiB,
         },
-        "zstd" => level switch
+        "zstd" or SevenZipZstd => level switch
         {
             <= 1 => 16 * MiB,
             <= 9 => 96 * MiB,
@@ -55,4 +58,11 @@ internal static class CompressionThreads
         },
         _ => 0,
     };
+
+    // libarchive's 7z writer commits 678 MiB at zstd 9 and 19 whatever the count (step 0), rounded up.
+    private static long FixedCost(string codec, int level) =>
+        codec == SevenZipZstd && level > 1 ? 768 * MiB : 0;
+
+    /// <summary>The codec name <see cref="For"/> takes for Zstandard inside a 7z.</summary>
+    internal const string SevenZipZstd = "7zip-zstd";
 }

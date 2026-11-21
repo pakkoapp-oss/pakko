@@ -94,9 +94,19 @@ public sealed class TarSevenZipZstdCreationTests : IDisposable
         Args(SevenZipMethod.Zstd, level, CompressionThreads.Limit.OneThread).Should().Equal("--format=7zip", "--options", options);
 
     [Fact]
-    public void AppendSevenZipArgs_Zstd_ThreadsAsTarZstHasThem() =>
+    public void AppendSevenZipArgs_Zstd_Threads() =>
         Args(SevenZipMethod.Zstd, CompressionLevel.SmallestSize, TwelveCoresFourGiB)
             .Should().Equal("--format=7zip", "--options", "7zip:compression=zstd,compression-level=19,7zip:threads=12");
+
+    // The 7z writer holds 678 MiB at zstd 9 and 19 whatever the count (step 0): at the 1 GiB floor
+    // what is left is the threads' share.
+    [Theory]
+    [InlineData(CompressionLevel.Optimal, "7zip:compression=zstd,compression-level=9,7zip:threads=2")]
+    [InlineData(CompressionLevel.SmallestSize, "7zip:compression=zstd,compression-level=19")]
+    [InlineData(CompressionLevel.Fastest, "7zip:compression=zstd,compression-level=1,7zip:threads=12")]
+    public void AppendSevenZipArgs_Zstd_TheWritersOwnMemoryComesOffTheBudget(CompressionLevel level, string options) =>
+        Args(SevenZipMethod.Zstd, level, new CompressionThreads.Limit(0, 12, 1024L * 1024 * 1024))
+            .Should().Equal("--format=7zip", "--options", options);
 
     // libarchive's 7z writer has threads for zstd alone.
     [Theory]
@@ -201,6 +211,32 @@ public sealed class TarSevenZipZstdCreationTests : IDisposable
     }
 
     // --- Error path: no answer is not "no" ---
+
+    // T-F342's trap: a 7z writer probe that gave no answer (a busy machine) is the writer's refusal,
+    // never "this tar.exe has no Zstandard".
+    [Fact]
+    public async Task CompressAsync_ZstdWhenTheSevenZipProbeGaveNoAnswer_IsTheWriterRefusal()
+    {
+        var sut = new TarSandboxedService(
+            new GroupPolicyOptions(), () => Task.FromResult(ReadsZstdIn7z),
+            sevenZipWriterProbe: () => Task.FromResult<bool?>(null),
+            sevenZipZstdWriterProbe: () => { _zstdProbes++; return Task.FromResult<bool?>(true); });
+
+        ArchiveResult result = await sut.CompressAsync(ZstdOptions());
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SevenZipWriterUnavailable);
+        _zstdProbes.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CompressAsync_ZstdWithoutASevenZipWriter_IsTheWriterRefusal()
+    {
+        TarSandboxedService sut = Service(writes7z: false);
+
+        ArchiveResult result = await sut.CompressAsync(ZstdOptions());
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SevenZipWriterUnavailable);
+    }
 
     [Fact]
     public async Task CanCreateSevenZipZstdAsync_NoAnswer_IsFalseAfterOneRetry_AndIsNotKept()

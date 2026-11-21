@@ -14987,10 +14987,16 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 
 **Threads (T-F565).** `CompressionThreads` is the one owner of libarchive's `xz:threads`,
 `zstd:threads` and `7zip:threads`: the least of the cores, `-mmt` (`ArchiveOptions.MaxThreads`)
-and `MemoryBudget` over a thread's cost at the level, never fewer than one. Costs, rounded up from
-step 0's working sets: xz level 0 16 MiB, 1 32 MiB, up to 4 96 MiB, above 1 GiB; zstd up to 1
+and `MemoryBudget`, less what the writer holds whatever the count, over a thread's cost at the
+level, never fewer than one. A thread's cost is the larger of step 0's peak working set and peak
+commit at two and four threads divided by the count, rounded up, so the whole run stays within
+the budget wherever two threads or more are given (one thread is what 1.11 ran): xz level 0
+16 MiB, 1 32 MiB, up to 4 96 MiB, above 1 GiB (level 9: 1,926 MiB at two threads); zstd up to 1
 16 MiB, up to 9 96 MiB, above 256 MiB. A level between two measured ones costs what the higher
-one does. One thread writes no option, so a one-core machine or `-mmt=off` gets the arguments of
+one does. Zstandard inside a 7z costs the same per thread, but the 7z writer first commits
+678 MiB at levels 9 and 19 whatever the count, taken off the budget as 768 MiB
+(`CompressionThreads.SevenZipZstd`): at the 1 GiB floor level 9 gets two threads and level 19
+one, where the tar.zst table alone gave ten and four, 1.6 GiB and more. One thread writes no option, so a one-core machine or `-mmt=off` gets the arguments of
 1.11 exactly. `MemoryBudget` is the sandbox's rule moved, not copied (half the physical memory,
 1-4 GiB, per operation): two creations at once each take a budget, as two sandboxed reads do.
 xz on one thread is another encoder than on two or more, so `-mmt=off` writes other xz bytes
@@ -15004,7 +15010,12 @@ it never pays for it. libarchive takes the name `zstd` where its encoder is a st
 `HAVE_ZSTD_compressStream`), so the probe writes one entry: a ustar built in memory with
 `System.Formats.Tar.TarWriter` goes to tar.exe's stdin (`@-`), and a 7z must come back on stdout
 (exit 0 and the signature; 3.5.2 exits 1, "Unknown compression name"). The answer is kept like the
-7z writer's; no answer is not kept. `ArchiveFormatPolicy` takes it as `zstdWriter`, default false,
+7z writer's; no answer is not kept. Unlike creation, the probe runs with the process's own TMP:
+a probe killed after its whole entry left no `libarchive_*` in `%TEMP%` (measured: libarchive keeps
+an entry this small in memory). On Windows 10's 3.5.2 (PakkoW10) the probe's command exits 1,
+"Unknown compression name", where the same command with `copy` writes a 7z. The engine's refusals keep their order: what `tar --version`
+decides, then the 7z writer (whose missing answer is its refusal, never "no Zstandard"), then
+Zstandard's probe. `ArchiveFormatPolicy` takes it as `zstdWriter`, default false,
 so a caller that does not ask refuses Zstandard; the engine asks before tar.exe starts, and a
 refusal names "7-Zip Zstandard" with the tar.exe version instead of tar.exe's stderr. Zstandard
 takes zstd's own levels (1, 9, 19) and threads. The App adds it at the end of the method list
