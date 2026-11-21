@@ -91,14 +91,15 @@ public sealed class SingleFileStreamCreationTests : IDisposable
     // Windows 10's 3.5.2 writes neither xz nor zstd; every tar.exe that writes zstd (3.7.0 or later,
     // with libzstd) knows zstd:threads, which libarchive has had since 3.6.0.
     [Theory]
-    [InlineData("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ")]
-    [InlineData("bsdtar 3.6.2 - libarchive 3.6.2 zlib/1.2.13 liblzma/5.4.1 bz2lib/1.0.8 libzstd/1.5.5")]
-    [InlineData("bsdtar 3.7.2 - libarchive 3.7.2 zlib/1.2.13.1-motley liblzma/5.4.3 bz2lib/1.0.8 libzstd/1.5.5")]
-    [InlineData("bsdtar 3.8.9 - libarchive 3.8.9 zlib/1.2.13.1-motley liblzma/5.8.3 bz2lib/1.0.8 libzstd/1.5.7")]
-    public void SupportsZstd_OnlyWhereZstdThreadsExist(string versionOutput)
+    [InlineData("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ", false)]
+    [InlineData("bsdtar 3.6.2 - libarchive 3.6.2 zlib/1.2.13 liblzma/5.4.1 bz2lib/1.0.8 libzstd/1.5.5", false)]
+    [InlineData("bsdtar 3.7.2 - libarchive 3.7.2 zlib/1.2.13.1-motley liblzma/5.4.3 bz2lib/1.0.8 libzstd/1.5.5", true)]
+    [InlineData("bsdtar 3.8.9 - libarchive 3.8.9 zlib/1.2.13.1-motley liblzma/5.8.3 bz2lib/1.0.8 libzstd/1.5.7", true)]
+    public void SupportsZstd_OnlyWhereZstdThreadsExist(string versionOutput, bool supportsZstd)
     {
         TarCapabilities caps = TarVersionParser.Parse(versionOutput);
-        if (caps.SupportsZstd)
+        caps.SupportsZstd.Should().Be(supportsZstd);
+        if (supportsZstd)
             Version.Parse(caps.Version).Should().BeGreaterThanOrEqualTo(new Version(3, 6, 0));
     }
 

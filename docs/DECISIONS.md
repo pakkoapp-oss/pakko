@@ -15115,6 +15115,25 @@ CLI): `i` lists tar and tar.gz only for creation; `a -ttgz` writes as before; `-
 `ThreadedCompressionCompatibilityTests` pins two against four threads to the same bytes for both
 codecs (seen red against one thread).
 
+**The opus review (PR 275) and what it changed.**
+- **An x86 Pakko starts the 32-bit tar.exe** (WOW64 redirects `System32` to `SysWOW64`). Measured on
+  this machine's 32-bit 3.8.9 over the same tree: xz 9 on one thread passes (199 s, 680 MiB); on two
+  and four it fails at once, "lzma_code() call returned status 5" (`LZMA_MEM_ERROR`); zstd 19 on
+  twelve fails after 25 s, "Allocation error : not enough memory", while on four it passes (63 s,
+  618 MiB); xz 4 on ten passes (675 MiB). A 64-bit budget would have broken `-mx=9` tar.xz and
+  tar.zst on the x86 build, where 1.11 worked. `CompressionThreads.Limit.BudgetFor` gives a 32-bit
+  process's tar.exe at most 1 GiB: xz 9 one thread, zstd 19 four, the counts that passed. The
+  sandbox's job limit for reading is unchanged (a read never asks for threads).
+- **zstd's level 0** (NoCompression asks for it) is libzstd's default, level 3, not 1: it now costs
+  what 9 does (96 MiB), by the rule that a level between measured ones costs the higher one.
+- **Tests that could not fail:** the thread tests wrote about 660 KB, one block or job whatever the
+  count; they now write 16 MiB at the fastest level (xz 1's block is 3 MiB) and skip below four
+  cores. The guard scanned for `:threads=` only, while libarchive applies a key without `module:` to
+  every module (`7zip:compression=...,compression-level=N` is written that way); it now sees
+  `threads=` after a start, a comma, a colon, a quote or a space (seen red with the old pattern).
+  `SupportsZstd` against the version is now asserted for every row, and a guard keeps the machine's
+  memory read only by `MemoryBudget`.
+
 **Zstandard in 7z - built, then dropped by the user the same day ("not worth it").** Nothing of it
 ships: `-m0=zstd` is refused again as before (CLI-027), the App lists the five methods of 1.11, and
 `7zip:threads` is never written. Why it was not worth it, as measured: 7-Zip cannot open such an

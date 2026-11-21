@@ -17,7 +17,16 @@ internal static class CompressionThreads
         internal static Limit OneThread { get; } = new(1, 1, 0);
 
         /// <summary>This machine, with <paramref name="maxThreads"/> from -mmt (0 or less: no cap).</summary>
-        internal static Limit ForThisMachine(int maxThreads) => new(maxThreads, Environment.ProcessorCount, MemoryBudget.ThisMachine);
+        internal static Limit ForThisMachine(int maxThreads) =>
+            new(maxThreads, Environment.ProcessorCount, BudgetFor(Environment.Is64BitProcess, MemoryBudget.ThisMachine));
+
+        /// <summary>
+        /// The budget a tar.exe started from this process may use: a 32-bit process starts the 32-bit
+        /// tar.exe (WOW64 redirects System32), whose address space failed xz 9 on two threads and zstd 19
+        /// on twelve (measured, 3.8.9), so it gets at most 1 GiB.
+        /// </summary>
+        internal static long BudgetFor(bool is64BitProcess, long machineBudget) =>
+            is64BitProcess ? machineBudget : Math.Min(machineBudget, 1024 * MiB);
     }
 
     /// <summary>The thread count for <paramref name="codec"/> ("xz", "zstd") at <paramref name="level"/>.</summary>
@@ -38,7 +47,8 @@ internal static class CompressionThreads
 
     // At two and four threads, the larger of the peak working set and the peak commit divided by the
     // count, rounded up, so the whole stays within the budget; a level between two
-    // measured ones costs what the higher one does. 0: the codec has no threads.
+    // measured ones costs what the higher one does. zstd's level 0 (NoCompression) is libzstd's
+    // default, 3, so it costs what 9 does. 0: the codec has no threads.
     private static long CostPerThread(string codec, int level) => codec switch
     {
         "xz" => level switch
@@ -50,7 +60,7 @@ internal static class CompressionThreads
         },
         "zstd" => level switch
         {
-            <= 1 => 16 * MiB,
+            1 => 16 * MiB,
             <= 9 => 96 * MiB,
             _ => 256 * MiB,
         },
