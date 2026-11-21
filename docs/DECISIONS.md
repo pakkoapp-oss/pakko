@@ -15064,6 +15064,38 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## T-F567 - a listing reads all of a compressed stream: the CPU limit is the bound (2026-11-21)
+
+**Question.** T-F561 found that tar.exe's listing of a streamed ZIP inside gzip decompresses every
+entry's data to reach the next header. Does a listing need a limit of its own, or is the job's CPU
+limit (`CpuTimeLimitFor`: an hour at least, one minute per 10 MiB beyond) enough?
+
+**Measured** (bare `tar.exe -tf`/`-tvf`, CPU time of the process; each archive holds a 4 GiB entry of
+zeros followed by a 2-byte one, so the reader must pass the first entry's data):
+
+| Archive | Size | 3.8.9 (this machine) | 3.5.2 (PakkoW10) |
+|---|---|---|---|
+| `big.zip` (deflated, data descriptor) | 4.2 MB | 0.02-0.05 s | 0.00 s |
+| `big.zip.gz` | 6.9 KB | 0.19-0.20 s | 8.8 s |
+| `big.tar.gz` | 4.2 MB | 0.27 s | 8.8 s |
+| `big.tar.gz.gz` | 6.9 KB | 0.22-0.25 s | 8.8 s |
+
+`-tf` and `-tvf` cost the same. A plain ZIP lists from its central directory. Every compressed tar
+(and any stream libarchive reads through a filter) is read whole: this is not the streamed ZIP's
+fault, it is how a listing of a compressed stream works, and a second gzip layer costs nothing extra
+because the inner layer's output is what is decompressed. On 3.5.2 that is 2.2 s of CPU a GiB, so the
+hour of CPU is spent at about 1.6 TB of declared data: a gz.gz of a few KB to a few MB.
+
+**Decision: no listing limit of its own; the CPU limit stays the bound.** What such a listing costs is
+one core until the hour runs out or the user cancels, which kills tar.exe at once (T-F428). Nothing
+is written (T-F561 holds every `-x` run to its declared bytes), and memory stays inside the job's limit.
+A tighter CPU limit for listings was weighed and rejected: a legitimate archive of very compressible
+data (a sparse disk image in a tar.zst, logs) needs listing time in proportion to its decompressed
+size, not its file size, so any floor low enough to matter against a bomb fails real archives on the
+slower 3.5.2, with a message the user cannot override. A count of bytes read by the job does not help
+either: the job reads only the archive's few KB. Revisit if Pakko ever lists without the user asking
+(a preview pane, a search indexer).
+
 ## v1.12.0 batch 3, step 6 - T-F514 spike: `TarWriter` for tar, tar.gz and tar.zst (2026-11-21)
 
 A recommendation, not code in the product. Source read at `dotnet/runtime` tag `v11.0.0`
