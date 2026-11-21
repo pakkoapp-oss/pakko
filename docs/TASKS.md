@@ -76,7 +76,7 @@ reviewer at the batch's close, with the user's OK.
 | 3 | Creation | T-F565 (creation: libarchive's options, threads where a filter has them); T-F514 (`TarWriter` with `GZipStream`/`ZstandardStream` for tar, tar.gz, tar.zst; the user decides after the spike; `TarReader` read again at the SDK's 11.0.x tag for the three faults that rejected it on 10.0.14) | Same archive size against 7-Zip; every archive read by 7-Zip and both tar builds; `HardLinkMode` against T-F392; `SECURITY.md` only with the user's OK |
 | 4 | ARM64 helper | T-F562 | `canary-arm64` native; one AppContainer run on an ARM64 machine if there is one |
 | 5 | Names | T-F556, T-F563, T-F559 | One deploy, `SHL-019`, PakkoW10 for T-F559 |
-| 6 | Taskbar | T-F564 | `APP-031`, `OPW-006` on the device |
+| 6 | Taskbar, the file list | T-F564, T-F566 | `APP-031`, `OPW-006` and T-F566's new APP row on the device |
 | 7 | A damaged entry kept | T-F496 | The failure matrix (CRC, length, deflate) at every test level, one deploy |
 | 8 | Device, user, release | T-F432 (`APP-032` by eye), T-F494, T-F444, T-F446, T-F447, T-F254, T-F508, T-F317 (only with the user's OK); `STO-005`, `STO-006`, `STO-008` for 1.11.0 after certification; the release tier; the tag after the user's OK | As batch 8 of v1.11.0 |
 
@@ -1295,6 +1295,28 @@ re-measured with T-F346's script before and after.
 
      Measure both, and fix only what is felt.
 - **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
+
+### T-F566 - The file list's per-row removal cannot be seen (P3, batch 6)
+
+- [ ] **Status:** open. The user, 2026-11-21: in the App's list of files to archive only "Clear"
+  shows; a single file or folder seems impossible to take out. It is possible, but hidden: the
+  row's right-click menu ("Remove from list", `RemoveMenuItem`), Shift+F10 or the menu key, and
+  Delete on a focused row (`PendingList_PreviewKeyDown`, which also moves focus to the next row).
+  Next: a small trailing button on each row (`E711` or `E74D`):
+  - a sixth column in the row template's `ColumnDefinitions` and the same in the header grid
+    above it, so the headers stay aligned;
+  - one path: a thin click handler calls `RemovePath` and `FocusRowLater` as Delete does, enabled
+    only while `ClearCommand` can run (greyed out during an operation, as the menu and the key);
+  - shown always, or on pointer-over and while the row has focus (never hover alone: touch and
+    keyboard); `IsTabStop="False"` (Delete and the menu key cover the keyboard, a stop per row
+    makes a long list slow to tab through), but in UI Automation with `AutomationProperties.Name`
+    "Remove <name>" and a matching tooltip;
+  - a new string in 37 locales (`Glossary.tsv` first, `RemoveMenuItem`'s wording where it fits),
+    through a `py -3` script;
+  - a `docs/SMOKE.md` APP row: mouse, touch or pen where a device has one, Narrator, disabled
+    during an operation, focus after removing the last row.
+  Not in it: the Archive Browser's list, which has its own selection.
+- **Reported by:** the user, 2026-11-21.
 
 ### T-F565 - tar and 7z through tar.exe take 2 to 12 times 7-Zip's time (P3, next release)
 
