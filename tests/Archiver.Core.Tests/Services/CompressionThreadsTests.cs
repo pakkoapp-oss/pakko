@@ -63,6 +63,12 @@ public sealed partial class CompressionThreadsTests
     public void For_NoCoresOrNoBudget_StillOneThread(int cores, long budget) =>
         CompressionThreads.For("xz", 9, Machine(cores, budget)).Should().Be(1);
 
+    // NoCompression asks zstd for level 0, which libzstd takes as its default, level 3: it costs what
+    // the next measured level (9) does, not level 1.
+    [Fact]
+    public void For_ZstdLevelZero_CostsLikeLibzstdsDefaultLevel() =>
+        CompressionThreads.For("zstd", 0, Machine(cores: 32, budget: GiB)).Should().Be(10);
+
     [Fact]
     public void For_LevelsBetweenTheMeasuredOnes_CostTheNextMeasuredLevel()
     {
@@ -78,6 +84,22 @@ public sealed partial class CompressionThreadsTests
     [InlineData("nosuch")]
     public void For_ACodecWithoutThreads_IsOne(string codec) =>
         CompressionThreads.For(codec, 9, Machine(cores: 12, budget: 4 * GiB)).Should().Be(1);
+
+    // An x86 Pakko starts the 32-bit tar.exe (WOW64 redirects System32): measured on 3.8.9, xz 9 on
+    // two threads and zstd 19 on twelve fail for memory there, xz 9 on one and zstd 19 on four pass.
+    [Theory]
+    [InlineData(true, 4L, 4L)]
+    [InlineData(false, 4L, 1L)]
+    [InlineData(false, 1L, 1L)]
+    public void BudgetFor_A32BitTarExe_IsAtMostOneGiB(bool is64BitProcess, long machineGiB, long expectedGiB) =>
+        CompressionThreads.Limit.BudgetFor(is64BitProcess, machineGiB * GiB).Should().Be(expectedGiB * GiB);
+
+    [Theory]
+    [InlineData("xz", 9, 1)]
+    [InlineData("zstd", 19, 4)]
+    public void For_A32BitTarExe_TheCountsThatPassedThere(string codec, int level, int expected) =>
+        CompressionThreads.For(codec, level, Machine(cores: 12, budget: CompressionThreads.Limit.BudgetFor(false, 4 * GiB)))
+            .Should().Be(expected);
 
     [Fact]
     public void OneThread_IsOne() =>
@@ -117,8 +139,35 @@ public sealed partial class CompressionThreadsTests
     public void ThreadsOption_ScanSeesTheOwner() =>
         ThreadsOption().IsMatch(Code(Owner)).Should().BeTrue("the scan above must not pass vacuously");
 
-    [GeneratedRegex(@":threads=")]
+    // libarchive applies a key without "module:" to every module, so the scan sees that form too.
+    [Theory]
+    [InlineData("xz:threads=2", true)]
+    [InlineData("7zip:compression=zstd,threads=4", true)]
+    [InlineData("threads=4", true)]
+    [InlineData("\"threads=\"", true)]
+    [InlineData("maxthreads=4", false)]
+    [InlineData("MaxThreads = 4", false)]
+    public void ThreadsOption_SeesEveryFormOfTheKey(string code, bool matches) =>
+        ThreadsOption().IsMatch(code).Should().Be(matches);
+
+    [GeneratedRegex(@"(^|[,:""\s])threads=")]
     private static partial Regex ThreadsOption();
+
+    private const string BudgetOwner = "Archiver.Core/Services/MemoryBudget.cs";
+
+    [Fact]
+    public void PhysicalMemory_IsReadOnlyByMemoryBudget()
+    {
+        string[] offenders = [.. SourceFiles()
+            .Where(file => file != BudgetOwner)
+            .Where(file => PhysicalMemoryQuery().IsMatch(Code(file)))];
+
+        offenders.Should().BeEmpty("the machine's memory is read only by MemoryBudget (T-F565)");
+        PhysicalMemoryQuery().IsMatch(Code(BudgetOwner)).Should().BeTrue("the scan must not pass vacuously");
+    }
+
+    [GeneratedRegex(@"GetGCMemoryInfo|TotalAvailableMemoryBytes|TotalPhysicalMemory|GlobalMemoryStatusEx")]
+    private static partial Regex PhysicalMemoryQuery();
 
     private static IEnumerable<string> SourceFiles() =>
         Directory.EnumerateFiles(SrcDir, "*.cs", SearchOption.AllDirectories)
