@@ -1003,10 +1003,31 @@ public sealed class CliSubprocessTests
         bool packagedAlias = exeDirectory.EndsWith(@"\Microsoft\WindowsApps", StringComparison.OrdinalIgnoreCase);
         if (!packagedAlias && !File.Exists(Path.Combine(exeDirectory, "Archiver.ArchiveHelper.exe")))
             stdOut.Should().Contain("tar-family reader: tar.exe; archiveint.dll: not probed; no archive helper beside Pakko");
-        else if (RuntimeInformation.OSArchitecture is not (Architecture.X64 or Architecture.Arm64))
+        else if (!RunsNatively(packagedAlias ? null : CliProcessRunner.ExePath))
             stdOut.Should().Contain("tar-family reader: tar.exe; archiveint.dll: not probed; not a native x64 or ARM64 process");
         else
             stdOut.Should().MatchRegex(@"(?m)^tar-family reader: archive helper; archiveint\.dll: libarchive 3\.[5-8]\.\d+.*; the probe passed\r?$");
+    }
+
+    // T-F562: the gate reads with the helper only in a pakko built for the machine it runs on, x64 or
+    // ARM64 (an x64 pakko on ARM64 is emulated). The packaged alias is no PE image; the bundle
+    // installs the machine's own architecture, so it counts as native.
+    private static bool RunsNatively(string? exePath)
+    {
+        ushort? host = RuntimeInformation.OSArchitecture switch
+        {
+            Architecture.X64 => (ushort)0x8664,
+            Architecture.Arm64 => (ushort)0xAA64,
+            _ => null,
+        };
+        if (host is null || exePath is null)
+            return host is not null;
+        using FileStream file = File.OpenRead(exePath);
+        byte[] header = new byte[4096];
+        int read = file.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+        int peOffset = BitConverter.ToInt32(header, 0x3C);
+        peOffset.Should().BeInRange(0x40, read - 6, "{0} is a PE image", exePath);
+        return BitConverter.ToUInt16(header, peOffset + 4) == host;
     }
 
     // --- --version / -v ---

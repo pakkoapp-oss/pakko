@@ -1216,7 +1216,7 @@ re-measured with T-F346's script before and after.
   PakkoW10 for `CLI-032`/`CLI-035` (a background task cannot open it and the Hyper-V console runs
   elevated, out of the `windows` MCP server's reach: find a non-elevated way in, such as an
   enhanced session as `tester`); `PKG-010`'s "Show more options" menu; the archive helper on ARM64
-  (`archiveint.dll` there was never measured, T-F470: the canary's `windows-11-arm` job); `REL-001`
+  (measured 2026-11-20 and taken there by T-F562; left: `STO-008` on a real ARM64 machine); `REL-001`
   run as written (an elevated `testhost` held `Archiver.App.Core.Tests`' bin, so the release ran it
   project by project).
 - **Reported by:** the agent, 2026-11-11.
@@ -1340,13 +1340,16 @@ re-measured with T-F346's script before and after.
 
 ### T-F562 - The archive helper on ARM64 (P3, batch 8)
 
-- [ ] **Status:** open. Measured 2026-11-20 on the `windows-11-arm` runner: Windows on ARM64 ships
+- [~] **Status:** fixed on `batch-4-arm64-helper` (2026-11-21): `ArchiveintGate` admits a native
+  ARM64 process with an ARM64 helper (and only a helper built for the process's machine);
+  `canary-arm64` builds the ARM64 helper and runs the helper tests in an AppContainer there
+  (`docs/DECISIONS.md`, "T-F562"). Left: `STO-008` on a real ARM64 machine. Before: Measured 2026-11-20 on the `windows-11-arm` runner: Windows on ARM64 ships
   its own `C:\Windows\System32\archiveint.dll` (libarchive 3.8.9, the same codecs as x64; the
   "no ARM64 build" in `docs/DECISIONS.md`, "T-F470", was a gap in Winbindex). A native ARM64
   `Archiver.ArchiveHelper.exe` outside an AppContainer: `probe` exit 0, every format, and a tar.gz
   listed. v1.11.0 ships unchanged: `ArchiveintGate` sends ARM64 to tar.exe. Next: the gate admits
   native ARM64, the MSIX carries the ARM64 helper, the helper tests run native on `canary-arm64`
-  (`NativeX64Fact`), and one run in an AppContainer on a real ARM64 machine.
+  (`NativeFact`), and one run in an AppContainer on a real ARM64 machine.
 - **Reported by:** the agent (batch 8), 2026-11-20.
 
 ### T-F561 - tar.exe wrote more than its listing declared: a 7 KB gzip filled 4 GiB (P2, batch 6's review)
