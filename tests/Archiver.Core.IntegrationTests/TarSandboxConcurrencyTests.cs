@@ -56,7 +56,7 @@ public sealed class TarSandboxConcurrencyTests : IDisposable
                         (int ExitCode, string[]? Names, string StdErr) list = await scope.ListNamesAsync(CancellationToken.None);
                         if (list.ExitCode != 0)
                             failures.Add($"list {Path.GetFileName(archive)}: {list.StdErr}");
-                        (int ExitCode, string StdOut, string StdErr) extract = await scope.ExtractAsync(null, CancellationToken.None);
+                        (int ExitCode, string StdOut, string StdErr) extract = await scope.ExtractAsync(null, long.MaxValue, CancellationToken.None);
                         if (extract.ExitCode != 0)
                             failures.Add($"extract {Path.GetFileName(archive)}: {extract.StdErr}");
                     }

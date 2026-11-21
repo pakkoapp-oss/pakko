@@ -591,7 +591,7 @@ flowchart TB
     Core["Archiver.Core — in-process library<br/>(ZipArchiveService, TarSandboxedService,<br/>AntivirusScanService → amsi.dll in-process)"]
 
     subgraph Sandbox["per archive operation: TarSandboxScope"]
-        TarBox["C:\Windows\System32\tar.exe<br/>AppContainer Pakko.TarSandbox + Job Object<br/>(1 process, RAM/CPU limits), archive as stdin (T-F233),<br/>writes only the quarantine's out - next to the destination (T-F524) or %TEMP%\PakkoTarSandbox\owner-guid\out,<br/>or ...\first for T-F171's first copies; reads its member<br/>list from ...\list, read-only (T-F410); Test writes nothing (-x -O, T-F397)"]
+        TarBox["C:\Windows\System32\tar.exe<br/>AppContainer Pakko.TarSandbox + Job Object<br/>(1 process, RAM/CPU limits), archive as stdin (T-F233),<br/>writes only the quarantine's out - next to the destination (T-F524) or %TEMP%\PakkoTarSandbox\owner-guid\out,<br/>or ...\first for T-F171's first copies; reads its member<br/>list from ...\list, read-only (T-F410); Test writes nothing (-x -O, T-F397);<br/>every -x run stopped past its declared bytes (T-F561)"]
     end
     TarPlain["C:\Windows\System32\tar.exe<br/>unsandboxed: no AppContainer, no Job Object"]
 
@@ -676,7 +676,7 @@ flowchart TD
     Bomb -- "UserDeclined<br/>(callback null → defaults to declined, e.g. Archiver.Shell/CLI)" --> BombSkip2["SkippedFiles += 'suspicious ratio N:1'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
     Bomb -- "NotABomb, or UserConfirmed" --> PreDir["Pre-create the directories an entry needs before<br/>its own directory entry (archive order), via Directory.CreateDirectory<br/>at Pakko's OWN (unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's implicit parent-dir creation fails under the AppContainer<br/>(T-F52); a directory with its own entry first is left to tar.exe,<br/>which sets its time (T-F298)"]
     PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty? (T-F410: a filter<br/>alone takes no, the move leaves out<br/>what did not pass)<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
-    G2 -- no --> H["scope.ExtractAsync(null)<br/>= tar -x -f - -C out (current directory = quarantine root)<br/>T-F474: then scope.Seal takes the sandbox's entry off out\ and all below it"]
+    G2 -- no --> H["scope.ExtractAsync(null, declared bytes)<br/>= tar -x -f - -C out (current directory = quarantine root)<br/>T-F561: JobWriteLimit stops the job past the declared bytes + 1 MiB<br/>(its WriteTransferCount less stderr read) - ContentLargerThanDeclared<br/>T-F474: then scope.Seal takes the sandbox's entry off out\ and all below it"]
     G2 -- yes --> G3["tarMembers from S0 - tar.exe gets the selection,<br/>never the filter's names"]
     G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)<br/>each name escaped so tar.exe reads it as that name,<br/>not as a wildcard pattern (T-F284), written to list/members.txt<br/>in the quarantine: tar -x -T list/members.txt (T-F410:<br/>stdin is the archive, and no command-line limit).<br/>T-F465: refused unless each name goes out as the very bytes<br/>tar.exe printed for it in the listing<br/>T-F474: then scope.Seal takes the sandbox's entry off out\"]
     H2 -- "exit != 0 (a listed name tar.exe does not match;<br/>a selected path not in the listing<br/>is dropped at S0 and never gets here)" --> RejIO2
@@ -684,7 +684,7 @@ flowchart TD
     H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw CoreTextIOException(TarExtractionFailed, DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
     H -- "exit 0" --> FC{"T-F171: FindDuplicateGroups - file names several<br/>extracted entries share as tar.exe writes them<br/>(EntryDiskName.AsTarExeWrites, T-F420: a?b is a_b, d./ is d/;<br/>case-insensitive, not a folder name)?"}
     FC -- "none" --> I
-    FC -- "yes" --> FC2["scope.ExtractFirstOccurrencesAsync(first names)<br/>= tar -x -q -C first -- names (same AppContainer, fresh Job Object)<br/>keep a file only at the exact expected path with the first entry's -tv size.<br/>SkippedFiles += copies not extracted (3rd+ copy, or an unrecovered first copy)<br/>T-F474: then scope.Seal takes the sandbox's entry off first\"]
+    FC -- "yes" --> FC2["scope.ExtractFirstOccurrencesAsync(first names, the first copies' sizes)<br/>= tar -x -q -C first -- names (same AppContainer, fresh Job Object, T-F561's write limit)<br/>keep a file only at the exact expected path with the first entry's -tv size.<br/>SkippedFiles += copies not extracted (3rd+ copy, or an unrecovered first copy)<br/>T-F474: then scope.Seal takes the sandbox's entry off first\"]
     FC2 --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir),<br/>T-F298: record folder-entry times from the quarantine before any move<br/>walk the kept first copies, then QuarantineFiles.EnumerateFiles(scope.OutputDirectory)<br/>- the first copy claims the name, the last meets the conflict rule"]
     I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
     J -- yes --> K["⚠ silently NOT descended into (a folder that cannot be listed is passed over the same way) —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]

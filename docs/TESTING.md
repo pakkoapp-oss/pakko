@@ -1016,7 +1016,10 @@ the parent's entry altogether (no folder above a quarantine needs one), and thos
 protected DACL. `EntryLimitTests` (T-F513) refuses an archive over `ArchiveLimits.MaxEntries`: a
 128-byte ZIP declaring a billion entries through list, test and extraction; tar.exe's `-t`/`-tv`
 with the scope's `EntryLimit` lowered to 2, and its `NameCharLimit` (T-F529) to a few characters; and,
-`Category=Slow`, tar.gz files of 4,000,000 and 4,000,001 empty entries through tar.exe and the helper. `ArchiveLimitsTests`
+`Category=Slow`, tar.gz files of 4,000,000 and 4,000,001 empty entries through tar.exe and the helper. `TarWriteLimitTests` (T-F561) builds a gzip
+holding a ZIP written as a stream (64 MiB of zeros listed as 0 bytes) and checks that extraction, Test and
+the scan fail with `ContentLargerThanDeclared` and write nothing, and that a first copy larger than the
+last still extracts; `JobWriteLimitTests` (Core.Tests) covers the rule's bounds. `ArchiveLimitsTests`
 (Core.Tests) covers the ZIP passes and the helper's protocol with small limits; `ZipReadOwnerTests`
 fails on a ZIP read outside `ZipCatalog` (T-F529). `ZipCatalogTests` checks the batched reader against
 .NET's reader of the whole file (batches of 1 to 4,096, Zip64 end records forced), a Deflate64 entry made

@@ -76,9 +76,9 @@ public sealed class TarNameListingRunsTests : IDisposable
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(Archive(), needsOutputDir: false, CancellationToken.None);
         (await scope.ListNamesAsync(CancellationToken.None)).ExitCode.Should().Be(0);
 
-        (await scope.TestAsync(_ => { }, ["a.txt"], null, CancellationToken.None)).ExitCode.Should().Be(0);
-        (await scope.TestAsync(_ => { }, ["b.txt"], null, CancellationToken.None)).ExitCode.Should().Be(0);
-        Func<Task> missing = () => scope.TestAsync(_ => { }, ["d.txt"], null, CancellationToken.None);
+        (await scope.TestAsync(_ => { }, ["a.txt"], null, long.MaxValue, CancellationToken.None)).ExitCode.Should().Be(0);
+        (await scope.TestAsync(_ => { }, ["b.txt"], null, long.MaxValue, CancellationToken.None)).ExitCode.Should().Be(0);
+        Func<Task> missing = () => scope.TestAsync(_ => { }, ["d.txt"], null, long.MaxValue, CancellationToken.None);
 
         await missing.Should().ThrowAsync<TarArgumentEncodingException>();
         scope.NameListingRuns.Should().Be(2);

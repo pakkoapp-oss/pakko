@@ -107,6 +107,7 @@ public sealed partial class QuarantineFilesOwnerTests
         ("Sandbox/TarSignatureVerifier.cs", "new(\"00AAC56B-CD44-11D0-8CC2-00C04FC295EE\")", 1, "a Guid, not the disk"),
         ("Sandbox/TarSignatureVerifier.cs", "new(\"F750E6C3-38EE-11D1-85E5-00C04FC295EE\")", 1, "a Guid, not the disk"),
         ("Sandbox/TarSignatureVerifier.cs", "new(-1)", 1, "a handle value, not a path"),
+        ("Sandbox/JobWriteLimit.cs", "new(job, declaredBytes, stdErrRead)", 1, "the write limit of a tar.exe run (T-F561), not the disk"),
     ];
 
     [Fact]

@@ -1058,6 +1058,35 @@ Add-SmokeStep 'CLI-071' {
     ($results + 'a pipe: refused') -join '; '
 }
 
+# T-F561: a ZIP written to a stream it cannot seek puts each entry's sizes after the data; inside a
+# gzip it reaches tar.exe, which lists such an entry as 0 bytes. The run is stopped past what it declares.
+Add-SmokeStep 'CLI-073' {
+    Add-Type -AssemblyName System.IO.Compression
+    $folder = Get-StepFolder 'cli073'
+    $archive = Join-Path $folder 'streamed.zip.gz'
+    $file = [System.IO.File]::Create($archive)
+    try {
+        $gzip = [System.IO.Compression.GZipStream]::new($file, [System.IO.Compression.CompressionLevel]::Optimal)
+        try {
+            $zip = [System.IO.Compression.ZipArchive]::new($gzip, [System.IO.Compression.ZipArchiveMode]::Create)
+            try {
+                $entry = $zip.CreateEntry('big.bin').Open()
+                try {
+                    $zeros = [byte[]]::new(1MB)
+                    foreach ($i in 1..64) { $entry.Write($zeros, 0, $zeros.Length) }
+                } finally { $entry.Dispose() }
+            } finally { $zip.Dispose() }
+        } finally { $gzip.Dispose() }
+    } finally { $file.Dispose() }
+    $out = Join-Path $folder 'out'
+    $x = Invoke-Pakko @('x', "-o$out", $archive) -TimeoutSeconds 120
+    Assert-Smoke ($x.ExitCode -ne 0 -and $x.Text -match 'larger than its declared size') "pakko x: exit $($x.ExitCode) $($x.Text)"
+    Assert-Smoke (-not [System.IO.Directory]::Exists($out) -or @([System.IO.Directory]::GetFiles($out, '*', 'AllDirectories')).Count -eq 0) "pakko x wrote into $out"
+    $t = Invoke-Pakko @('t', $archive) -TimeoutSeconds 120
+    Assert-Smoke ($t.ExitCode -ne 0 -and $t.Text -match 'larger than its declared size') "pakko t: exit $($t.ExitCode) $($t.Text)"
+    "x and t: refused, exit $($x.ExitCode)/$($t.ExitCode), nothing written"
+}
+
 Add-SmokeStep 'CLI-057' {
     $folder = Get-StepFolder 'cli057'
     $source = Join-Path $folder 'cs'
