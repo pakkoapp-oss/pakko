@@ -14983,6 +14983,74 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.12.0 batch 2, step 2 - the move out of the quarantine, on threads: rejected (2026-11-21)
+
+T-F565. After step 1, the dearest part of a tar or 7z extraction is the loop that moves each file
+out of the quarantine into staging (`TarSandboxedService`, `TryMoveSingleEntryAsync`). Stopwatches
+on a measuring branch, 3,619 files, `pakko x -o` into an existing folder, three runs each:
+
+| Part of the loop | C: | D: |
+|---|---|---|
+| `QuarantineFiles.TakeOut`, the rename by handle | 3.1 s | 1.16 s |
+| `TakeOut`, opening, both `MayLeave` checks, closing | 0.65 s | 0.7 s |
+| Permissions (`CarriesSandboxSecurity` 0.41 s, `InheritFromParent` 0.7 s) | 1.1 s | 0.95 s |
+| Conflicts, folders, MOTW | 0.8 s | 0.6 s |
+
+The rename costs about 0.86 ms a file on C:, as the commit's renames did before step 1: the file
+system's filters, not Pakko's checks. Moving whole folders does not apply: the helper writes every
+file flat into `out`, named by its index (T-F470), so each file is its own rename.
+
+Tried: the same loop deciding names in order, then the move, the permissions and MOTW of each file on
+N dedicated threads reading a bounded queue (a measuring branch, never merged). The move part, C: and
+D:, three runs each:
+
+| Threads | C: | D: |
+|---|---|---|
+| in the loop, as shipped | 5.6-6.5 s | 3.5-3.8 s |
+| 1 | 5.8-6.1 s | 3.2-3.4 s |
+| 2 | 6.6-7.1 s | 2.8-2.9 s |
+| 4 | 16.9-17.4 s | 10.3-11.0 s |
+| 8 | 17.4-17.6 s | 7.3-7.9 s |
+
+More threads are slower: the moves contend (all of them leave one folder, `out`). The plan's gate was
+1.5 times faster on C:, so the change was not made. Next: whether the helper could write the tree
+under the entries' names, so `out` becomes staging by one rename (research below, then its own plan).
+
+### Research: the helper writes a tree whose names Pakko gives (2026-11-21, no code)
+
+The idea: the moves cost because there is one per file; one rename of `out` would cost what step 1's
+whole-folder commit does (0.12 s for the same files). What it would take, against what stands:
+
+- **T-F470, no name from the archive becomes a path in the sandbox.** Kept if Pakko, not the helper,
+  makes each path: the selection would carry, for each index, the relative path Pakko planned (root
+  strip, `WithPakkoFolderNames`, `EntryDiskName.AsPakkoWrites`, the names Windows trims or renames),
+  and the helper would only create those folders and files (`CreateDirectoryW`, `CREATE_NEW`). The
+  helper never parses a name; it gains folder creation and a longer protocol (C, in the sandbox: a
+  silent-costly class, so an opus review).
+- **What cannot be planned 1:1 stays flat** under its index and moves as today: a copy past the
+  first of one name (the helper extracts every copy in one pass), a name that collides once Windows
+  trims it, an entry the filter drops. Most archives have none.
+- **Conflicts with the destination** are still decided after the extraction, in the same order and
+  with the same prompts: a file whose answer changes its path (Rename, RenameExisting) or drops it
+  (Skip) is renamed or deleted inside the tree before it leaves; only those files move one by one.
+- **The sandbox wrote the folders.** The tree must hold exactly what was planned: no extra entry, no
+  link (a junction it made would otherwise reach the destination), no named stream on a file or a
+  folder, one name per file, no AppContainer entry (`EnsureSealed` already walks every entry with a
+  handle). Each file is still checked through a handle, as `MayLeave` does now (0.65 s of the 5.6 s
+  above); only the rename goes. A file the walk refuses fails the archive, as now.
+- **Permissions and MOTW** stay per file (1.1 s and 0.25 s on C:); writing the inheritance once at
+  the tree's top, if `SetNamedSecurityInfo`'s own walk is cheaper, is a separate measurement.
+- **T-F526** (the quarantine moved under %TEMP%, another volume): the take-out is a copy there; the
+  tree then goes file by file as now.
+- **tar.exe's reader** (`TarExeReader`, Windows 10 and builds without the helper) already writes a tree,
+  by tar.exe's names; the same whole-folder take-out could follow once its names match Pakko's (the
+  trimmed and renamed ones do not); left for after the helper's path.
+
+Expected on the batch's 3,619 files on C:: the move loop from 5.6 s to about 2.5 s (checks, permissions,
+MOTW, conflicts stay), the extraction from 9.9 s to about 7 s; on D: about 1 s less. The protocol change
+and the tree's own check are the risk; a plan with tests first, an advisor gate and an opus review
+comes before any code.
+
 ## v1.12.0 batch 2, step 1 - the commit moves new folders whole (2026-11-20)
 
 T-F565. `ExtractionStaging.CommitInto` merged every file into a destination that exists (the `-o`
