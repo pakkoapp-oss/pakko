@@ -15053,8 +15053,10 @@ hidden and read-only files):**
 - Pakko through tar.exe refuses the emoji and CJK names on this machine (ACP 1251, T-F423: a plain
   `tar.exe -cf` of the tree crashed, 0xC0000005). The writer packs all 15.
 - On the 13 names Pakko accepts, both archives (tar and tar.gz) extract to the same names, bytes and
-  times through tar.exe 3.8.9, 7za and tar.exe 3.5.2 (PakkoW10). Hidden is lost by both writers.
-- The writer's archive with all 15: 7za and tar.exe 3.5.2 extract every name and byte; tar.exe 3.8.9
+  times through tar.exe 3.8.9 and 7za (compared with the source), and through tar.exe 3.5.2
+  (PakkoW10) to the same files from either writer. Hidden is lost by both writers.
+- The writer's archive with all 15: 7za and tar.exe 3.5.2 extract every name and byte (on PakkoW10
+  hashed against the source, the 250-byte path through `\\?\`); tar.exe 3.8.9
   on Windows 11 skips the emoji and CJK entries ("Archive entry has empty or unreadable filename").
   Pakko reads tar through tar.exe, so on Windows 11 it could not extract what it had just written.
 - Reader faults the same for both writers: tar.exe 3.8.9 sets the 1960 file to the extraction time;
@@ -15077,8 +15079,8 @@ hidden and read-only files):**
 `zstd:threads`: the least of the cores, `-mmt` (`ArchiveOptions.MaxThreads`) and `MemoryBudget`
 over a thread's cost at the level, never fewer than one. A thread's cost is the larger of step 0's
 peak working set and peak commit at two and four threads divided by the count, rounded up, so the
-whole run stays within the budget wherever two threads or more are given: xz level 0 16 MiB, 1 32 MiB, up to 4 96 MiB, above 1 GiB; zstd up to 1
-16 MiB, up to 9 96 MiB, above 256 MiB. A level between two measured ones costs what the higher
+whole run stays within the budget wherever two threads or more are given: xz level 0 16 MiB, 1
+32 MiB, up to 4 96 MiB, above 1 GiB; zstd up to 1 16 MiB, up to 9 96 MiB, above 256 MiB. A level between two measured ones costs what the higher
 one does. One thread writes no option, so a one-core machine or `-mmt=off` gets the arguments of
 1.11 exactly. `MemoryBudget` is the sandbox's rule moved, not copied (half the physical memory,
 1-4 GiB, per operation): two creations at once each take a budget, as two sandboxed reads do.
@@ -15103,6 +15105,15 @@ arguments of 1.11; one run each on a quiet machine). 7-Zip at the nearest size, 
 Threads take tar.xz at the default level from 6.4 times to about level with 7-Zip at its size, and
 tar.zst's default ahead of it; the top levels stay 2.8 (xz 9) and 3.6 (zstd 19) times 7-Zip's time
 at the same size: what those levels buy is little size for much time, the encoder's own cost.
+
+Creation's tar.exe runs outside the sandbox's job object, so nothing but `CompressionThreads` bounds
+its memory; measured under the installed pakko on the same tree, polling the child tar.exe: tar.xz
+`-mx=9` peaked at 2,043 MiB working set and 1,061 MiB commit, tar.zst `-mx=9` at 1,579 MiB and
+1,911 MiB, both within this machine's 4 GiB budget. On Windows 10's 3.5.2 (PakkoW10, the published
+CLI): `i` lists tar and tar.gz only for creation; `a -ttgz` writes as before; `-ttxz`, `-ttzst` and
+`-t7z` are refused with the tar.exe version before anything runs, so no thread option reaches it.
+`ThreadedCompressionCompatibilityTests` pins two against four threads to the same bytes for both
+codecs (seen red against one thread).
 
 **Zstandard in 7z - built, then dropped by the user the same day ("not worth it").** Nothing of it
 ships: `-m0=zstd` is refused again as before (CLI-027), the App lists the five methods of 1.11, and
@@ -15172,7 +15183,9 @@ peak commit (`PeakPagedMemorySize64`):
 
 - **xz with threads writes other bytes than xz without**: one thread is liblzma's single-stream encoder,
   more are its block encoder (blocks sized by the level, not by the count), so 2 and 4 threads give the
-  same archive and 1 another. zstd gives the same bytes for any count.
+  same archive and 1 another. zstd gives the same bytes for any count. (Corrected in steps 1-3: "1"
+  here is `zstd:threads=1`, already libzstd's worker mode; with no option at all, what Pakko writes for
+  one thread, zstd too writes other bytes.)
 - **The cost of a thread is the level's, and xz 9's is large:** about 1 GiB of working set a thread at
   level 9, under 100 MiB at the others. The 7z writer commits a fixed 678 MiB at zstd levels 9 and 19
   whatever the thread count.
