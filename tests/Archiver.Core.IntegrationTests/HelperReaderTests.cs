@@ -1312,6 +1312,27 @@ public sealed class HelperReaderTests : IDisposable
         }
     }
 
+    // T-F561: an entry whose size comes after its data (a ZIP written as a stream, inside a gzip)
+    // writes nothing through either reader: tar.exe lists it as 0 bytes and is stopped past that.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Extract_EntryLargerThanItsListedSize_FailsAndWritesNothing(string backend)
+    {
+        string archive = TarWriteLimitTests.StreamedZipInGzip(_temp.Path);
+        string dest = Path.Combine(_temp.Path, "out");
+
+        ArchiveResult result = await Service(backend).ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Errors.Should().ContainSingle();
+        result.CreatedFiles.Should().BeEmpty();
+        (Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : []).Should().BeEmpty();
+    }
+
     private static TarSandboxedService Service(string backend) =>
         new(new GroupPolicyOptions()) { Helper = backend == Helper ? Setup.Value : null };
 

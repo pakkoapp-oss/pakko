@@ -1376,7 +1376,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F561 - tar.exe wrote more than its listing declared: a 7 KB gzip filled 4 GiB (P2, batch 6's review)
 
-- [~] **Status:** fixed on `fix/tf561-write-cap` (2026-11-21), awaiting the device row `CLI-073`.
+- [~] **Status:** fixed on `fix/tf561-write-cap` (2026-11-21); `CLI-073` passed on 1.11.0.4, the 4 GiB
+  file stopped in 1.1 s with nothing written; the App's and Explorer's view of the error waits for batch 8.
   The premise "no such format is reachable" was wrong: a gzip (or any filter tar.exe reads) holding a
   ZIP written as a stream, its sizes in data descriptors after the data, is detected as GZip and read
   by tar.exe, whose streaming ZIP reader lists the entry as 0 bytes, so T-F94's ratio check saw 0.

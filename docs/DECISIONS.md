@@ -15036,6 +15036,18 @@ on 3.5.2 the same for the formats it reads. Not probed: a multi-extent ISO file 
 tar (it writes no more than its declared size). The listing of the bomb shape still reads all of its
 data without writing it: T-F567.
 
+**The archive helper's route.** The helper reads a gzip only as tar or cpio (`HelperFormats`; a gzip
+holding anything else goes to tar.exe, so to this limit), and xz, bzip2, zstd and the other filters only
+as the containers it has, none of them ZIP: it refuses the shape. `HelperReaderTests` runs the bomb
+through both backends; neither writes a byte.
+
+**Checked.** On the deployed 1.11.0.4: `pakko x` of the 4 GiB file stopped in 1.1 s, exit 2,
+"Content is larger than its declared size (0 bytes)", the volume's free space unchanged, nothing in the
+output folder; `pakko t` the same in 1.1 s; smoke `CLI-073` and `CLI-069` pass. Cost: release CLIs of
+`main` and the branch taking turns, `x` of the 3,619-file tar on D: (ReFS Dev Drive), five runs each:
+medians 12.22 s and 11.72 s, so the watch is below the noise. The App and Explorer show the same Core
+text; seeing it there is left to batch 8's device pass.
+
 **Not taken:** refusing a ZIP inside a filter by its magic (only one shape of "size after the data";
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
