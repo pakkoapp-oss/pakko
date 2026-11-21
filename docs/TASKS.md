@@ -1331,6 +1331,12 @@ re-measured with T-F346's script before and after.
   sandbox around tar.exe, multi-threading and tar.exe's other options, creation included (libarchive's
   per-format `--options`, e.g. threads for xz and zstd, where its 7z writer has none). Measure with
   the same data and script as the record, comparing at the same archive size, not the same `-mx`.
+- **2026-11-21, the user (batch 3):** zstd becomes a 7z method the user picks, with a note that
+  7-Zip does not open it (7za 26.02: "Unsupported Method"; Windows 11's tar.exe reads it), offered
+  only where a probe of tar.exe shows it writes zstd in 7z (libarchive 3.8.0+), LZMA2 otherwise;
+  it is not the default of Explorer's "Add to name.7z". xz and zstd in tar get libarchive's threads
+  by default (measured 6 times faster for xz, the same size for zstd), bounded by memory. No
+  "Add to name.tar.zst" item in the submenu.
 - **Reported by:** the agent, from the user's request for Store figures, 2026-11-20.
 ### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 8)
 
