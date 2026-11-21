@@ -14983,6 +14983,31 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.12.0 batch 2, step 3 - the helper writes a tree: measured and rejected (2026-11-21)
+
+T-F565. The research under step 2 (below) became a plan: Pakko names each helper file's path (only names
+that `Path.GetFullPath` keeps as they are), creates the folders itself before the run, and the helper
+only creates each file there (`CREATE_NEW`); the tree then becomes staging by one folder rename. The
+user accepted the change it makes to T-F470's wording (names judged only by Pakko, but written as paths
+in the sandbox), if the probe passed its gate: create and move together, 1.5 times faster on C:.
+
+The probe, plain .NET, no sandbox (a scratch program, never in the repository): the 3,619 files of the
+batch's `many` folder (464 MiB, 560 folders), held in memory, written `CREATE_NEW`, then either moved
+out one by one after a handle check (flat, as now) or left in place with the same handle check after one
+folder rename (tree). Three runs each, modes alternating:
+
+| | flat: create + move | tree: create + move |
+|---|---|---|
+| C: | 3.0-3.2 s + 2.7-2.8 s = 5.7-6.05 s | 3.4-3.5 s + 0.18-0.25 s = 3.6-3.7 s |
+| D: | 9.0-9.35 s + 3.6 s = 12.6-13.0 s | 9.0-9.1 s + 3.8-3.9 s = 12.9 s |
+
+On C: the rename goes, but files in folders cost 0.3 s more to create, and the permissions, MOTW and
+conflicts the loop keeps for every file (about 1.35 s, step 2's table) are the same in both: about 1.4
+times, under the gate, about 2.3 s of a 3,619-file extraction. On D: nothing: the handle check alone
+costs what check and rename did. Not made: the gain does not pay for a new sandbox protocol, folders
+the sandbox could write into, and the T-F470 wording change. The move loop stays as it is; batch 2 goes
+on to its other targets.
+
 ## v1.12.0 batch 2, step 2 - the move out of the quarantine, on threads: rejected (2026-11-21)
 
 T-F565. After step 1, the dearest part of a tar or 7z extraction is the loop that moves each file
