@@ -15025,9 +15025,8 @@ be read stops the run (`SandboxSetupFailed`), never leaves it unwatched.
 
 **What each run declares.** `TarCatalog` holds every occurrence of a name. A `-T` run extracts every
 occurrence (each overwrite is a write), so `DeclaredSizeOf` sums them all; the first-copy run (`-q`)
-writes each name's first copy, so `FirstCopiesDeclared` sums `DuplicateGroup.FirstSize` (a test has a
-first copy 3 MiB larger than the last; summing the last copies' sizes refused it). Test's `-T`/`-X`
-subset is `TestSubset.DeclaredSize`, as before.
+is held to every copy of its names too (first written as the first copies' sizes; the fresh review below
+showed interleaved copies write more). Test's `-T`/`-X` subset is `TestSubset.DeclaredSize`.
 
 **No false stop on real archives.** A probe (8 MiB random, 3 MiB zeros, text, an empty file) wrote
 exactly the `-tv` total on ustar, pax, gnutar, odc and newc cpio, ISO 9660, 7z (store and LZMA2),
@@ -15047,6 +15046,19 @@ output folder; `pakko t` the same in 1.1 s; smoke `CLI-073` and `CLI-069` pass. 
 `main` and the branch taking turns, `x` of the 3,619-file tar on D: (ReFS Dev Drive), five runs each:
 medians 12.22 s and 11.72 s, so the watch is below the noise. The App and Explorer show the same Core
 text; seeing it there is left to batch 8's device pass.
+
+**Fresh review (opus, read-only, 2026-11-21).** No bypass found; four fixes taken. (1) The first-copy
+run ("-q") declared only each name's first copy, but "-q" stops only once every name has matched, so with
+two names' copies interleaved it also writes the later copies of the name matched first (measured on
+3.8.9: `a1 a2 b1 b2` writes a1, a2 and b1): a sound archive was refused. Its limit is now every copy of
+its names. (2) A member's limit counts what libarchive takes for it: both spellings with and without a
+leading `./`, and everything below its name (Test's `-T` subset missed the latter). (3) A run stopped past
+its limit left its folder writable: the seal is in a `finally`. (4) The watch runs on a thread of its own,
+not a `PeriodicTimer` on the pool, which the launcher's blocking pipe reads can starve (T-F425). Not
+tested in the default run: the stop in the middle of a run (a fixture large enough to outlast one interval
+costs a gigabyte of writes); the 4 GiB device run is its evidence. Kept as is: `WriteTransferCount` is not
+a disk quota; a tar.exe that is itself exploited could resize a file or map it without counted writes, which
+the AppContainer and the ratio check, not this limit, answer.
 
 **Not taken:** refusing a ZIP inside a filter by its magic (only one shape of "size after the data";
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
