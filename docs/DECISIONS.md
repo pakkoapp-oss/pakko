@@ -14983,6 +14983,94 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.12.0 batch 3, step 6 - T-F514 spike: `TarWriter` for tar, tar.gz and tar.zst (2026-11-21)
+
+A recommendation, not code in the product. Source read at `dotnet/runtime` tag `v11.0.0`
+(`src/libraries/System.Formats.Tar`, the runtime SDK 11.0.100 bundles); the prototype (Pakko's own
+walk, a `PaxTarEntry` per item, `GZipStream`/`ZstandardStream` under it) lived in the scratchpad.
+
+**What `TarWriter.WriteEntry(fileName, ...)` does by itself (`TarWriter.Windows.cs`), and why Pakko
+would not call it:**
+
+```csharp
+using SafeFileHandle handle = Interop.Kernel32.CreateFile(fullPath, ...GENERIC_READ,
+    FileShare.ReadWrite | FileShare.Delete, FileMode.Open,
+    ...FILE_FLAG_BACKUP_SEMANTICS | ...FILE_FLAG_OPEN_REPARSE_POINT);
+...
+if (_hardLinkMode == TarHardLinkMode.PreserveLink && (attributes & (FileAttributes.Directory | FileAttributes.ReparsePoint)) == 0 && fileInfo.nNumberOfLinks > 1)
+...
+    // Only symlinks (IO_REPARSE_TAG_SYMLINK) and junctions (IO_REPARSE_TAG_MOUNT_POINT)
+    // have a non-null LinkTarget. Write them as symbolic link entries.
+    entryType = TarEntryType.SymbolicLink;
+...
+entry.Mode = DefaultWindowsMode;   // 755 for every file and folder
+...
+entry._header._dataStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, fileOptions);
+```
+
+It opens a file twice by name (attributes from one handle, data from a second open: a swap between
+them goes unseen), writes a junction as a symbolic link, a second name of one file as a `HardLink`
+by default (`TarWriterOptions.HardLinkMode` = `PreserveLink`; Pakko refuses tar over a hard-link pair,
+T-F392), and every item as mode 755. The header's size is the stream's `Length - Position` taken
+before the copy, and the data is then copied to the end of the stream (`TarHeader.Write.cs`,
+`GetTotalDataBytesToWrite`, `WriteData`): a file that grows while it is read makes a header that
+disagrees with its data. Pakko would therefore build each entry itself from `FolderWalk`'s answer
+(T-F516/T-F392 rules unchanged), with a data stream that ends at the length it opened with and fails
+on a short read, and mode 444 for a read-only file (the prototype's fixed 644 lost what 7-Zip
+restores from Pakko's tar.exe archives today). Names: pax, UTF-8, a `path` record past 100 bytes.
+Every pax entry carries an extended header whatever its length: `ea[PaxEaName] = _name;
+ea[PaxEaMTime] = ...` (`TarHeader.cs`), 1 KiB more per entry (3,619 files: 494.7 MB against
+tar.exe's 490.4 MB uncompressed; nothing measurable once compressed).
+
+**`TarReader` at v11.0.0.** Two of the three faults that rejected it on 10.0.14 stand: names still
+go through `Encoding.UTF8.GetString` (`TarHelpers.ParseUtf8String`), and the ustar prefix is still
+joined as `$"{_prefix}/{_name}"`. The third is fixed: a metadata block is now capped,
+`if ((ulong)_size > (ulong)MaxMetadataBlockSize)` with `MaxMetadataBlockSize = 1024 * 1024`, before
+`ArrayPool.Rent((int)_size)`. Reading stays on tar.exe.
+
+**Measured (Windows 11, 12 cores, bsdtar 3.8.9; D:, trees `many` = 3,619 files 471 MiB and `media`
+= 30 files 300 MiB; tar.exe with the arguments Pakko now gives, one run each, quiet machine):**
+
+| Case | tar.exe | `TarWriter` | Size tar.exe / writer |
+|---|---|---|---|
+| many, tar | 0.8 s, 6 MiB | 1.1 s, 29 MiB | 490.4 / 494.7 MB |
+| many, tar.gz (tar.exe 4, .NET Optimal = 6) | 8.2 s | 9.0 s, 37 MiB | 199.9 / 197.2 MB |
+| many, tar.gz 9 | 36.1 s | **21.3 s**, 40 MiB | 190.3 / 190.9 MB |
+| many, tar.zst 9 (tar.exe 12 threads) | **3.4 s**, 463 MiB | 10.9 s, 50 MiB | 163.7 / 164.9 MB |
+| many, tar.zst 19 (tar.exe 12 threads) | **37.6 s**, 1,579 MiB | 156.5 s, 124 MiB | 142.8 / 142.9 MB |
+| media, tar.gz 9 | 6.8 s | 7.2 s | 314.7 / 314.7 MB |
+| media, tar.zst 19 | **19.5 s**, 1,414 MiB | 79.7 s, 116 MiB | 314.6 / 314.6 MB |
+
+Memory is the peak working set. `GZipStream` (zlib-ng) is as fast at the default and 1.7x faster at
+9; `ZstandardStream` compresses on one thread (`ZstandardCompressionOptions` in the 11.0.0 reference
+assembly has `Quality`, `WindowLog`, `TargetBlockSize`, `EnableLongDistanceMatching`,
+`AppendChecksum` and no worker count), 3-4x slower than tar.exe on threads (T-F565). Every archive
+of the table was listed by tar.exe and tested by 7za.
+
+**Names and times (a tree of 15 files: Cyrillic, CJK, an emoji, a 120-byte name, a 250-byte path,
+a 200-byte Cyrillic name, an empty file, 3 MiB of random bytes, 1960, 2100 and sub-second times,
+hidden and read-only files):**
+- Pakko through tar.exe refuses the emoji and CJK names on this machine (ACP 1251, T-F423: a plain
+  `tar.exe -cf` of the tree crashed, 0xC0000005). The writer packs all 15.
+- On the 13 names Pakko accepts, both archives (tar and tar.gz) extract to the same names, bytes and
+  times through tar.exe 3.8.9, 7za and tar.exe 3.5.2 (PakkoW10). Hidden is lost by both writers.
+- The writer's archive with all 15: 7za and tar.exe 3.5.2 extract every name and byte; tar.exe 3.8.9
+  on Windows 11 skips the emoji and CJK entries ("Archive entry has empty or unreadable filename").
+  Pakko reads tar through tar.exe, so on Windows 11 it could not extract what it had just written.
+- Reader faults the same for both writers: tar.exe 3.8.9 sets the 1960 file to the extraction time;
+  3.5.2 wraps 2100 to 1963.
+
+**Recommendation.**
+- **tar.zst: keep tar.exe.** One thread loses to libarchive's threads 3-4x at the levels Pakko
+  offers; the memory saving does not pay for it.
+- **tar and tar.gz: possible, not worth it now.** Speed is a draw at Pakko's default level (a win
+  only at 9); the gain is per-entry progress and cancellation, typed errors, and names outside the
+  ANSI code page. The last is not a gain while tar.exe 3.8.9 is the reader that skips them. The cost:
+  a second tar writer next to tar.exe (bz2, xz, lzma and 7z stay there), creation moving into Pakko's
+  own process, Pakko owning entry building (mode, the length-bounded stream, hard links), and a
+  trust-boundary change that needs the owner's decision and a `SECURITY.md` edit with their OK.
+- Revisit if .NET gains multi-threaded zstd, or if names outside the code page become a reported need.
+
 ## v1.12.0 batch 3, steps 1-3 - threads for xz and zstd, Zstandard in 7z (2026-11-21)
 
 **Threads (T-F565).** `CompressionThreads` is the one owner of libarchive's `xz:threads`,
