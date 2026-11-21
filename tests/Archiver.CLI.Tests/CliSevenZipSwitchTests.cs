@@ -29,6 +29,8 @@ public sealed class CliSevenZipSwitchTests
     [InlineData("-m0=Deflate", SevenZipMethod.Deflate)]
     [InlineData("-m0=copy", SevenZipMethod.Copy)]
     [InlineData("-m0=COPY", SevenZipMethod.Copy)]
+    [InlineData("-m0=zstd", SevenZipMethod.Zstd)]
+    [InlineData("-m0=ZStd", SevenZipMethod.Zstd)]
     public void Archive_MethodSwitch_NamesTheMethodWhateverTheCase(string methodSwitch, SevenZipMethod expected)
     {
         ParsedCliCommand result = CliArgumentParser.Parse(["a", "-t7z", methodSwitch, "out.7z", "file1.txt"]);
@@ -91,7 +93,7 @@ public sealed class CliSevenZipSwitchTests
     [InlineData("-m0=lzma2:d=64m", "parameters")]
     [InlineData("-m0=ppmd", "tar.exe")]
     [InlineData("-m0=PPMD", "tar.exe")]
-    [InlineData("-m0=zstd", "tar.exe")]
+    [InlineData("-m0=zstd:x=19", "parameters")]
     [InlineData("-m0=brotli", "unknown -m0 value")]
     [InlineData("-m1=lzma", "-m1")]
     public void Archive_MethodSwitchPakkoCannotHonour_IsRefusedWithItsReason(string methodSwitch, string reason)
@@ -175,4 +177,9 @@ public sealed class CliSevenZipSwitchTests
         CliInfoText.SevenZipMethodsLine([SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.Deflate, SevenZipMethod.Copy])
             .Should().Be("  methods for 7z: LZMA2, LZMA, Deflate, Copy");
     }
+
+    [Fact]
+    public void Archive_UnknownMethod_ListsZstdAmongTheNames() =>
+        CliArgumentParser.Parse(["a", "-t7z", "-m0=brotli", "out.7z", "file1.txt"])
+            .ErrorMessage.Should().Contain("lzma2, lzma, bzip2, deflate, copy, zstd");
 }

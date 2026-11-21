@@ -147,10 +147,11 @@ public static class ArchiveFormatPolicy
     /// Core applies before starting tar.exe and the App's and the CLI's lists offer by. Policy is
     /// not part of it (<c>ArchiveCreationRouter</c> refuses by that first), nor whether the 7z
     /// writer is there (<see cref="Interfaces.ITarService.CanCreateSevenZipAsync"/>). ZIP never
-    /// needs tar.exe.
+    /// needs tar.exe. T-F565: <paramref name="zstdWriter"/> is tar.exe's answer to
+    /// <see cref="Interfaces.ITarService.CanCreateSevenZipZstdAsync"/>; without it Zstandard is refused.
     /// </summary>
     public static CoreText? GetTarCreationRefusalReason(
-        ArchiveContainerFormat format, SevenZipMethod sevenZipMethod, TarCapabilities caps)
+        ArchiveContainerFormat format, SevenZipMethod sevenZipMethod, TarCapabilities caps, bool zstdWriter = false)
     {
         ArgumentNullException.ThrowIfNull(caps);
         if (format == ArchiveContainerFormat.Zip)
@@ -160,7 +161,7 @@ public static class ArchiveFormatPolicy
         if (!IsSupportedByTar(read, caps))
             return BuildUnsupportedReason(read, caps);
 
-        if (format == ArchiveContainerFormat.SevenZip && !IsSevenZipMethodSupported(sevenZipMethod, caps))
+        if (format == ArchiveContainerFormat.SevenZip && !IsSevenZipMethodSupported(sevenZipMethod, caps, zstdWriter))
             return CoreMessages.Text(MessageCode.FormatNotSupportedByTar, $"7-Zip {SevenZipMethodName(sevenZipMethod)}", caps.Version);
 
         return null;
@@ -180,11 +181,14 @@ public static class ArchiveFormatPolicy
         return [.. tarFormats.Where(format => IsSupportedByTar(format, caps)).Select(ArchiveFormatRegistryNames.ToRegistryName)];
     }
 
-    /// <summary>The 7z methods this tar.exe can write, in the order the lists show them.</summary>
-    public static IReadOnlyList<SevenZipMethod> CreatableSevenZipMethods(TarCapabilities caps)
+    /// <summary>
+    /// The 7z methods this tar.exe can write, in the order the lists show them; Zstandard, last, only
+    /// with <paramref name="zstdWriter"/> (T-F565).
+    /// </summary>
+    public static IReadOnlyList<SevenZipMethod> CreatableSevenZipMethods(TarCapabilities caps, bool zstdWriter = false)
     {
         ArgumentNullException.ThrowIfNull(caps);
-        return [.. Enum.GetValues<SevenZipMethod>().Where(method => IsSevenZipMethodSupported(method, caps))];
+        return [.. Enum.GetValues<SevenZipMethod>().Where(method => IsSevenZipMethodSupported(method, caps, zstdWriter))];
     }
 
     /// <summary>T-F413: one file compressed on its own, no tar inside (gzip, bzip2, xz).</summary>
@@ -206,12 +210,14 @@ public static class ArchiveFormatPolicy
         _ => ArchiveFormat.Zip,
     };
 
-    // LZMA and LZMA2 need liblzma, which reading 7z already requires (T-F402).
-    private static bool IsSevenZipMethodSupported(SevenZipMethod method, TarCapabilities caps) => method switch
+    // LZMA and LZMA2 need liblzma, which reading 7z already requires (T-F402). Zstandard: tar.exe
+    // seen writing it, and reading it, or Pakko could not open the archive again (T-F565).
+    private static bool IsSevenZipMethodSupported(SevenZipMethod method, TarCapabilities caps, bool zstdWriter) => method switch
     {
         SevenZipMethod.Lzma2 or SevenZipMethod.Lzma => caps.Supports7z,
         SevenZipMethod.BZip2 => caps.SupportsBz2,
         SevenZipMethod.Deflate => caps.SupportsGzip,
+        SevenZipMethod.Zstd => zstdWriter && caps.Supports7z && caps.SupportsZstd,
         _ => true,
     };
 
@@ -222,6 +228,7 @@ public static class ArchiveFormatPolicy
         SevenZipMethod.Lzma => "LZMA",
         SevenZipMethod.BZip2 => "BZip2",
         SevenZipMethod.Deflate => "Deflate",
+        SevenZipMethod.Zstd => "Zstandard",
         _ => "Copy",
     };
 

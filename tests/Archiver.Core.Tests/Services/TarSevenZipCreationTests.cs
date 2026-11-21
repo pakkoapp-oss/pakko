@@ -118,7 +118,7 @@ public sealed class TarSevenZipCreationTests : IDisposable
     private static List<string> Args(SevenZipMethod method, CompressionLevel level)
     {
         var args = new List<string>();
-        TarSandboxedService.AppendSevenZipArgs(args, method, level);
+        TarSandboxedService.AppendSevenZipArgs(args, method, level, CompressionThreads.Limit.OneThread);
         return args;
     }
 

@@ -9,10 +9,10 @@ namespace Archiver.App.Core;
 public static class SevenZipMethodOption
 {
     private static readonly SevenZipMethod[] Methods =
-        [SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.BZip2, SevenZipMethod.Deflate, SevenZipMethod.Copy];
+        [SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.BZip2, SevenZipMethod.Deflate, SevenZipMethod.Copy, SevenZipMethod.Zstd];
 
-    /// <summary>The list's rows, in order; LZMA2, the default, first.</summary>
-    public static IReadOnlyList<string> Names { get; } = ["LZMA2", "LZMA", "BZip2", "Deflate", "Copy"];
+    /// <summary>The list's rows, in order; LZMA2, the default, first; Zstandard (T-F565) last.</summary>
+    public static IReadOnlyList<string> Names { get; } = ["LZMA2", "LZMA", "BZip2", "Deflate", "Copy", "Zstandard"];
 
     /// <summary>The method of row <paramref name="index"/>; LZMA2 for a row the list does not have.</summary>
     public static SevenZipMethod FromIndex(int index) =>
