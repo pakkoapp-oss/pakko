@@ -37,9 +37,11 @@ public sealed class TarWriteLimitTests : IDisposable
     }
 
     // ZipArchive over a stream it cannot seek writes each entry's sizes in a data descriptor.
-    private string StreamedZipInGzip()
+    private string StreamedZipInGzip() => StreamedZipInGzip(_temp.Path);
+
+    internal static string StreamedZipInGzip(string folder)
     {
-        string path = Path.Combine(_temp.Path, "streamed.zip.gz");
+        string path = Path.Combine(folder, "streamed.zip.gz");
         using (FileStream file = File.Create(path))
         using (var gzip = new GZipStream(file, CompressionLevel.Optimal))
         using (var zip = new ZipArchive(new ForwardOnly(gzip), ZipArchiveMode.Create))
