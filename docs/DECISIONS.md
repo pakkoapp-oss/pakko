@@ -14983,6 +14983,47 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.12.0 batch 2, closing - tar.exe 3.5.2 on PakkoW10 (2026-11-21)
+
+T-F565. The run batch 1 left open (the tar.exe reading path) and the one step 1 left to the batch's
+close. PakkoW10: Windows 10 19045, `tar.exe` and `archiveint.dll` both libarchive 3.5.2 (zlib only),
+real-time protection on, one virtual disk. The same `many.tar` (3,619 files, 465 MiB) and the CLI built
+after step 1 (`main`'s code since), `pakko x -o` into a new folder; "tar.exe reader" is the same
+`pakko.exe` copied alone, with no helper beside it (`pakko i`: "no archive helper beside Pakko").
+Three runs each, cases alternating:
+
+| Case | Seconds |
+|---|---|
+| Bare `tar.exe -xf` | 3.6 |
+| Pakko, archive helper | 8.4-8.9 |
+| Pakko, tar.exe reader | 10.9-11.3 |
+
+Phases (the `measure/v1.12.0-phases` marks on the same build):
+
+| Phase | Helper | tar.exe reader |
+|---|---|---|
+| Scope, profile, probe, listing(s), scan | 0.41-0.49 s | 0.49-0.56 s (`-t` 0.28 s, `-tv` 0.13 s) |
+| The reader's own run | 3.3-3.6 s | 4.1-4.3 s |
+| After it exits, before the move | 0.69-0.70 s | 0.94-0.95 s |
+| Move out of the quarantine (per-file total) | 3.25-3.42 s | 4.97-5.15 s |
+| of it: the move by handle; permissions | 1.7-1.8 s; 0.92 s | 2.75-2.83 s; 1.17-1.27 s |
+| Commit into the destination | 0.15 s | 0.15 s |
+
+- **Hypotheses 2 and 3 are refuted on the tar.exe path too:** two listings and the scan take half a
+  second; the second listing (`-tv`) 0.13 s. T-F464's condition ("if batch 1 shows the second listing
+  or the name prediction costs") is not met; it stays P4 with the rest of the fallback.
+- **Step 1 holds here:** the commit is 0.15 s for both readers (new folders moved whole).
+- **What is left is the same per-file move as on Windows 11**, a little dearer through tar.exe (its
+  quarantine holds the archive's tree, not flat files). Steps 2 and 3 already measured the levers on it.
+- **Content:** the helper, the tar.exe reader and the bare tar.exe give the same 4,244 entries with the
+  same SHA-256 for every file.
+- **7z does not read on 3.5.2** ("LZMA codec is unsupported", libarchive built without LZMA): Pakko
+  refuses it naming tar.exe 3.7.0, writes nothing; as documented, unchanged.
+
+Batch 2's speed work ends here: step 1 shipped, steps 2 and 3 measured and rejected. T-F445 (P4), T-F561
+and T-F560 are not speed work and stay open in batch 2's row; they are taken after batch 3, so the
+creation batch is not held behind them.
+
 ## v1.12.0 batch 2, step 3 - the helper writes a tree: measured and rejected (2026-11-21)
 
 T-F565. The research under step 2 (below) became a plan: Pakko names each helper file's path (only names
