@@ -15186,6 +15186,11 @@ hidden and read-only files):**
   trust-boundary change that needs the owner's decision and a `SECURITY.md` edit with their OK.
 - Revisit if .NET gains multi-threaded zstd, or if names outside the code page become a reported need.
 
+**Decision (2026-11-21).** The owner left it to the agent ("the decision on tar is yours"): the
+recommendation is taken. tar, tar.gz and tar.zst stay on tar.exe in its sandbox; no `TarWriter`, no
+change to the trust boundary, no `SECURITY.md` edit. T-F514 is closed; the revisit conditions above
+reopen it.
+
 ## v1.12.0 batch 3, steps 1-3 - threads for xz and zstd; Zstandard in 7z built and dropped (2026-11-21)
 
 **Threads (T-F565).** `CompressionThreads` is the one owner of libarchive's `xz:threads` and
