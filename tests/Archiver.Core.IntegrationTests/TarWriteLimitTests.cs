@@ -97,6 +97,37 @@ public sealed class TarWriteLimitTests : IDisposable
         result.Findings.Should().Contain(f => f.ReasonText != null && f.ReasonText.Code == MessageCode.ContentLargerThanDeclared);
     }
 
+    // "-q" stops only once every name has matched, so with two names' copies interleaved it also
+    // writes the later copies of the first name (measured: a1, a2 and b1).
+    [Integration]
+    public async Task ExtractAsync_InterleavedDuplicatesWithALargerLaterCopy_ExtractsAll()
+    {
+        string archive = Path.Combine(_temp.Path, "interleaved.tar");
+        byte[] large = new byte[3 << 20];
+        new Random(5612).NextBytes(large);
+        TarBuilder.WriteTar(archive,
+        [
+            new TarBuilder.Entry { Name = "a.bin", Content = Encoding.ASCII.GetBytes("a1") },
+            new TarBuilder.Entry { Name = "a.bin", Content = large },
+            new TarBuilder.Entry { Name = "b.bin", Content = Encoding.ASCII.GetBytes("b1") },
+            new TarBuilder.Entry { Name = "b.bin", Content = Encoding.ASCII.GetBytes("b2") },
+        ]);
+        string dest = Path.Combine(_temp.Path, "out");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Rename,
+        });
+
+        result.Errors.Should().BeEmpty();
+        File.ReadAllText(Path.Combine(dest, "b.bin")).Should().Be("b1");
+        File.ReadAllText(Path.Combine(dest, "b (1).bin")).Should().Be("b2");
+        File.ReadAllBytes(Path.Combine(dest, "a.bin")).Should().Equal(large);
+    }
+
     // The first-copy pass ("-q") writes each name's first copy: its limit is the first copy's
     // size, not the last one's.
     [Integration]

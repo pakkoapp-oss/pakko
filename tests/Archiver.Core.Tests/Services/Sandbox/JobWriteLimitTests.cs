@@ -28,12 +28,12 @@ public sealed class JobWriteLimitTests
     }
 
     [Fact]
-    public async Task FinishAsync_JobThatWroteNothing_IsWithinItsLimit()
+    public void Finish_JobThatWroteNothing_IsWithinItsLimit()
     {
         using var job = SandboxJobObject.Create(1L << 30, TimeSpan.FromMinutes(1));
-        await using var limit = JobWriteLimit.Start(job, 0, new ByteCounter());
+        using var limit = JobWriteLimit.Start(job, 0, new ByteCounter());
 
         job.WrittenBytes().Should().Be(0);
-        (await limit.FinishAsync()).Should().BeFalse();
+        limit.Finish().Should().BeFalse();
     }
 }

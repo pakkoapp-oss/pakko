@@ -164,7 +164,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         List<DuplicateGroup> duplicateGroups = FindDuplicateGroups(catalog, _expandedSelection);
         List<string>? foldersFromDisk = JudgeWhatTarExeWrote(allNames, outDir, preCreated, ref duplicateGroups);
         (string? firstCopyDir, HashSet<string> firstCopies, int copiesReported) = await ExtractFirstCopiesAsync(
-            _scope, duplicateGroups, skippedFiles, cancellationToken)
+            _scope, catalog, duplicateGroups, skippedFiles, cancellationToken)
             .ConfigureAwait(false);
 
         // T-F462: the main pass's files, and the first copies that may count beside them; T-F541: the
@@ -249,7 +249,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         string outDir = _scope.OutputDirectory!;
 
         (string firstDir, int firstExitCode, string firstStdErr) = await _scope.ExtractFirstOccurrencesAsync(
-            duplicates.Select(g => g.FirstName).ToList(), FirstCopiesDeclared(duplicates), cancellationToken).ConfigureAwait(false);
+            duplicates.Select(g => g.FirstName).ToList(), DeclaredSizeOf(_catalog!, duplicates.Select(g => g.FirstName)), cancellationToken).ConfigureAwait(false);
         // T-F460 (fresh review): a first copy tar.exe did not write was never scanned.
         if (firstExitCode != 0)
             return new FirstCopiesForScan([], DescribeFailure(firstStdErr), () => 0);
@@ -529,21 +529,36 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
     // T-F142: the files among a selection's members, each copy counted (a progress total): tar.exe
     // writes every copy (the old dictionary counted the last one's size).
-    internal static long DeclaredSizeOf(TarCatalog catalog, List<string> members)
+    // T-F561: also a run's write limit, so every file tar.exe takes for a member: the member itself or
+    // anything below it, a leading "./" ignored on both sides, as libarchive matches. Case is ignored
+    // too: a file counted that tar.exe does not take only raises the limit to what the archive declares.
+    // The first-copy run ("-q") is limited by every copy of its names: it stops only once each name has
+    // matched, so interleaved copies write later copies of the names matched first (measured).
+    internal static long DeclaredSizeOf(TarCatalog catalog, IEnumerable<string> members)
     {
-        var selected = new HashSet<string>(members, StringComparer.Ordinal);
+        var taken = new HashSet<string>(members.Select(MemberKey), StringComparer.OrdinalIgnoreCase);
         long total = 0;
         foreach ((string name, long size) in catalog.Files())
         {
-            if (selected.Contains(name))
+            if (IsTaken(taken, name))
                 total = AddDeclared(total, size);
         }
         return total;
     }
 
-    // T-F561: "-q" writes each name's first copy, so that copy's listed size, not the last one's.
-    internal static long FirstCopiesDeclared(IEnumerable<DuplicateGroup> groups) =>
-        groups.Aggregate(0L, (total, group) => AddDeclared(total, group.FirstSize));
+    private static string MemberKey(string name) => EntryDiskName.StripLeadingDotSlash(name).TrimEnd('/');
+
+    // The name, then each folder above it, against the members: depth lookups, never a scan of them.
+    private static bool IsTaken(HashSet<string> members, string entryName)
+    {
+        string key = MemberKey(entryName);
+        for (int end = key.Length; end > 0; end = key.LastIndexOf('/', end - 1))
+        {
+            if (members.Contains(key[..end]))
+                return true;
+        }
+        return false;
+    }
 
     /// <summary>T-F545: a declared size is the archive's to state (a sparse entry's can be any long),
     /// so a total saturates at <see cref="long.MaxValue"/>: past it, the largest archive - T-F94's
@@ -771,8 +786,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
                 return new TestSubset(0, null, null) { NothingToRead = true };
             if (leftOutFiles.Count == 0)
                 return new TestSubset(size, null, null);
+            // T-F561: "-T" takes what is below a member's name too, so the limit counts it.
             return passedFiles.Count <= leftOutFiles.Count
-                ? new TestSubset(size, passedFiles, null)
+                ? new TestSubset(DeclaredSizeOf(catalog, passedFiles), passedFiles, null)
                 : new TestSubset(size, null, leftOutFiles);
         }
     }
@@ -854,7 +870,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     // instead; anything unexpected stays in the quarantine. A group whose first copy is not
     // recovered keeps only its last copy, and every copy not extracted is reported.
     private static async Task<(string? Directory, HashSet<string> Files, int Reported)> ExtractFirstCopiesAsync(
-        TarSandboxScope scope, List<DuplicateGroup> groups, List<SkippedFile> skippedFiles, CancellationToken cancellationToken)
+        TarSandboxScope scope, TarCatalog catalog, List<DuplicateGroup> groups, List<SkippedFile> skippedFiles, CancellationToken cancellationToken)
     {
         var accepted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (groups.Count == 0)
@@ -865,7 +881,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         try
         {
             (firstDir, _, _) = await scope.ExtractFirstOccurrencesAsync(
-                groups.Select(g => g.FirstName).ToList(), FirstCopiesDeclared(groups), cancellationToken).ConfigureAwait(false);
+                groups.Select(g => g.FirstName).ToList(), DeclaredSizeOf(catalog, groups.Select(g => g.FirstName)), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SandboxSetupException)
         {

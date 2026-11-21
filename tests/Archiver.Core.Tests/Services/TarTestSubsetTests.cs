@@ -67,6 +67,31 @@ public sealed class TarTestSubsetTests
         TarExeReader.DeclaredSizeOf(Huge, ["a.txt", "b.txt"]).Should().Be(long.MaxValue);
     }
 
+    // T-F561: a run's write limit is what tar.exe takes for its members: libarchive ignores a leading
+    // "./" on both sides, and a member takes everything below it. Missing either refused a sound archive.
+    private static readonly TarCatalog Spelled = new(0, ["./a.txt", "a.txt", "y", "y/z.txt", "other.txt"], [5_000_000, 10, 1, 2_000_000, 7]);
+
+    [Fact]
+    public void DeclaredSizeOf_CountsBothSpellingsOfAMember()
+    {
+        TarExeReader.DeclaredSizeOf(Spelled, ["a.txt"]).Should().Be(5_000_010);
+    }
+
+    [Fact]
+    public void DeclaredSizeOf_CountsWhatIsBelowAMember()
+    {
+        TarExeReader.DeclaredSizeOf(Spelled, ["y"]).Should().Be(2_000_001);
+    }
+
+    [Fact]
+    public void Of_APassedFileWithEntriesBelowItsName_DeclaresThemToo()
+    {
+        var subset = TarExeReader.TestSubset.Of(Spelled, (name, _) => name == "y");
+
+        subset.Members.Should().Equal("y");
+        subset.DeclaredSize.Should().Be(2_000_001);
+    }
+
     // T-F554: a line whose columns cannot be trusted has no size, and the listing is refused - never a
     // size of 0, which let a bomb pass T-F94's check. Under --numeric-owner the owner and group are
     // digits on every line tar.exe 3.8.9 and 3.5.2 print (every format both read, measured); a name

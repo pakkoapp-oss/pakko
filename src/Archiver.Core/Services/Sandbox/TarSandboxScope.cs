@@ -465,10 +465,16 @@ internal sealed partial class TarSandboxScope : IDisposable
             memberArguments = ["-T", WriteMemberList(members)];
         }
         EnsureNotSealed(OutputDirectory);
-        (int ExitCode, string StdOut, string StdErr) result = await RunAsync(
-            "-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken, writeLimit: declaredBytes).ConfigureAwait(false);
-        Seal(OutputDirectory);
-        return result;
+        // T-F561: sealed also when the run is stopped past its limit; what it wrote stays, unreachable.
+        try
+        {
+            return await RunAsync(
+                "-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken, writeLimit: declaredBytes).ConfigureAwait(false);
+        }
+        finally
+        {
+            Seal(OutputDirectory);
+        }
     }
 
     /// <summary>
@@ -528,11 +534,17 @@ internal sealed partial class TarSandboxScope : IDisposable
         // T-F52: libarchive cannot create a missing parent folder inside the AppContainer; T-F460:
         // by tar.exe's name for it ("d " keeps its space), as the main pass does.
         TarExeReader.PreCreateImplicitFolders(members, firstDir);
-        (int exitCode, _, string stdErr) = await RunAsync(
-            "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken,
-            writeLimit: declaredBytes).ConfigureAwait(false);
-        Seal(firstDir);
-        return (firstDir, exitCode, stdErr);
+        try
+        {
+            (int exitCode, _, string stdErr) = await RunAsync(
+                "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken,
+                writeLimit: declaredBytes).ConfigureAwait(false);
+            return (firstDir, exitCode, stdErr);
+        }
+        finally
+        {
+            Seal(firstDir);
+        }
     }
 
     /// <summary>
@@ -664,7 +676,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         using (job)
         using (SafeFileHandle stdIn = ReopenArchive())
         {
-            await using JobWriteLimit? written = writeLimit is { } limit ? JobWriteLimit.Start(job, limit, stdErrRead!) : null;
+            using JobWriteLimit? written = writeLimit is { } limit ? JobWriteLimit.Start(job, limit, stdErrRead!) : null;
             (int exitCode, string? stdOut, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
                 TarExecutablePath,
                 [mode, "-f", "-", .. headerCharset, .. arguments],
@@ -676,7 +688,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 cancellationToken)
                 .ConfigureAwait(false);
             if (written is not null)
-                EnsureWithinDeclared(written, await FinishWatchAsync(written).ConfigureAwait(false));
+                EnsureWithinDeclared(written, FinishWatch(written));
             // T-F239: say which sandbox limit stopped tar.exe — its own words ("Cannot allocate
             // memory", or nothing at all for a CPU-time kill) blame the machine, not the sandbox.
             if (exitCode != 0)
@@ -685,11 +697,11 @@ internal sealed partial class TarSandboxScope : IDisposable
         }
     }
 
-    private static async Task<bool> FinishWatchAsync(JobWriteLimit written)
+    private static bool FinishWatch(JobWriteLimit written)
     {
         try
         {
-            return await written.FinishAsync().ConfigureAwait(false);
+            return written.Finish();
         }
         catch (InvalidOperationException ex)
         {

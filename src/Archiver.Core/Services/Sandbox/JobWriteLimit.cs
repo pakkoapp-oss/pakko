@@ -6,18 +6,19 @@ namespace Archiver.Core.Services.Sandbox;
 /// the compression-ratio check (T-F94) sees nothing; this watches what the run actually writes.
 /// The job's own count (<see cref="SandboxJobObject.WrittenBytes"/>) holds files and pipes alike,
 /// so the stderr Pakko has read is taken off it; the slack covers stderr still in the pipe.
-/// Read every <see cref="Interval"/>, and once more after the run: a run can pass its limit by at
-/// most what it writes in one interval before it is stopped.
+/// Read every <see cref="Interval"/> on a thread of its own (a pool thread can wait behind the
+/// launcher's blocking pipe reads, T-F425), and once more after the run: a run can pass its limit by
+/// what it writes in one interval before it is stopped.
 /// </summary>
-internal sealed class JobWriteLimit : IAsyncDisposable
+internal sealed class JobWriteLimit : IDisposable
 {
     internal const long PipeSlackBytes = 1L << 20;
     private static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(250);
 
     private readonly SandboxJobObject _job;
     private readonly ByteCounter _stdErrRead;
-    private readonly CancellationTokenSource _stop = new();
-    private readonly Task _watch;
+    private readonly ManualResetEventSlim _stop = new();
+    private readonly Thread _watch;
     private volatile bool _over;
     private InvalidOperationException? _unreadable;
 
@@ -26,7 +27,8 @@ internal sealed class JobWriteLimit : IAsyncDisposable
         _job = job;
         DeclaredBytes = declaredBytes;
         _stdErrRead = stdErrRead;
-        _watch = WatchAsync();
+        _watch = new Thread(Watch) { IsBackground = true, Name = "Pakko tar.exe write limit" };
+        _watch.Start();
     }
 
     /// <summary>Starts watching <paramref name="job"/> before its process is launched.</summary>
@@ -44,40 +46,38 @@ internal sealed class JobWriteLimit : IAsyncDisposable
     /// Throws <see cref="InvalidOperationException"/> when the job's count could not be read; the
     /// run was stopped then, never left unwatched.
     /// </summary>
-    public async Task<bool> FinishAsync()
+    public bool Finish()
     {
-        await StopAsync().ConfigureAwait(false);
+        Stop();
         if (_unreadable is { } unreadable)
             throw unreadable;
         return _over || Check();
     }
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
-        await StopAsync().ConfigureAwait(false);
+        Stop();
         _stop.Dispose();
     }
 
-    private async Task StopAsync()
+    // The watch only waits on the event between readings, so it ends within one reading of the set.
+    private void Stop()
     {
-        if (!_stop.IsCancellationRequested)
-            await _stop.CancelAsync().ConfigureAwait(false);
-        await _watch.ConfigureAwait(false);
+        _stop.Set();
+        _watch.Join();
     }
 
-    private async Task WatchAsync()
+    private void Watch()
     {
-        using var timer = new PeriodicTimer(Interval);
         try
         {
-            while (await timer.WaitForNextTickAsync(_stop.Token).ConfigureAwait(false))
+            while (!_stop.Wait(Interval))
             {
                 // A refused stop is tried again on the next tick; the job's close kills it at the latest.
                 if ((_over || Check()) && _job.Terminate())
                     return;
             }
         }
-        catch (OperationCanceledException) { /* the run ended; FinishAsync reads once more */ }
         catch (InvalidOperationException ex)
         {
             _unreadable = ex;
