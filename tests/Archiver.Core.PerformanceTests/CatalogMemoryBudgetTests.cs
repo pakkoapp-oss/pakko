@@ -184,6 +184,9 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         // no warm-up): a name "d00012/f00012345.txt" is a 64 B string and its slot 8, its size 8, the rest the
         // scan's own sets keyed by name. 660 with the quarantine's files listed whole, 287 with a finding kept
         // for each clean entry (T-F544).
+        // Run alone it reads about 60 B more, none of it an entry's: the listing reader's two pooled buffers
+        // (`ReadLinesWithinAsync`: a 1 MiB line, an 80 KiB read; 1,179,696 B over 20,000 entries), rented
+        // anew when the run lands on another thread than the warm-up's rent was returned to (T-F560).
         perEntry.Should().BeLessThanOrEqualTo(200, "no list of the quarantine's files, no finding per clean entry");
     }
 
