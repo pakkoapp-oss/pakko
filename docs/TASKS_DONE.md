@@ -16693,3 +16693,25 @@ except the next submission), T-F202 (the old UI gate, replaced by `docs/SMOKE.md
     (bytes read by the job) or the CPU limit is enough.
   - **Reported by:** the agent (T-F561), 2026-11-21.
 
+
+### T-F560 - TarScan_WhileItScans_HoldsAtMostItsBudgetPerEntry reads 8 to 210 B an entry (P3, batch 6)
+
+- [x] **Status:** closed 2026-11-21, owner found, no product change. Two `gcdump`s at the test's
+  `Before`, after a warm-up of 10 entries and of 20,000: the larger warm-up leaves one more 1 MiB and
+  one more 128 KiB `byte[]` in `ArrayPool<byte>.Shared`, the line and read buffers
+  `SandboxedProcessLauncher.ReadLinesWithinAsync` rents for every listing (`MaxVerboseLineBytes`,
+  `DiscardBufferBytes`). After the small warm-up the measured run rents them anew on another thread,
+  so 1,179,696 B land in its middle: 59 B over 20,000 entries, against 157 - 91 = 66 measured (a
+  warm-up of 20,000 gives 91 run alone, as the class run does). A fixed 1.2 MB per listing, not an
+  entry's cost; the budget of 200 stays, the test's comment names the owner.
+- **Graduated 2026-11-21:** v1.12.0 batch 2.
+- **As filed:**
+  - [ ] **Status:** open, narrowed 2026-11-19. The test now takes the warm-up scan its
+    sibling takes, and the noise is gone: run alone it reads 156-157 B an entry every time, on `main`
+    and on T-F544's own commit (1ce23d79) alike, so the 30 B it was written with had no warm-up and
+    nothing regressed; after the project's other classes it reads 88-95. The budget is 200 (a 64 B
+    name, its 8 B slot and 8 B size, the scan's sets keyed by name; still under 287 and 660, the two
+    bugs it guards). Left: the ~65 B an entry the run alone holds beyond the class run, which looks
+    like a buffer sized by the listing (rented once, then pooled); find its owner before it is judged.
+  - **Reported by:** the agent (batch 6, the push check), 2026-11-18.
+
