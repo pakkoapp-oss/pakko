@@ -1360,15 +1360,21 @@ public sealed class TarSandboxedService : ITarService
         // T-F403: a codec tar.exe lacks is refused before it starts. Without a built-in library,
         // tar.exe runs a program of that name from its working folder or PATH, outside any sandbox
         // (measured for zstd and bzip2 on zlib-only tar.exe builds).
+        // T-F565: what tar --version decides first, then tar.exe's own answers in the order they
+        // are asked: the 7z writer (no answer is its refusal), then Zstandard.
         TarCapabilities capabilities = await KnownCapabilitiesAsync().ConfigureAwait(false);
-        bool zstdWriter = options is { Format: ArchiveContainerFormat.SevenZip, SevenZipMethod: SevenZipMethod.Zstd }
-            && await CanCreateSevenZipZstdAsync(cancellationToken).ConfigureAwait(false);
-        if (ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities, zstdWriter) is { } refusal)
+        if (ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities, zstdWriter: true) is { } refusal)
             return refusal;
 
         // T-F342: refused before anything is written; a plain "tar -cf name.7z" would write ustar.
         if (options.Format == ArchiveContainerFormat.SevenZip && !await CanCreateSevenZipAsync(cancellationToken).ConfigureAwait(false))
             return CoreMessages.Text(MessageCode.SevenZipWriterUnavailable);
+
+        if (options is { Format: ArchiveContainerFormat.SevenZip, SevenZipMethod: SevenZipMethod.Zstd }
+            && !await CanCreateSevenZipZstdAsync(cancellationToken).ConfigureAwait(false))
+        {
+            return ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities, zstdWriter: false);
+        }
         return null;
     }
 
@@ -2189,7 +2195,7 @@ public sealed class TarSandboxedService : ITarService
         }
 
         string options = $"7zip:compression={compression},compression-level={numericLevel}";
-        int threads = zstd ? CompressionThreads.For(ZstdName, numericLevel, threadLimit) : 1;
+        int threads = zstd ? CompressionThreads.For(CompressionThreads.SevenZipZstd, numericLevel, threadLimit) : 1;
         if (threads > 1)
             options += "," + CompressionThreads.Option("7zip", threads);
         tarArgs.Add(options);
