@@ -1338,6 +1338,8 @@ re-measured with T-F346's script before and after.
   it is not the default of Explorer's "Add to name.7z". xz and zstd in tar get libarchive's threads
   by default (measured 6 times faster for xz, the same size for zstd), bounded by memory. No
   "Add to name.tar.zst" item in the submenu.
+- **2026-11-21, the user, later:** Zstandard in 7z dropped after it was built ("not worth it");
+  threads for xz and zstd in tar stay. Why: `docs/DECISIONS.md`, "v1.12.0 batch 3, steps 1-3".
 - **Reported by:** the agent, from the user's request for Store figures, 2026-11-20.
 ### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 8)
 

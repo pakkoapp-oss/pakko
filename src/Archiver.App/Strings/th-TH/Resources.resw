@@ -171,9 +171,6 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>วิธี:</value>
   </data>
-  <data name="SevenZipZstdNote.Text" xml:space="preserve">
-    <value>7-Zip เปิดไฟล์บีบอัดแบบนี้ไม่ได้ NanaZip และ Windows 11 23H2 ขึ้นไปเปิดได้</value>
-  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>หากมีไฟล์อยู่แล้ว:</value>
   </data>

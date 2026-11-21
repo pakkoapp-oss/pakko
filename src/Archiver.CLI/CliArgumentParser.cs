@@ -815,7 +815,7 @@ public static class CliArgumentParser
 
     // T-F342: the methods tar.exe's 7z writer has and Pakko offers. A bare name only: a method's
     // own parameters (-m0=lzma2:d=64m) have no counterpart there. Whichever -m0 comes last wins.
-    private const string SevenZipMethodNames = "lzma2, lzma, bzip2, deflate, copy, zstd";
+    private const string SevenZipMethodNames = "lzma2, lzma, bzip2, deflate, copy";
 
     private static (SevenZipMethod? Method, string? Error) ParseSevenZipMethod(string token)
     {
@@ -833,8 +833,7 @@ public static class CliArgumentParser
             "BZIP2" => (SevenZipMethod.BZip2, null),
             "DEFLATE" => (SevenZipMethod.Deflate, null),
             "COPY" => (SevenZipMethod.Copy, null),
-            "ZSTD" => (SevenZipMethod.Zstd, null),
-            "PPMD" =>
+            "PPMD" or "ZSTD" =>
                 (null, $"not supported by Pakko: -m0={method} — Windows' tar.exe, which writes the archive, has no {method} for 7z ({SevenZipMethodNames})"),
             _ => (null, $"unknown -m0 value: '{method}' (expected {SevenZipMethodNames})"),
         };

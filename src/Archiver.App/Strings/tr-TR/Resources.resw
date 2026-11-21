@@ -171,9 +171,6 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Yöntem:</value>
   </data>
-  <data name="SevenZipZstdNote.Text" xml:space="preserve">
-    <value>7-Zip böyle bir arşivi açamaz. NanaZip ve Windows 11 23H2 veya üstü açabilir.</value>
-  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Dosya zaten varsa:</value>
   </data>

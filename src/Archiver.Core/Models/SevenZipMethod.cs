@@ -21,11 +21,4 @@ public enum SevenZipMethod
 
     /// <summary>Stored without compression.</summary>
     Copy,
-
-    /// <summary>
-    /// T-F565: Zstandard, written by libarchive 3.8 and later where tar.exe was seen writing it
-    /// (<see cref="Interfaces.ITarService.CanCreateSevenZipZstdAsync"/>). 7-Zip itself cannot open
-    /// it; NanaZip and tar.exe 3.7 or later can.
-    /// </summary>
-    Zstd,
 }

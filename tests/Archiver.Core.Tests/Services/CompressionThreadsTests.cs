@@ -79,19 +79,6 @@ public sealed partial class CompressionThreadsTests
     public void For_ACodecWithoutThreads_IsOne(string codec) =>
         CompressionThreads.For(codec, 9, Machine(cores: 12, budget: 4 * GiB)).Should().Be(1);
 
-    // T-F565: the 7z writer's own 678 MiB at zstd 9 and 19 (step 0) is taken off the budget first.
-    [Theory]
-    [InlineData(9, 1L, 2)]
-    [InlineData(19, 1L, 1)]
-    [InlineData(19, 4L, 12)]
-    [InlineData(1, 1L, 12)]
-    public void For_SevenZipZstd_TheWritersFixedMemoryFirst(int level, long budgetGiB, int expected) =>
-        CompressionThreads.For("7zip-zstd", level, Machine(cores: 12, budget: budgetGiB * GiB)).Should().Be(expected);
-
-    [Fact]
-    public void For_SevenZipZstd_BudgetBelowTheFixedPart_StillOneThread() =>
-        CompressionThreads.For("7zip-zstd", 19, Machine(cores: 12, budget: 512 * MiB)).Should().Be(1);
-
     [Fact]
     public void OneThread_IsOne() =>
         CompressionThreads.For("zstd", 1, CompressionThreads.Limit.OneThread).Should().Be(1);

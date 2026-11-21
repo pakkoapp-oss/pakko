@@ -171,9 +171,6 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Methode:</value>
   </data>
-  <data name="SevenZipZstdNote.Text" xml:space="preserve">
-    <value>7-Zip kan zo'n archief niet openen. NanaZip en Windows 11 23H2 of nieuwer wel.</value>
-  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Als bestand al bestaat:</value>
   </data>

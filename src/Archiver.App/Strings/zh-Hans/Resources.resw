@@ -171,9 +171,6 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>方法:</value>
   </data>
-  <data name="SevenZipZstdNote.Text" xml:space="preserve">
-    <value>7-Zip 无法打开这种压缩包。NanaZip 和 Windows 11 23H2 及更高版本可以打开。</value>
-  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>如果文件已存在:</value>
   </data>
