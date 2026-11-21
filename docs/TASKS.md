@@ -72,7 +72,7 @@ reviewer at the batch's close, with the user's OK.
 | # | Batch | Tasks | Checked once per batch |
 |---|---|---|---|
 | 1 | Where the time goes | T-F565 step 1: bare tar.exe and the helper against Pakko on the same archives; Pakko's phases (scope, profile, scans, listings, the move out of the quarantine, the commit) | A table in DECISIONS, both volumes, both tar builds; it decides what batches 2 and 3 hold |
-| 2 | Extraction through the sandbox | T-F565 (extraction), T-F445, T-F561 (reproduced as P2 and fixed 2026-11-21), T-F567, T-F560; T-F464 if batch 1 shows the second listing or the name prediction costs | Measured before and after, the quiet suite, both tar builds, an opus reviewer |
+| 2 | Extraction through the sandbox | T-F565 (extraction), T-F561 (reproduced as P2 and fixed 2026-11-21), T-F567, T-F560; T-F464 if batch 1 shows the second listing or the name prediction costs | Measured before and after, the quiet suite, both tar builds, an opus reviewer |
 | 3 | Creation | T-F565 (creation: libarchive's options, threads where a filter has them); T-F514 (`TarWriter` with `GZipStream`/`ZstandardStream` for tar, tar.gz, tar.zst; the user decides after the spike; `TarReader` read again at the SDK's 11.0.x tag for the three faults that rejected it on 10.0.14) | Same archive size against 7-Zip; every archive read by 7-Zip and both tar builds; `HardLinkMode` against T-F392; `SECURITY.md` only with the user's OK |
 | 4 | ARM64 helper | T-F562 | `canary-arm64` native; one AppContainer run on an ARM64 machine if there is one |
 | 5 | Names | T-F556, T-F563, T-F559 | One deploy, `SHL-019`, PakkoW10 for T-F559 |
@@ -82,7 +82,8 @@ reviewer at the batch's close, with the user's OK.
 
 Order: this plan, then batch 1, then 2 and 3; 4 to 7 between them while no long series runs; 8 last.
 
-Not in this wave, unchanged: T-F453, T-F461, T-F469 (P4, the tar.exe fallback; touched only if batch
+Not in this wave, unchanged: T-F445 (P4, moved out of batch 2 on 2026-11-21: Pakko still runs one
+launch at a time, its revisit condition); T-F453, T-F461, T-F469 (P4, the tar.exe fallback; touched only if batch
 2 changes the same code); T-F02, T-F10, T-F91, T-F119, T-F121, T-F127, T-F132, T-F144, T-F152, T-F202,
 T-F328, T-F329, T-F331, T-F332, T-F359, T-F393.
 ---
@@ -1194,7 +1195,10 @@ re-measured with T-F346's script before and after.
 
 ### T-F445 — Each tar.exe launch blocks two or three pool threads for the child's whole life (P4, from T-F428)
 
-- [ ] **Status:** open, measured 2026-11-08, no code for v1.10.0. A temporary test listed a tar.gz of
+- [ ] **Status:** open, P4, out of the v1.12.0 wave (2026-11-21): no code in `src` starts two sandboxed
+  launches at once (one archive at a time; batch 2's step 2, threads for the move out, was rejected), so the
+  condition below is still unmet and the change would be sandbox code for a test run's sake only.
+  Measured 2026-11-08, no code for v1.10.0. A temporary test listed a tar.gz of
   150,000 entries through `TarSandboxedService.ListEntriesAsync`, N launches at once, while a
   dedicated thread sampled the pool and the start delay of a queued work item (12 CPUs, minimum 12
   workers):
