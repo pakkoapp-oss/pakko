@@ -16676,3 +16676,20 @@ except the next submission), T-F202 (the old UI gate, replaced by `docs/SMOKE.md
     2026-10-31: `Get-MpComputerStatus` reads real-time protection on again, so the real path can be
     checked; run both EICAR tests once to confirm before relying on it.
   - **Reported by:** stream B's full run, 2026-10-25.
+
+### T-F567 - tar.exe's listing of a streamed ZIP inside a filter reads all of its data (P3, from T-F561)
+
+- [x] **Status:** closed by measurement 2026-11-21, no code: every listing of a compressed stream reads
+  it whole (tar.gz and gz.gz alike, 2.2 s of CPU a GiB on 3.5.2, 0.06 s on 3.8.9); nothing is written
+  and the user's cancel kills tar.exe, so the job's CPU limit stays the bound. `docs/DECISIONS.md`,
+  "T-F567 - a listing reads all of a compressed stream".
+- **Graduated 2026-11-21:** v1.12.0 batch 2.
+- **As filed:**
+  - [ ] **Status:** open. The streaming ZIP reader finds each next entry only past the data of the one
+    before, so `-t`/`-tv` of the T-F561 shape decompresses everything without writing it: the 6.9 KB
+    file of 4 GiB lists in about 3 s, a nested one of terabytes would take until the job's CPU limit
+    (an hour at least) or the user's cancel. Nothing reaches the disk. Next: measure a listing's CPU
+    against the archive's size for every format and decide whether a listing needs a limit of its own
+    (bytes read by the job) or the CPU limit is enough.
+  - **Reported by:** the agent (T-F561), 2026-11-21.
+

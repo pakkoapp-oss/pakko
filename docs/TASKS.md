@@ -72,7 +72,7 @@ reviewer at the batch's close, with the user's OK.
 | # | Batch | Tasks | Checked once per batch |
 |---|---|---|---|
 | 1 | Where the time goes | T-F565 step 1: bare tar.exe and the helper against Pakko on the same archives; Pakko's phases (scope, profile, scans, listings, the move out of the quarantine, the commit) | A table in DECISIONS, both volumes, both tar builds; it decides what batches 2 and 3 hold |
-| 2 | Extraction through the sandbox | T-F565 (extraction), T-F561 (reproduced as P2 and fixed 2026-11-21), T-F567, T-F560; T-F464 if batch 1 shows the second listing or the name prediction costs | Measured before and after, the quiet suite, both tar builds, an opus reviewer |
+| 2 | Extraction through the sandbox | T-F565 (extraction), T-F561 (reproduced as P2 and fixed 2026-11-21), T-F567 (closed by measurement 2026-11-21), T-F560; T-F464 if batch 1 shows the second listing or the name prediction costs | Measured before and after, the quiet suite, both tar builds, an opus reviewer |
 | 3 | Creation | T-F565 (creation: libarchive's options, threads where a filter has them); T-F514 (`TarWriter` with `GZipStream`/`ZstandardStream` for tar, tar.gz, tar.zst; the user decides after the spike; `TarReader` read again at the SDK's 11.0.x tag for the three faults that rejected it on 10.0.14) | Same archive size against 7-Zip; every archive read by 7-Zip and both tar builds; `HardLinkMode` against T-F392; `SECURITY.md` only with the user's OK |
 | 4 | ARM64 helper | T-F562 | `canary-arm64` native; one AppContainer run on an ARM64 machine if there is one |
 | 5 | Names | T-F556, T-F563, T-F559 | One deploy, `SHL-019`, PakkoW10 for T-F559 |
@@ -1395,16 +1395,6 @@ re-measured with T-F346's script before and after.
   (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) trusted the sizes libarchive prints, and
   nothing capped what tar.exe then wrote.
 - **Reported by:** the batch 6 closing reviewer, 2026-11-18; reproduced by the agent, 2026-11-21.
-
-### T-F567 - tar.exe's listing of a streamed ZIP inside a filter reads all of its data (P3, from T-F561)
-
-- [ ] **Status:** open. The streaming ZIP reader finds each next entry only past the data of the one
-  before, so `-t`/`-tv` of the T-F561 shape decompresses everything without writing it: the 6.9 KB
-  file of 4 GiB lists in about 3 s, a nested one of terabytes would take until the job's CPU limit
-  (an hour at least) or the user's cancel. Nothing reaches the disk. Next: measure a listing's CPU
-  against the archive's size for every format and decide whether a listing needs a limit of its own
-  (bytes read by the job) or the CPU limit is enough.
-- **Reported by:** the agent (T-F561), 2026-11-21.
 
 ### T-F560 - TarScan_WhileItScans_HoldsAtMostItsBudgetPerEntry reads 8 to 210 B an entry (P3, batch 6)
 
