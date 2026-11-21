@@ -78,4 +78,32 @@ public sealed class ThreadedCompressionCompatibilityTests : IDisposable
             }
         }
     }
+
+    // docs/CLI.md's -mmt: xz and zstd write the same bytes for any count above one.
+    [TarWritesXzAndZstdFact]
+    public async Task XzAndZstd_TwoAndFourThreads_WriteTheSameBytes()
+    {
+        string tree = BuildTree();
+
+        foreach (ArchiveContainerFormat format in new[] { ArchiveContainerFormat.TarXz, ArchiveContainerFormat.TarZst })
+        {
+            byte[][] archives = new byte[2][];
+            int[] counts = [2, 4];
+            for (int i = 0; i < counts.Length; i++)
+            {
+                ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
+                {
+                    SourcePaths = [tree],
+                    DestinationFolder = Path.Combine(_temp.Path, $"same-{format}-{counts[i]}"),
+                    ArchiveName = "same",
+                    Format = format,
+                    MaxThreads = counts[i],
+                });
+                result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+                archives[i] = await File.ReadAllBytesAsync(result.CreatedFiles.Should().ContainSingle().Which);
+            }
+
+            archives[0].Should().Equal(archives[1], because: $"{format} on 2 and 4 threads");
+        }
+    }
 }
