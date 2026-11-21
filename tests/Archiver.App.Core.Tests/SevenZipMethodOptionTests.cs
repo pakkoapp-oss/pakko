@@ -51,6 +51,15 @@ public sealed class SevenZipMethodOptionTests
     public void HasCompressionLevel_NotForPlainTarOrACopied7z(ArchiveContainerFormat format, SevenZipMethod method, bool expected) =>
         SevenZipMethodOption.HasCompressionLevel(format, method).Should().Be(expected);
 
+    // T-F565: the note that 7-Zip cannot open a Zstandard 7z shows for that choice alone.
+    [Theory]
+    [InlineData(ArchiveContainerFormat.SevenZip, SevenZipMethod.Zstd, true)]
+    [InlineData(ArchiveContainerFormat.SevenZip, SevenZipMethod.Lzma2, false)]
+    [InlineData(ArchiveContainerFormat.TarZst, SevenZipMethod.Zstd, false)]
+    [InlineData(ArchiveContainerFormat.Zip, SevenZipMethod.Zstd, false)]
+    public void ShowsZstdNote_OnlyForAZstandard7z(ArchiveContainerFormat format, SevenZipMethod method, bool expected) =>
+        SevenZipMethodOption.ShowsZstdNote(format, method).Should().Be(expected);
+
     // T-F403: the list holds only the methods this tar.exe can write; rows are positions in it.
     private static readonly SevenZipMethod[] NoBZip2 = [SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.Deflate, SevenZipMethod.Copy];
 

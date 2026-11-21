@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Metode:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>7-Zip nevar atvērt šādu arhīvu. NanaZip un Windows 11 23H2 vai jaunāka versija to var.</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Ja fails jau pastāv:</value>
   </data>

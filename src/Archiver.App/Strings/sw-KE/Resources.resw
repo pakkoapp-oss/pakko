@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Mbinu:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>7-Zip haiwezi kufungua kumbukumbu kama hii. NanaZip na Windows 11 23H2 au mpya zaidi zinaweza.</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Ikiwa faili tayari lipo:</value>
   </data>

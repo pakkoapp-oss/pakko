@@ -482,6 +482,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(EncryptZipOnlyVisibility))]
     [NotifyPropertyChangedFor(nameof(EncryptionPanelVisibility))]
     [NotifyPropertyChangedFor(nameof(SevenZipMethodVisibility))]
+    [NotifyPropertyChangedFor(nameof(SevenZipZstdNoteVisibility))]
     public partial ArchiveContainerFormat SelectedContainerFormat { get; set; } = ArchiveContainerFormat.Zip;
 
     partial void OnSelectedContainerFormatChanged(ArchiveContainerFormat value) => ClearEncryptionPassword();
@@ -501,6 +502,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SevenZipMethodIndex))]
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
     [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
+    [NotifyPropertyChangedFor(nameof(SevenZipZstdNoteVisibility))]
     public partial SevenZipMethod SelectedSevenZipMethod { get; set; } = SevenZipMethod.Lzma2;
 
     public int SevenZipMethodIndex
@@ -512,10 +514,14 @@ public sealed partial class MainViewModel : ObservableObject
     // A concrete collection, never a collection expression: WinRT marshals ItemsSource (T-F355).
     public ObservableCollection<string> SevenZipMethodChoices { get; } = [];
 
-    private readonly IReadOnlyList<SevenZipMethod> _sevenZipMethods;
+    // T-F565: Zstandard joins the end after its own probe, so the rows before it keep their places.
+    private IReadOnlyList<SevenZipMethod> _sevenZipMethods;
 
     public Visibility SevenZipMethodVisibility =>
         SelectedContainerFormat == ArchiveContainerFormat.SevenZip ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility SevenZipZstdNoteVisibility =>
+        SevenZipMethodOption.ShowsZstdNote(SelectedContainerFormat, SelectedSevenZipMethod) ? Visibility.Visible : Visibility.Collapsed;
 
     // T-F193: only the ZIP writer can encrypt. The checkbox keeps its checked state when a tar
     // format is picked (it's merely hidden), so ArchiveAsync checks the format again at use.
@@ -661,6 +667,16 @@ public sealed partial class MainViewModel : ObservableObject
         // 7z that was ZIP, which Core refuses, and under one that blocks ZIP it was TAR (T-F399).
         SelectedContainerFormat = CreationFormatOption.AfterSevenZipProbe(
             _policy, SelectedContainerFormat, _startupFormat, _tarCapabilities);
+
+        // T-F565: Zstandard is offered only where tar.exe was seen writing it; it is the last row.
+        if (!await tarService.CanCreateSevenZipZstdAsync())
+            return;
+        IReadOnlyList<SevenZipMethod> methods = ArchiveFormatPolicy.CreatableSevenZipMethods(_tarCapabilities, zstdWriter: true);
+        if (methods.Count == _sevenZipMethods.Count + 1 && methods[^1] == SevenZipMethod.Zstd)
+        {
+            _sevenZipMethods = methods;
+            SevenZipMethodChoices.Add(SevenZipMethodOption.Name(SevenZipMethod.Zstd));
+        }
     }
 
     private ArchiveContainerFormat _startupFormat;

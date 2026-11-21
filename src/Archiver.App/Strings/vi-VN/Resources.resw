@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Phương thức:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>7-Zip không mở được tệp nén như vậy. NanaZip và Windows 11 23H2 trở lên mở được.</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Nếu tệp đã tồn tại:</value>
   </data>

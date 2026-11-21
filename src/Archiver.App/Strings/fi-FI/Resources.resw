@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Menetelmä:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>7-Zip ei avaa tällaista arkistoa. NanaZip ja Windows 11 23H2 tai uudempi avaavat sen.</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Jos tiedosto on jo olemassa:</value>
   </data>

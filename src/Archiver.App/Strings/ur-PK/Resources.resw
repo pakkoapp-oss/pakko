@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>طریقہ:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>7-Zip ایسا آرکائیو نہیں کھول سکتا۔ NanaZip اور Windows 11 23H2 یا نیا اسے کھول سکتے ہیں۔</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>اگر فائل پہلے سے موجود ہو:</value>
   </data>
