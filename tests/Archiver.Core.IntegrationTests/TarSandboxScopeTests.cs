@@ -33,7 +33,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         preScanExit.Should().Be(0, because: preScanStdErr);
         preScanNames.Should().Contain("a.txt");
 
-        (int extractExit, _, string? extractStdErr) = await scope.ExtractAsync(null, CancellationToken.None);
+        (int extractExit, _, string? extractStdErr) = await scope.ExtractAsync(null, long.MaxValue, CancellationToken.None);
         extractExit.Should().Be(0, because: extractStdErr);
 
         File.ReadAllText(Path.Combine(scope.OutputDirectory!, "a.txt")).Should().Be("scope test content");
@@ -207,7 +207,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         new DirectoryInfo(Path.Combine(scope.OutputDirectory!, "x")).Create(security);
         (await CmdInSandboxOfAsync(scope, @"echo x> out\x\before.txt")).Should().Be(0, "the folder lets the sandbox in");
 
-        Func<Task> extract = () => scope.ExtractAsync(null, CancellationToken.None);
+        Func<Task> extract = () => scope.ExtractAsync(null, long.MaxValue, CancellationToken.None);
 
         await extract.Should().ThrowAsync<IOException>();
     }
@@ -296,7 +296,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         {
             (int listExit, _, string listErr) = await scope.ListNamesAsync(CancellationToken.None);
             listExit.Should().Be(0, because: listErr);
-            (int extractExit, _, string? extractErr) = await scope.ExtractAsync(null, CancellationToken.None);
+            (int extractExit, _, string? extractErr) = await scope.ExtractAsync(null, long.MaxValue, CancellationToken.None);
             extractExit.Should().Be(0, because: extractErr);
             Sddl(archivePath).Should().Be(before, "the scope must never touch the user's file");
         }
@@ -434,8 +434,8 @@ public sealed partial class TarSandboxScopeTests : IDisposable
 
         scopeA.QuarantineRoot.Should().NotBe(scopeB.QuarantineRoot);
 
-        Task<(int ExitCode, string StdOut, string StdErr)> extractATask = scopeA.ExtractAsync(null, CancellationToken.None);
-        Task<(int ExitCode, string StdOut, string StdErr)> extractBTask = scopeB.ExtractAsync(null, CancellationToken.None);
+        Task<(int ExitCode, string StdOut, string StdErr)> extractATask = scopeA.ExtractAsync(null, long.MaxValue, CancellationToken.None);
+        Task<(int ExitCode, string StdOut, string StdErr)> extractBTask = scopeB.ExtractAsync(null, long.MaxValue, CancellationToken.None);
         await Task.WhenAll(extractATask, extractBTask);
         (int exitA, _, string? stdErrA) = await extractATask;
         (int exitB, _, string? stdErrB) = await extractBTask;

@@ -21,6 +21,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     private string[]? _allNames;
     private Func<string, bool, bool>? _filter;
     private List<string>? _tarMembers;
+    private long _declaredBytes;
     private List<string>? _expandedSelection;
     private HashSet<string>? _droppedFiles;
     private List<DuplicateGroup>? _scanDuplicates;
@@ -117,6 +118,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         long declaredBytes = tarMembers != null
             ? DeclaredSizeOf(_catalog!, tarMembers)
             : _catalog!.TotalDeclaredSize;
+        _declaredBytes = declaredBytes;
         int fileCount = expandedSelection != null
             ? expandedSelection.Count(n => !n.EndsWith('/'))
             : allNames.Count(n => !n.EndsWith('/'));
@@ -147,7 +149,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         IEnumerable<string> extractedNames = (IEnumerable<string>?)_tarMembers ?? allNames;
         HashSet<string> preCreated = PreCreateImplicitFolders(extractedNames, outDir);
 
-        Task<(int ExitCode, string StdOut, string StdErr)> extractionTask = _scope.ExtractAsync(_tarMembers, cancellationToken);
+        Task<(int ExitCode, string StdOut, string StdErr)> extractionTask = _scope.ExtractAsync(_tarMembers, _declaredBytes, cancellationToken);
         if (poll is { } p)
         {
             await PollExtractionProgressAsync(outDir, p.TotalBytes, p.Progress, extractionTask, cancellationToken, p.ExtractionEnd)
@@ -226,7 +228,8 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // T-F52, as extraction does it (T-F460: the same names, through the long-path prefix).
         PreCreateImplicitFolders((IEnumerable<string>?)expandedSelection ?? allNames, outDir);
 
-        (int exitCode, _, string stdErr) = await _scope.ExtractAsync(expandedSelection, cancellationToken).ConfigureAwait(false);
+        long declaredBytes = expandedSelection != null ? DeclaredSizeOf(catalog, expandedSelection) : catalog.TotalDeclaredSize;
+        (int exitCode, _, string stdErr) = await _scope.ExtractAsync(expandedSelection, declaredBytes, cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
             return new ScanQuarantine(DescribeFailure(stdErr), [], totalEntries, 0, false);
 
@@ -246,7 +249,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         string outDir = _scope.OutputDirectory!;
 
         (string firstDir, int firstExitCode, string firstStdErr) = await _scope.ExtractFirstOccurrencesAsync(
-            duplicates.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
+            duplicates.Select(g => g.FirstName).ToList(), FirstCopiesDeclared(duplicates), cancellationToken).ConfigureAwait(false);
         // T-F460 (fresh review): a first copy tar.exe did not write was never scanned.
         if (firstExitCode != 0)
             return new FirstCopiesForScan([], DescribeFailure(firstStdErr), () => 0);
@@ -538,6 +541,10 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         return total;
     }
 
+    // T-F561: "-q" writes each name's first copy, so that copy's listed size, not the last one's.
+    internal static long FirstCopiesDeclared(IEnumerable<DuplicateGroup> groups) =>
+        groups.Aggregate(0L, (total, group) => AddDeclared(total, group.FirstSize));
+
     /// <summary>T-F545: a declared size is the archive's to state (a sparse entry's can be any long),
     /// so a total saturates at <see cref="long.MaxValue"/>: past it, the largest archive - T-F94's
     /// bomb check refuses it - never a wrapped small one, and no OverflowException out of Core.
@@ -721,7 +728,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         if (subset.NothingToRead)
             return (0, string.Empty, 0, true);
         (int exitCode, string stdErr) = await scope.TestAsync(
-            ContentProgress(progress, subset.DeclaredSize), subset.Members, subset.ExcludedFiles, cancellationToken).ConfigureAwait(false);
+            ContentProgress(progress, subset.DeclaredSize), subset.Members, subset.ExcludedFiles, subset.DeclaredSize, cancellationToken).ConfigureAwait(false);
         return (exitCode, stdErr, subset.DeclaredSize, false);
     }
 
@@ -858,7 +865,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         try
         {
             (firstDir, _, _) = await scope.ExtractFirstOccurrencesAsync(
-                groups.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
+                groups.Select(g => g.FirstName).ToList(), FirstCopiesDeclared(groups), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SandboxSetupException)
         {

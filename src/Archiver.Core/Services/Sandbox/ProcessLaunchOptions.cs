@@ -17,6 +17,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// <param name="StdOutLines">Non-null: stdout is read line by line, each line given to it as it arrives and never kept, within its limits; the returned stdout is then empty (T-F470: the archive helper's protocol).</param>
 /// <param name="DiscardStdErr">True: stderr is read and thrown away, never kept; the returned stderr is then empty (T-F470: a child Pakko does not trust).</param>
 /// <param name="StdOutLimit">Non-null: stdout is counted as it arrives; past its lines or bytes the child is killed and the run fails with the limit's exception (T-F513: one tar.exe listing line per entry).</param>
+/// <param name="StdErrBytesRead">Non-null: counts the bytes read from stderr as they arrive (T-F561: a job's write count holds them too).</param>
 /// <param name="EnvironmentOverrides">Variables the child gets with these values, on top of this process's whole environment (T-F342: TMP/TEMP for libarchive's 7z writer); null hands the environment over unchanged.</param>
 internal sealed record ProcessLaunchOptions(
     SafeSidHandle? AppContainerSid = null,
@@ -32,7 +33,18 @@ internal sealed record ProcessLaunchOptions(
     Action<byte[]>? OnStdOutBytes = null,
     StdOutLines? StdOutLines = null,
     bool DiscardStdErr = false,
-    StdOutLimit? StdOutLimit = null);
+    StdOutLimit? StdOutLimit = null,
+    ByteCounter? StdErrBytesRead = null);
+
+/// <summary>T-F561: a byte count one thread adds to while another reads it.</summary>
+internal sealed class ByteCounter
+{
+    private long _value;
+
+    public long Value => Interlocked.Read(ref _value);
+
+    public void Add(int bytes) => Interlocked.Add(ref _value, bytes);
+}
 
 /// <summary>Takes one stdout line, without its '\n'.</summary>
 internal delegate void StdOutLineHandler(ReadOnlySpan<byte> line);

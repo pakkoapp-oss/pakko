@@ -22,6 +22,7 @@ internal sealed partial class SandboxJobObject : IDisposable
     private const uint JOB_OBJECT_UILIMIT_ALL = 0x000000FF;
 
     private const int JobObjectBasicUIRestrictions = 4;
+    private const int JobObjectBasicAndIoAccountingInformation = 8;
     private const int JobObjectAssociateCompletionPortInformation = 7;
     private const int JobObjectExtendedLimitInformation = 9;
 
@@ -137,6 +138,21 @@ internal sealed partial class SandboxJobObject : IDisposable
         return hit;
     }
 
+    /// <summary>
+    /// T-F561: every byte the job's process has passed to WriteFile so far, files and pipes alike
+    /// (measured: live, to the byte, and blind to NTFS's lagging directory entry of a file still open).
+    /// </summary>
+    public long WrittenBytes()
+    {
+        if (!NativeMethods.QueryInformationJobObject(Handle, JobObjectBasicAndIoAccountingInformation,
+                out JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION info, (uint)Marshal.SizeOf<JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION>(), IntPtr.Zero))
+            throw new InvalidOperationException($"QueryInformationJobObject (I/O accounting) failed (Win32 error {Marshal.GetLastWin32Error()}).");
+        return info.IoInfo.WriteTransferCount > long.MaxValue ? long.MaxValue : (long)info.IoInfo.WriteTransferCount;
+    }
+
+    /// <summary>T-F561: stops every process in the job; false if Windows refused.</summary>
+    public bool Terminate() => NativeMethods.TerminateJobObject(Handle, 1);
+
     private static void ApplyExtendedLimits(SafeJobObjectHandle handle, long ramLimitBytes, TimeSpan cpuTimeLimit)
     {
         var info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION
@@ -226,6 +242,26 @@ internal sealed partial class SandboxJobObject : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    private struct JOBOBJECT_BASIC_ACCOUNTING_INFORMATION // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
+    {
+        public long TotalUserTime;
+        public long TotalKernelTime;
+        public long ThisPeriodTotalUserTime;
+        public long ThisPeriodTotalKernelTime;
+        public uint TotalPageFaultCount;
+        public uint TotalProcesses;
+        public uint ActiveProcesses;
+        public uint TotalTerminatedProcesses;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
+    {
+        public JOBOBJECT_BASIC_ACCOUNTING_INFORMATION BasicInfo;
+        public IO_COUNTERS IoInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     private struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
@@ -251,6 +287,16 @@ internal sealed partial class SandboxJobObject : IDisposable
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool SetInformationJobObject(
             SafeJobObjectHandle hJob, int jobObjectInfoClass, IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);
+
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool QueryInformationJobObject(
+            SafeJobObjectHandle hJob, int jobObjectInfoClass, out JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION lpJobObjectInfo,
+            uint cbJobObjectInfoLength, IntPtr lpReturnLength);
+
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool TerminateJobObject(SafeJobObjectHandle hJob, uint uExitCode);
 
         [LibraryImport("kernel32.dll", SetLastError = true)]
         public static partial SafeCompletionPortHandle CreateIoCompletionPort(

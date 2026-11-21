@@ -444,9 +444,12 @@ internal sealed partial class TarSandboxScope : IDisposable
         return (exitCode, stdErr);
     }
 
-    /// <summary>Extracts the archive, or only <paramref name="members"/>, into <see cref="OutputDirectory"/>.</summary>
+    /// <summary>
+    /// Extracts the archive, or only <paramref name="members"/>, into <see cref="OutputDirectory"/>;
+    /// T-F561: stopped past <paramref name="declaredBytes"/>, what the listing says those entries hold.
+    /// </summary>
     public async Task<(int ExitCode, string StdOut, string StdErr)> ExtractAsync(
-        IReadOnlyList<string>? members, CancellationToken cancellationToken)
+        IReadOnlyList<string>? members, long declaredBytes, CancellationToken cancellationToken)
     {
         if (OutputDirectory is null)
             throw new InvalidOperationException("This scope was created without an output folder.");
@@ -462,7 +465,8 @@ internal sealed partial class TarSandboxScope : IDisposable
             memberArguments = ["-T", WriteMemberList(members)];
         }
         EnsureNotSealed(OutputDirectory);
-        (int ExitCode, string StdOut, string StdErr) result = await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
+        (int ExitCode, string StdOut, string StdErr) result = await RunAsync(
+            "-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken, writeLimit: declaredBytes).ConfigureAwait(false);
         Seal(OutputDirectory);
         return result;
     }
@@ -473,9 +477,11 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// T-F410: non-empty <paramref name="members"/> reads only those entries ("-T", as
     /// <see cref="ExtractAsync"/>); non-empty <paramref name="excludedFiles"/> reads all but those
     /// files ("-X", each anchored to its whole name). The caller passes at most one of them.
+    /// T-F561: stopped past <paramref name="declaredBytes"/>, what the listing says those files hold.
     /// </summary>
     public async Task<(int ExitCode, string StdErr)> TestAsync(
-        Action<int> onContentBytes, IReadOnlyList<string>? members, IReadOnlyList<string>? excludedFiles, CancellationToken cancellationToken)
+        Action<int> onContentBytes, IReadOnlyList<string>? members, IReadOnlyList<string>? excludedFiles, long declaredBytes,
+        CancellationToken cancellationToken)
     {
         if (_utf8Headers is null)
             await ListNamesAsync(cancellationToken).ConfigureAwait(false);
@@ -490,7 +496,8 @@ internal sealed partial class TarSandboxScope : IDisposable
             await EnsureSentAsListedAsync(excludedFiles, cancellationToken).ConfigureAwait(false);
             subsetArguments = ["-X", WriteList("excludes.txt", excludedFiles.Select(TarExcludePattern.ForEntry))];
         }
-        (int exitCode, _, string stdErr) = await RunAsync("-x", ["-O", .. subsetArguments], cancellationToken, onContentBytes).ConfigureAwait(false);
+        (int exitCode, _, string stdErr) = await RunAsync("-x", ["-O", .. subsetArguments], cancellationToken, onContentBytes,
+            writeLimit: declaredBytes).ConfigureAwait(false);
         return (exitCode, stdErr);
     }
 
@@ -499,9 +506,10 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// fresh folder beside <see cref="OutputDirectory"/>, and returns that folder. The main pass
     /// leaves only the last of several same-named entries; this recovers the first one.
     /// <paramref name="members"/> must be non-empty; each must be a validated pre-scan name.
+    /// T-F561: stopped past <paramref name="declaredBytes"/>, the listed size of each first copy.
     /// </summary>
     public async Task<(string Directory, int ExitCode, string StdErr)> ExtractFirstOccurrencesAsync(
-        IReadOnlyList<string> members, CancellationToken cancellationToken)
+        IReadOnlyList<string> members, long declaredBytes, CancellationToken cancellationToken)
     {
         if (OutputDirectory is null)
             throw new InvalidOperationException("This scope was created without an output folder.");
@@ -521,7 +529,8 @@ internal sealed partial class TarSandboxScope : IDisposable
         // by tar.exe's name for it ("d " keeps its space), as the main pass does.
         TarExeReader.PreCreateImplicitFolders(members, firstDir);
         (int exitCode, _, string stdErr) = await RunAsync(
-            "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken).ConfigureAwait(false);
+            "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken,
+            writeLimit: declaredBytes).ConfigureAwait(false);
         Seal(firstDir);
         return (firstDir, exitCode, stdErr);
     }
@@ -628,7 +637,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     // = 1, RAM/CPU limits), reading the archive from its own handle with its own file position.
     private async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
         string mode, IReadOnlyList<string> arguments, CancellationToken cancellationToken, Action<int>? onStdOutDiscarded = null,
-        StdOutLines? stdOutLines = null)
+        StdOutLines? stdOutLines = null, long? writeLimit = null)
     {
         string[] headerCharset = _utf8Headers == true ? ["--options", Utf8HeaderOption] : [];
         bool plainListing = mode == "-t";
@@ -651,24 +660,49 @@ internal sealed partial class TarSandboxScope : IDisposable
             throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
         }
 
+        ByteCounter? stdErrRead = writeLimit is null ? null : new ByteCounter();
         using (job)
         using (SafeFileHandle stdIn = ReopenArchive())
         {
+            await using JobWriteLimit? written = writeLimit is { } limit ? JobWriteLimit.Start(job, limit, stdErrRead!) : null;
             (int exitCode, string? stdOut, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
                 TarExecutablePath,
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
                     OutputEncoding: OutputEncoding, OnStdOutDiscarded: onStdOutDiscarded,
                     StdOutLimit: listingLimit,
-                    StdOutLines: stdOutLines),
+                    StdOutLines: stdOutLines,
+                    StdErrBytesRead: stdErrRead),
                 cancellationToken)
                 .ConfigureAwait(false);
+            if (written is not null)
+                EnsureWithinDeclared(written, await FinishWatchAsync(written).ConfigureAwait(false));
             // T-F239: say which sandbox limit stopped tar.exe — its own words ("Cannot allocate
             // memory", or nothing at all for a CPU-time kill) blame the machine, not the sandbox.
             if (exitCode != 0)
                 stdErr = DescribeLimitHit(job.ReadLimitHit(), CpuTimeLimitFor(_archive.Length)) + stdErr;
             return (exitCode, stdOut, stdErr);
         }
+    }
+
+    private static async Task<bool> FinishWatchAsync(JobWriteLimit written)
+    {
+        try
+        {
+            return await written.FinishAsync().ConfigureAwait(false);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
+        }
+    }
+
+    // T-F561: an entry tar.exe listed smaller than its data (0 for a size that comes after the data).
+    private static void EnsureWithinDeclared(JobWriteLimit written, bool over)
+    {
+        if (over)
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.ContentLargerThanDeclared,
+                written.DeclaredBytes.ToString("N0", CultureInfo.CurrentCulture)));
     }
 
     /// <summary>

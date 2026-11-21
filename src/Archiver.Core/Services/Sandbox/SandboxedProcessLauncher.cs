@@ -214,7 +214,8 @@ internal static partial class SandboxedProcessLauncher
         using Stream stdOutStream = options.StdOutLimit is { } limit
             ? new LimitedStdOut(stdOutFile, limit, () => _ = NativeMethods.TerminateProcess(processHandle, 1))
             : stdOutFile;
-        using var stdErrStream = new FileStream(stdErrRead, FileAccess.Read);
+        using var stdErrFile = new FileStream(stdErrRead, FileAccess.Read);
+        using Stream stdErrStream = options.StdErrBytesRead is { } stdErrCounter ? new CountedRead(stdErrFile, stdErrCounter) : stdErrFile;
         Encoding outputEncoding = options.OutputEncoding ?? Encoding.UTF8;
         using var stdOutReader = new StreamReader(stdOutStream, outputEncoding);
         using var stdErrReader = new StreamReader(stdErrStream, outputEncoding);
@@ -357,6 +358,42 @@ internal static partial class SandboxedProcessLauncher
 
     // T-F513: stdout counted as it is read. Past the limit the child is killed first - left running
     // it would block on a full pipe while stderr's reader waits for it to exit - then the read fails.
+    // T-F561: what a stream gives its reader, added to a counter another thread reads.
+    internal sealed class CountedRead(Stream inner, ByteCounter counter) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) => Counted(inner.Read(buffer, offset, count));
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            Counted(await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false));
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        private int Counted(int read)
+        {
+            counter.Add(read);
+            return read;
+        }
+
+        public override void Flush() { /* read-only */ }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                inner.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
     internal sealed class LimitedStdOut(Stream inner, StdOutLimit limit, Action kill) : Stream
     {
         private long _lines;

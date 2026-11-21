@@ -14983,6 +14983,63 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F561 - a tar.exe run writes no more than it declares (2026-11-21)
+
+**Found.** T-F561 was filed as P3 on the premise that no format tar.exe reads prints 0 for an entry
+with data. A ZIP written to a stream it cannot seek (`ZipArchive` over a `GZipStream`, Python's
+`zipfile` over a pipe) puts each entry's sizes in a data descriptor after the data. Inside a gzip,
+`ArchiveFormatDetector` sees GZip and the archive goes to tar.exe; libarchive's streaming ZIP reader
+lists the entry before it has read the data, and bsdtar prints `archive_entry_size`, 0 when unset.
+
+| Input | `-tv` size | Written by `x` | tar.exe |
+|---|---|---|---|
+| 65 KB `stream.zip.gz` (64 MiB of zeros) | 0 | 64 MiB, `pakko x` exit 0 | 3.8.9 and 3.5.2 alike |
+| 6.9 KB `big4096.zip.gz` (Zip64) | 0 | 4 GiB in 3.4 s | 3.8.9 |
+
+The job's CPU limit (`CpuTimeLimitFor`, an hour at least) is the only stop: about 4.6 TB at that rate.
+A Job Object has no disk quota.
+
+**The signal.** Three were measured on the 4 GiB run, polled every 300 ms:
+- The folder's walk (`FileInfo.Length` from the listing): 0 bytes until tar.exe closed the file in one
+  run, one poll behind in another. NTFS updates a directory entry's size lazily for a file still open,
+  and the bomb is one file. Rejected.
+- The size through a handle opened with `FILE_READ_ATTRIBUTES` only: exact, but a walk of every file
+  each time (2,000,000 entries), opening names the archive chose from Pakko's own process. Rejected.
+- The job's `IO_COUNTERS.WriteTransferCount` (`JobObjectBasicAndIoAccountingInformation`): exact and
+  live (4,294,967,296 at the end, each poll a few MB ahead of the handle's size), one call. Pipes count
+  too: `-x -O`'s stdout 67,108,864 for the 64 MiB entry, and stderr byte for byte (61 of 61; 89 of 89
+  on 3.5.2). Chosen.
+- The volume's free space was considered: one call, but another process's writes move it, and a
+  compressed folder hides the logical size.
+
+**The rule.** `TarSandboxScope.RunAsync` takes a write limit for every `-x` run (extraction, the
+first copies, Test's `-O`, the scan's): the declared bytes of what that run extracts. `JobWriteLimit`
+reads the job's count every 250 ms and once after the run; the count less the stderr Pakko has read
+(`ProcessLaunchOptions.StdErrBytesRead`) over the declared bytes and 1 MiB (stderr still in the pipe)
+terminates the job, and the run fails with `ContentLargerThanDeclared` ("Content is larger than its
+declared size", 37 locales already). The stop is a flag read after the run, as `StdOutLimit` and
+`ReadLimitHit` are, never a cancellation token: the launcher turns a cancel into
+`OperationCanceledException`, which Core reports as the user's cancel (T-F260). A run can pass its
+limit by what it writes in one interval, about 330 MB at this machine's 1.3 GB/s. A count that cannot
+be read stops the run (`SandboxSetupFailed`), never leaves it unwatched.
+
+**What each run declares.** `TarCatalog` holds every occurrence of a name. A `-T` run extracts every
+occurrence (each overwrite is a write), so `DeclaredSizeOf` sums them all; the first-copy run (`-q`)
+writes each name's first copy, so `FirstCopiesDeclared` sums `DuplicateGroup.FirstSize` (a test has a
+first copy 3 MiB larger than the last; summing the last copies' sizes refused it). Test's `-T`/`-X`
+subset is `TestSubset.DeclaredSize`, as before.
+
+**No false stop on real archives.** A probe (8 MiB random, 3 MiB zeros, text, an empty file) wrote
+exactly the `-tv` total on ustar, pax, gnutar, odc and newc cpio, ISO 9660, 7z (store and LZMA2),
+tar.gz/bz2/xz/zst/lzma/lz/Z, ar, CAB (makecab LZX), the `valid.7z` and `valid.rar` fixtures, on 3.8.9;
+on 3.5.2 the same for the formats it reads. Not probed: a multi-extent ISO file (over 4 GiB), a sparse
+tar (it writes no more than its declared size). The listing of the bomb shape still reads all of its
+data without writing it: T-F567.
+
+**Not taken:** refusing a ZIP inside a filter by its magic (only one shape of "size after the data";
+libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
+(a 7 KB file filling a disk is not a rule to document).
+
 ## v1.12.0 batch 3, step 6 - T-F514 spike: `TarWriter` for tar, tar.gz and tar.zst (2026-11-21)
 
 A recommendation, not code in the product. Source read at `dotnet/runtime` tag `v11.0.0`
