@@ -80,7 +80,7 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │       │       the list when the tar.exe writer probe answers yes (T-F342). While 7Z is the
         │       │       format, a Method label and list (LZMA2, LZMA, BZip2, Deflate, Copy) show
         │       │       on their own line under Format and Compression (beside them the row ran past
-        │       │       the card's edge), and Copy disables Compression; the PAR2 check and its box are a left-aligned Grid (*, Auto) so
+        │       │       the card's edge), and Copy disables Compression; Zstandard joins the list's end when its own probe answers yes, and a note under it (SevenZipZstdNote) says 7-Zip cannot open such an archive (T-F565); the PAR2 check and its box are a left-aligned Grid (*, Auto) so
         │       │       a long label wraps (T-F387). When the password panel appears, code-behind scrolls EncryptConfirmBox
         │       │       into view (EncryptionPanel.SizeChanged), so both boxes show at 1100x780.
         │       └── DestinationCard — Border (card), Grid (Auto,*) with 7 rows: title, destination

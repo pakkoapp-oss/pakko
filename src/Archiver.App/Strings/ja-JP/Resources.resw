@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>方式:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>7-Zip ではこのアーカイブを開けません。NanaZip と Windows 11 23H2 以降では開けます。</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>ファイルが存在する場合:</value>
   </data>

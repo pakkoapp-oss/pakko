@@ -48,4 +48,8 @@ public static class SevenZipMethodOption
     /// </summary>
     public static bool HasCompressionLevel(ArchiveContainerFormat format, SevenZipMethod method) =>
         format != ArchiveContainerFormat.Tar && !(format == ArchiveContainerFormat.SevenZip && method == SevenZipMethod.Copy);
+
+    /// <summary>T-F565: whether the card says that 7-Zip cannot open the archive: a 7z compressed with Zstandard.</summary>
+    public static bool ShowsZstdNote(ArchiveContainerFormat format, SevenZipMethod method) =>
+        format == ArchiveContainerFormat.SevenZip && method == SevenZipMethod.Zstd;
 }

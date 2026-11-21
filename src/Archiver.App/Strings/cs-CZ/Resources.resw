@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Metoda:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>7-Zip takový archiv neotevře. NanaZip a Windows 11 23H2 nebo novější ano.</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Pokud soubor existuje:</value>
   </data>

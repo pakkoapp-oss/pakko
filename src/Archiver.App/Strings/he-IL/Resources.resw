@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>שיטה:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>7-Zip אינו פותח ארכיון כזה. NanaZip ו-Windows 11 23H2 ואילך פותחים אותו.</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>אם הקובץ כבר קיים:</value>
   </data>

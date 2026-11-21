@@ -171,6 +171,9 @@
   <data name="SevenZipMethodLabel.Text" xml:space="preserve">
     <value>Módszer:</value>
   </data>
+  <data name="SevenZipZstdNote.Text" xml:space="preserve">
+    <value>A 7-Zip nem tud megnyitni ilyen archívumot. A NanaZip és a Windows 11 23H2 vagy újabb igen.</value>
+  </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Ha a fájl létezik:</value>
   </data>
