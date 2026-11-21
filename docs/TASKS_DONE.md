@@ -16715,3 +16715,39 @@ except the next submission), T-F202 (the old UI gate, replaced by `docs/SMOKE.md
     like a buffer sized by the listing (rented once, then pooled); find its owner before it is judged.
   - **Reported by:** the agent (batch 6, the push check), 2026-11-18.
 
+
+### T-F514 - Spike: `TarWriter` (.NET 11) for creating tar, tar.gz and tar.zst in place of tar.exe (P3, user, 2026-11-12)
+
+- [x] **Status:** closed 2026-11-21, rejected for now. The owner left the decision to the agent, which
+  took the spike's recommendation: tar, tar.gz and tar.zst stay on tar.exe in its sandbox (tar.zst
+  loses 3-4x to libarchive's threads; tar and tar.gz draw at the default level and would cost a second
+  writer and a trust-boundary change). Reopen if .NET gains multi-threaded zstd or names outside the
+  code page become a reported need. `docs/DECISIONS.md`, "v1.12.0 batch 3, step 6".
+- **Graduated 2026-11-21:** v1.12.0 batch 3.
+- **As filed:**
+  - [ ] **Status:** spike done 2026-11-21 (v1.12.0 batch 3, step 6); the recommendation in
+    `docs/DECISIONS.md` (tar.zst stays on tar.exe; tar and tar.gz possible, not worth it now) waits
+    for the project owner's decision. A spike that ends in a recommendation, not in code.
+    - **Why it is open:** creation reads the user's own files, not a hostile archive, so the
+      "no parser in-process" boundary (`SECURITY.md`, Trust Model; `docs/DECISIONS.md` T-F49) weighs
+      less here than for reading. Reading stays decided: `TarReader` was rejected on its source
+      (DECISIONS, 2026-11-05: UTF-8-only names, the doubled prefix separator, a ~2 GB rent from one
+      forged header), and .NET 11's checksum check changes none of that.
+    - **What it could give:** progress and cancellation per entry, typed errors in place of stderr,
+      the same bytes on Windows 10 (tar 3.5.2) and Windows 11 (3.8.x); `ZstandardStream` (.NET 11)
+      for tar.zst.
+    - **Against it:** two writers for one family (bz2, xz, lzma and 7z stay on tar.exe; none is in
+      the BCL); .NET 11's `TarWriter` writes a `HardLink` entry for a second name of one file by
+      default, while Pakko refuses tar over a hard-link pair (T-F392) - `TarWriterOptions.HardLinkMode`
+      would have to be set and checked.
+    - **Steps:**
+      1. Read `TarWriter` in `dotnet/runtime` at the tag the pinned SDK bundles and quote it in
+         DECISIONS: hard links, junctions and other reparse points, name encoding (pax, ustar,
+         long names), timestamps and attributes, what it reads from disk by itself
+         (`WriteEntry(fileName, ...)`) against what Pakko would hand it.
+      2. Write the same trees as `TarSandboxedServiceCreationFilterTests` and the T-F512 name shapes with both, compare
+         the listings and extracted bytes; each archive read by tar.exe 3.8.x on Win11 and 3.5.2 on
+         PakkoW10.
+      3. Measure time and peak memory against tar.exe on the T-F498 trees.
+      4. A recommendation in DECISIONS (adopt for which formats, or reject with the reason); a change
+         of the trust boundary needs the owner's decision and a `SECURITY.md` edit with their OK.

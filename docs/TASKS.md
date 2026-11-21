@@ -59,7 +59,7 @@ The user, 2026-11-20: the next release works on the speed of what goes through t
 task. The first measure (`docs/DECISIONS.md`, "Pakko against NanaZip and 7-Zip") put tar and 7z
 2 to 12 times behind 7-Zip; the bare tar.exe extracts the same 3,619-file tar in 1.6 s where Pakko
 takes 16.5 s, so most of it is Pakko's own. Creating tar, tar.gz and tar.zst through .NET (T-F514)
-is a real candidate; reading stays in the sandbox. Plan and inventory: `docs/DECISIONS.md`,
+was a real candidate (spiked, rejected 2026-11-21); reading stays in the sandbox. Plan and inventory: `docs/DECISIONS.md`,
 "v1.12.0 wave plan".
 
 Same rules as the v1.11.0 wave: one branch and one PR per batch, one commit per task, Sonar's rules
@@ -73,7 +73,7 @@ reviewer at the batch's close, with the user's OK.
 |---|---|---|---|
 | 1 | Where the time goes | T-F565 step 1: bare tar.exe and the helper against Pakko on the same archives; Pakko's phases (scope, profile, scans, listings, the move out of the quarantine, the commit) | A table in DECISIONS, both volumes, both tar builds; it decides what batches 2 and 3 hold |
 | 2 | Extraction through the sandbox | T-F565 (extraction), T-F561 (reproduced as P2 and fixed 2026-11-21), T-F567 (closed by measurement 2026-11-21), T-F560 (closed, owner found 2026-11-21); T-F464 if batch 1 shows the second listing or the name prediction costs | Measured before and after, the quiet suite, both tar builds, an opus reviewer |
-| 3 | Creation | T-F565 (creation: libarchive's options, threads where a filter has them); T-F514 (`TarWriter` with `GZipStream`/`ZstandardStream` for tar, tar.gz, tar.zst; the user decides after the spike; `TarReader` read again at the SDK's 11.0.x tag for the three faults that rejected it on 10.0.14) | Same archive size against 7-Zip; every archive read by 7-Zip and both tar builds; `HardLinkMode` against T-F392; `SECURITY.md` only with the user's OK |
+| 3 | Creation | T-F565 (creation: libarchive's options, threads where a filter has them); T-F514 (`TarWriter` with `GZipStream`/`ZstandardStream` for tar, tar.gz, tar.zst; spiked and rejected 2026-11-21, tar.exe stays; `TarReader` read again at the SDK's 11.0.x tag for the three faults that rejected it on 10.0.14) | Same archive size against 7-Zip; every archive read by 7-Zip and both tar builds; `HardLinkMode` against T-F392; `SECURITY.md` only with the user's OK |
 | 4 | ARM64 helper | T-F562 | `canary-arm64` native; one AppContainer run on an ARM64 machine if there is one |
 | 5 | Names | T-F556, T-F563, T-F559 | One deploy, `SHL-019`, PakkoW10 for T-F559 |
 | 6 | Taskbar, the file list | T-F564, T-F566 | `APP-031`, `OPW-006` and T-F566's new APP row on the device |
@@ -89,35 +89,6 @@ T-F328, T-F329, T-F331, T-F332, T-F359, T-F393.
 ---
 
 ## Future Tasks
-
-### T-F514 - Spike: `TarWriter` (.NET 11) for creating tar, tar.gz and tar.zst in place of tar.exe (P3, user, 2026-11-12)
-
-- [ ] **Status:** spike done 2026-11-21 (v1.12.0 batch 3, step 6); the recommendation in
-  `docs/DECISIONS.md` (tar.zst stays on tar.exe; tar and tar.gz possible, not worth it now) waits
-  for the project owner's decision. A spike that ends in a recommendation, not in code.
-  - **Why it is open:** creation reads the user's own files, not a hostile archive, so the
-    "no parser in-process" boundary (`SECURITY.md`, Trust Model; `docs/DECISIONS.md` T-F49) weighs
-    less here than for reading. Reading stays decided: `TarReader` was rejected on its source
-    (DECISIONS, 2026-11-05: UTF-8-only names, the doubled prefix separator, a ~2 GB rent from one
-    forged header), and .NET 11's checksum check changes none of that.
-  - **What it could give:** progress and cancellation per entry, typed errors in place of stderr,
-    the same bytes on Windows 10 (tar 3.5.2) and Windows 11 (3.8.x); `ZstandardStream` (.NET 11)
-    for tar.zst.
-  - **Against it:** two writers for one family (bz2, xz, lzma and 7z stay on tar.exe; none is in
-    the BCL); .NET 11's `TarWriter` writes a `HardLink` entry for a second name of one file by
-    default, while Pakko refuses tar over a hard-link pair (T-F392) - `TarWriterOptions.HardLinkMode`
-    would have to be set and checked.
-  - **Steps:**
-    1. Read `TarWriter` in `dotnet/runtime` at the tag the pinned SDK bundles and quote it in
-       DECISIONS: hard links, junctions and other reparse points, name encoding (pax, ustar,
-       long names), timestamps and attributes, what it reads from disk by itself
-       (`WriteEntry(fileName, ...)`) against what Pakko would hand it.
-    2. Write the same trees as `TarSandboxedServiceCreationFilterTests` and the T-F512 name shapes with both, compare
-       the listings and extracted bytes; each archive read by tar.exe 3.8.x on Win11 and 3.5.2 on
-       PakkoW10.
-    3. Measure time and peak memory against tar.exe on the T-F498 trees.
-    4. A recommendation in DECISIONS (adopt for which formats, or reject with the reason); a change
-       of the trust boundary needs the owner's decision and a `SECURITY.md` edit with their OK.
 
 ### T-F02 — Dedicated Archive Window
 - [ ] **Status:** future
