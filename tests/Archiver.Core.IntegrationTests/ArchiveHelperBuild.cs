@@ -3,8 +3,8 @@ using System.Diagnostics;
 namespace Archiver.Core.IntegrationTests;
 
 /// <summary>
-/// T-F470: the Release Archiver.ArchiveHelper.exe from this checkout, per platform (x64 runs here;
-/// ARM64 is checked as a file). `dotnet test` cannot
+/// T-F470: the Release Archiver.ArchiveHelper.exe from this checkout, per platform (the test process's
+/// own runs, T-F562; the other is checked as a file). `dotnet test` cannot
 /// build a .vcxproj, so a missing or stale exe (older than its sources) is built here through
 /// msbuild found by vswhere, once per checkout across test processes. CI builds it in a step
 /// before the tests, so this only builds on a developer's machine.
@@ -14,7 +14,8 @@ internal static class ArchiveHelperBuild
     private static readonly Lazy<string> X64 = new(() => BuildIfStale("x64"), LazyThreadSafetyMode.ExecutionAndPublication);
     private static readonly Lazy<string> Arm64 = new(() => BuildIfStale("ARM64"), LazyThreadSafetyMode.ExecutionAndPublication);
 
-    public static string ExePath => X64.Value;
+    public static string ExePath =>
+        System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? Arm64.Value : X64.Value;
 
     public static string ExePathFor(string platform) => platform switch
     {

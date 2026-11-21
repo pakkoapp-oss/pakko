@@ -75,7 +75,7 @@ formats they handle depends on the Windows build. A current Windows 11 reads all
 Windows 10's build has zlib only and reads tar, tar.gz and the read-only formats except lzip.
 Since v1.10.0 Pakko reads through a small helper over `archiveint.dll` (checked for Microsoft's
 signature, as `tar.exe` is), so file names arrive exactly as stored; where the helper cannot run
-(on ARM64 for now, or when its startup check fails) it reads with `tar.exe` as before. Archives
+(an x64 Pakko emulated on ARM64, or when its startup check fails) it reads with `tar.exe` as before. Archives
 are created with `tar.exe`. Pakko asks the installed `tar.exe` and offers only what it can do
 (`pakko i` lists it and names the reader). Reading runs inside an AppContainer sandbox with no
 network access.

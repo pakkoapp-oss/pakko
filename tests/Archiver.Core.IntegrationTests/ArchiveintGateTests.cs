@@ -18,7 +18,7 @@ public sealed class ArchiveintGateTests
 
     // --- Happy path: the real probe, the real DLL ---
 
-    [NativeX64Fact]
+    [NativeFact]
     public async Task EveryConditionMet_ChoosesTheHelper()
     {
         var gate = new ArchiveintGate(new GroupPolicyOptions(), ArchiveHelperBuild.ExePath);
@@ -64,18 +64,125 @@ public sealed class ArchiveintGateTests
         decision.Cause.Should().Contain("no archive helper");
     }
 
-    [Theory]
-    [InlineData(Arm64)]
-    [InlineData((ushort)0x014C)]
-    public async Task NotANativeX64Machine_ReadsWithTarExe(ushort machine)
+    // T-F562: Windows on ARM64 ships its own archiveint.dll; a native ARM64 Pakko reads through the
+    // ARM64 helper as x64 does.
+    [Fact]
+    public async Task NativeArm64_WithAnArm64Helper_ChoosesTheHelper()
     {
-        ArchiveintGate gate = Gate(machine: () => machine);
+        ArchiveintGate gate = Gate(machine: () => Arm64, helperMachine: _ => Arm64, probe: (_, _) => Task.FromResult(Probe("libarchive 3.8.9 zlib/1.3.1")));
+
+        (await gate.DecideAsync()).UsesHelper.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData((ushort)0x014C)]
+    [InlineData((ushort)0x01C4)]
+    public async Task NeitherNativeX64NorNativeArm64_ReadsWithTarExe(ushort machine)
+    {
+        ArchiveintGate gate = Gate(machine: () => machine, helperMachine: _ => machine);
 
         ArchiveintDecision decision = await gate.DecideAsync();
 
         decision.UsesHelper.Should().BeFalse();
-        decision.Cause.Should().Contain("not a native x64 process");
+        decision.Cause.Should().Contain("not a native x64 or ARM64 process");
     }
+
+    // T-F562: an x64 helper beside an ARM64 Pakko (or the reverse) would run emulated in the sandbox,
+    // where Windows keeps its image open after it exits (T-F546).
+    [Theory]
+    [InlineData(Amd64, Arm64)]
+    [InlineData(Arm64, Amd64)]
+    public async Task AHelperBuiltForAnotherMachine_ReadsWithTarExe(ushort process, ushort helper)
+    {
+        int probes = 0;
+        ArchiveintGate gate = Gate(machine: () => process, helperMachine: _ => helper,
+            probe: (_, _) => { probes++; return Task.FromResult(Probe("libarchive 3.8.9")); });
+
+        ArchiveintDecision decision = await gate.DecideAsync();
+
+        decision.UsesHelper.Should().BeFalse();
+        decision.Cause.Should().Contain("the archive helper is not built for this machine");
+        probes.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AHelperWhoseMachineCannotBeRead_ReadsWithTarExe()
+    {
+        ArchiveintDecision decision = await Gate(helperMachine: _ => null).DecideAsync();
+
+        decision.UsesHelper.Should().BeFalse();
+        decision.Cause.Should().Contain("the archive helper is not built for this machine");
+    }
+
+    // T-F562: IsWow64Process2 reports no process machine for x64 emulated on ARM64 (it is not WOW64),
+    // so the process's own architecture decides whether it runs natively.
+    [Theory]
+    [InlineData(System.Runtime.InteropServices.Architecture.X64, (ushort)0, Amd64, Amd64)]
+    [InlineData(System.Runtime.InteropServices.Architecture.Arm64, (ushort)0, Arm64, Arm64)]
+    [InlineData(System.Runtime.InteropServices.Architecture.X64, (ushort)0, Arm64, null)]
+    [InlineData(System.Runtime.InteropServices.Architecture.Arm64, (ushort)0, Amd64, null)]
+    [InlineData(System.Runtime.InteropServices.Architecture.X86, (ushort)0x014C, Amd64, null)]
+    [InlineData(System.Runtime.InteropServices.Architecture.X86, (ushort)0x014C, Arm64, null)]
+    public void NativeMachine_IsTheHostOnlyForAProcessBuiltForIt(System.Runtime.InteropServices.Architecture process, ushort wow64Machine, ushort host, ushort? expected) =>
+        ArchiveintGate.NativeMachineOf(process, wow64Machine, host).Should().Be(expected);
+
+    [Fact]
+    public void PeMachine_OfTheBuiltHelper_IsItsPlatform()
+    {
+        ArchiveintGate.PeMachineOf(ArchiveHelperBuild.ExePathFor("x64")).Should().Be(Amd64);
+        ArchiveintGate.PeMachineOf(ArchiveHelperBuild.ExePathFor("ARM64")).Should().Be(Arm64);
+    }
+
+    [Theory]
+    [InlineData(0, 0, false)]
+    [InlineData(2, 0, false)]
+    [InlineData(64, 0x40, true)]
+    [InlineData(200, 0x7FFFFFF0, true)]
+    [InlineData(200, -8, true)]
+    [InlineData(200, 0x10, true)]
+    [InlineData(200, 0x40, false)]
+    public void PeMachine_OfAFileThatIsNoImage_IsNull(int length, int peOffset, bool signature) =>
+        WithImage(length, peOffset, signature, path => ArchiveintGate.PeMachineOf(path).Should().BeNull());
+
+    [Fact]
+    public void PeMachine_OfTheSmallestImageShape_IsItsMachineField() =>
+        WithImage(200, 0x40, signature: true, path => ArchiveintGate.PeMachineOf(path).Should().Be(Amd64));
+
+    // "MZ", the PE header's offset at 0x3C, and there "PE\0\0" (or not) and the x64 machine field.
+    private static void WithImage(int length, int peOffset, bool signature, Action<string> check)
+    {
+        string path = Path.Combine(Path.GetTempPath(), "pakko-pe-" + Guid.NewGuid().ToString("N") + ".exe");
+        byte[] bytes = new byte[length];
+        if (length >= 2)
+        {
+            bytes[0] = (byte)'M';
+            bytes[1] = (byte)'Z';
+        }
+        if (length >= 0x40)
+            BitConverter.GetBytes(peOffset).CopyTo(bytes, 0x3C);
+        if (peOffset >= 0 && peOffset <= length - 6)
+        {
+            if (signature)
+            {
+                bytes[peOffset] = (byte)'P';
+                bytes[peOffset + 1] = (byte)'E';
+            }
+            BitConverter.GetBytes(Amd64).CopyTo(bytes, peOffset + 4);
+        }
+        File.WriteAllBytes(path, bytes);
+        try
+        {
+            check(path);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void PeMachine_OfAMissingFile_IsNull() =>
+        ArchiveintGate.PeMachineOf(Path.Combine(Path.GetTempPath(), "pakko-pe-" + Guid.NewGuid().ToString("N") + ".exe")).Should().BeNull();
 
     [Fact]
     public async Task AMachineNotKnown_ReadsWithTarExe() =>
@@ -231,13 +338,13 @@ public sealed class ArchiveintGateTests
 
     // --- Harness ---
 
-    // Every condition but the one a test changes: a helper file that exists, native x64, a signed
-    // DLL, and a probe that must be given.
+    // Every condition but the one a test changes: a helper file that exists, native x64, a helper
+    // built for it, a signed DLL, and a probe that must be given.
     private static ArchiveintGate Gate(
         GroupPolicyOptions? policy = null, string? helperPath = null, Func<ushort?>? machine = null, Func<string, bool>? verify = null,
-        Func<string, CancellationToken, Task<ArchiveHelperOutput>>? probe = null, TimeSpan? timeout = null) =>
+        Func<string, CancellationToken, Task<ArchiveHelperOutput>>? probe = null, TimeSpan? timeout = null, Func<string, ushort?>? helperMachine = null) =>
         new(policy ?? new GroupPolicyOptions(), helperPath ?? typeof(ArchiveintGateTests).Assembly.Location, machine ?? (() => Amd64), verify ?? (_ => true),
-            probe ?? ((_, _) => throw new InvalidOperationException("this test gives no probe")), timeout);
+            probe ?? ((_, _) => throw new InvalidOperationException("this test gives no probe")), timeout, helperMachine ?? (_ => Amd64));
 
     private static ArchiveHelperOutput Probe(string version, string? missing = null)
     {

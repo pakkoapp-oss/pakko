@@ -94,6 +94,7 @@ public sealed partial class QuarantineFilesOwnerTests
         ("Sandbox/TarSandboxScope.cs", "File.ReadAllBytes(helperSource)", 1, "the archive helper beside Pakko's own binaries, not the quarantine"),
         ("Sandbox/ArchiveintGate.cs", "File.Exists(_helperPath)", 1, "the archive helper beside Pakko's own binaries, not the quarantine"),
         ("Sandbox/ArchiveintGate.cs", "File.Exists(ArchiveintPath)", 1, "a system DLL, not the quarantine"),
+        ("Sandbox/ArchiveintGate.cs", "new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)", 1, "the archive helper beside Pakko's own binaries, its PE header (T-F562), not the quarantine"),
         ("Sandbox/ArchiveintGate.cs", "File.WriteAllBytesAsync(archive, new byte[1024], cancellationToken)", 1, "the probe's empty tar, a Pakko-named file in the temp folder"),
         ("Sandbox/ArchiveintGate.cs", "File.Delete(archive)", 1, "the probe's empty tar, a Pakko-named file in the temp folder"),
         ("Sandbox/ArchiveHelperOutput.cs", "new(what)", 1, "an exception, not the disk"),
