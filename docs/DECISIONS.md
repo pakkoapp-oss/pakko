@@ -15082,9 +15082,27 @@ whole run stays within the budget wherever two threads or more are given: xz lev
 one does. One thread writes no option, so a one-core machine or `-mmt=off` gets the arguments of
 1.11 exactly. `MemoryBudget` is the sandbox's rule moved, not copied (half the physical memory,
 1-4 GiB, per operation): two creations at once each take a budget, as two sandboxed reads do.
-xz on one thread is another encoder than on two or more, so `-mmt=off` writes other xz bytes
-(CLI.md says so); zstd's bytes do not depend on the count. 7-Zip reads tar.xz and tar.zst written
-on four threads (`ThreadedCompressionCompatibilityTests`).
+One thread is another encoder than two or more for both codecs, so `-mmt=off` writes other bytes
+(CLI.md says so): xz's single-stream encoder against its block encoder, and for zstd no option at
+all (libzstd's single-threaded mode) against `zstd:threads=N` (its worker mode; step 0's "the same
+for 1" was `zstd:threads=1`, which is already the worker mode, not what Pakko writes for one
+thread). 7-Zip reads tar.xz and tar.zst written on four threads
+(`ThreadedCompressionCompatibilityTests`).
+
+**Before and after, through the installed pakko** (dev package, Windows 11, 12 cores, 16 GB,
+bsdtar 3.8.9, D:, the 3,619-file `many` tree of 471 MiB; "before" is `-mmt=1`, which writes the
+arguments of 1.11; one run each on a quiet machine). 7-Zip at the nearest size, its own 7z:
+
+| Pakko | Before | After | 7za at about the same size |
+|---|---|---|---|
+| tar.xz `-mx=5` (xz 4) | 115.0 s, 137.0 MB | **17.9 s**, 138.5 MB | `-mx=3` 10.0 s 145.5 MB; `-mx=5` 29.0 s 124.1 MB |
+| tar.xz `-mx=9` | 189.4 s, 119.9 MB | **80.4 s**, 123.0 MB | `-mx=5` 29.0 s, 124.1 MB |
+| tar.zst `-mx=5` (zstd 9) | 11.4 s, 164.7 MB | **3.6 s**, 163.7 MB | `-mx=1` 5.8 s, 158.8 MB |
+| tar.zst `-mx=9` (zstd 19) | 180.7 s, 142.9 MB | **36.4 s**, 142.8 MB | `-mx=3` 10.0 s, 145.5 MB |
+
+Threads take tar.xz at the default level from 6.4 times to about level with 7-Zip at its size, and
+tar.zst's default ahead of it; the top levels stay 2.8 (xz 9) and 3.6 (zstd 19) times 7-Zip's time
+at the same size: what those levels buy is little size for much time, the encoder's own cost.
 
 **Zstandard in 7z - built, then dropped by the user the same day ("not worth it").** Nothing of it
 ships: `-m0=zstd` is refused again as before (CLI-027), the App lists the five methods of 1.11, and
