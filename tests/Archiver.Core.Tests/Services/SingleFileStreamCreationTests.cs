@@ -43,11 +43,63 @@ public sealed class SingleFileStreamCreationTests : IDisposable
         return path;
     }
 
-    private static List<string> Args(ArchiveContainerFormat format, CompressionLevel level)
+    private static List<string> Args(ArchiveContainerFormat format, CompressionLevel level) =>
+        Args(format, level, CompressionThreads.Limit.OneThread);
+
+    private static List<string> Args(ArchiveContainerFormat format, CompressionLevel level, CompressionThreads.Limit limit)
     {
         var args = new List<string>();
-        TarSandboxedService.AppendCompressionFilterArgs(args, format, level);
+        TarSandboxedService.AppendCompressionFilterArgs(args, format, level, limit);
         return args;
+    }
+
+    // --- T-F565: libarchive's threads for xz and zstd, bounded by memory ---
+
+    private static readonly CompressionThreads.Limit TwelveCoresFourGiB = new(0, 12, 4L * 1024 * 1024 * 1024);
+
+    [Theory]
+    [InlineData(ArchiveContainerFormat.TarXz, CompressionLevel.SmallestSize, "-J", "xz:compression-level=9,xz:threads=4")]
+    [InlineData(ArchiveContainerFormat.TarXz, CompressionLevel.Optimal, "-J", "xz:compression-level=4,xz:threads=12")]
+    [InlineData(ArchiveContainerFormat.TarXz, CompressionLevel.NoCompression, "-J", "xz:compression-level=0,xz:threads=12")]
+    [InlineData(ArchiveContainerFormat.TarZst, CompressionLevel.SmallestSize, "--zstd", "zstd:compression-level=19,zstd:threads=12")]
+    [InlineData(ArchiveContainerFormat.TarZst, CompressionLevel.Fastest, "--zstd", "zstd:compression-level=1,zstd:threads=12")]
+    public void AppendCompressionFilterArgs_XzAndZstd_TakeTheThreadsTheirLevelAffords(
+        ArchiveContainerFormat format, CompressionLevel level, string filter, string options) =>
+        Args(format, level, TwelveCoresFourGiB).Should().Equal(filter, "--options", options);
+
+    [Fact]
+    public void AppendCompressionFilterArgs_XzOnItsOwn_ThreadsAndTheRawFormat() =>
+        Args(ArchiveContainerFormat.Xz, CompressionLevel.SmallestSize, TwelveCoresFourGiB)
+            .Should().Equal("-J", "--options", "xz:compression-level=9,xz:threads=4", "--format", "raw");
+
+    [Theory]
+    [InlineData(ArchiveContainerFormat.TarGz, "-z", "gzip:compression-level=9")]
+    [InlineData(ArchiveContainerFormat.TarBz2, "-j", "bzip2:compression-level=9")]
+    [InlineData(ArchiveContainerFormat.TarLzma, "--lzma", "lzma:compression-level=9")]
+    public void AppendCompressionFilterArgs_CodecsWithoutThreads_AreUnchanged(ArchiveContainerFormat format, string filter, string options) =>
+        Args(format, CompressionLevel.SmallestSize, TwelveCoresFourGiB).Should().Equal(filter, "--options", options);
+
+    [Fact]
+    public void AppendCompressionFilterArgs_OneThread_IsTodaysArguments() =>
+        Args(ArchiveContainerFormat.TarZst, CompressionLevel.SmallestSize, new CompressionThreads.Limit(0, 1, 4L * 1024 * 1024 * 1024))
+            .Should().Equal("--zstd", "--options", "zstd:compression-level=19");
+
+    [Fact]
+    public void AppendCompressionFilterArgs_Tar_StillNoOptions() =>
+        Args(ArchiveContainerFormat.Tar, CompressionLevel.SmallestSize, TwelveCoresFourGiB).Should().BeEmpty();
+
+    // Windows 10's 3.5.2 writes neither xz nor zstd; every tar.exe that writes zstd (3.7.0 or later,
+    // with libzstd) knows zstd:threads, which libarchive has had since 3.6.0.
+    [Theory]
+    [InlineData("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ")]
+    [InlineData("bsdtar 3.6.2 - libarchive 3.6.2 zlib/1.2.13 liblzma/5.4.1 bz2lib/1.0.8 libzstd/1.5.5")]
+    [InlineData("bsdtar 3.7.2 - libarchive 3.7.2 zlib/1.2.13.1-motley liblzma/5.4.3 bz2lib/1.0.8 libzstd/1.5.5")]
+    [InlineData("bsdtar 3.8.9 - libarchive 3.8.9 zlib/1.2.13.1-motley liblzma/5.8.3 bz2lib/1.0.8 libzstd/1.5.7")]
+    public void SupportsZstd_OnlyWhereZstdThreadsExist(string versionOutput)
+    {
+        TarCapabilities caps = TarVersionParser.Parse(versionOutput);
+        if (caps.SupportsZstd)
+            Version.Parse(caps.Version).Should().BeGreaterThanOrEqualTo(new Version(3, 6, 0));
     }
 
     // --- Happy path ---

@@ -1600,7 +1600,7 @@ public sealed class TarSandboxedService : ITarService
         if (options.Format == ArchiveContainerFormat.SevenZip)
             AppendSevenZipArgs(tarArgs, options.SevenZipMethod, options.CompressionLevel);
         else
-            AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
+            AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel, CompressionThreads.Limit.ForThisMachine(options.MaxThreads));
         // T-F316: tar.exe walks a source folder itself, and when the destination lies inside
         // one it would pack this run's own files. They are all in the work root (T-F528), whose
         // name is Pakko's own (ASCII, no pattern characters); tar.exe matches it at any depth.
@@ -2104,7 +2104,8 @@ public sealed class TarSandboxedService : ITarService
         tarArgs.Add(compression is null ? "7zip:compression=copy" : $"7zip:compression={compression},compression-level={numericLevel}");
     }
 
-    internal static void AppendCompressionFilterArgs(List<string> tarArgs, ArchiveContainerFormat format, System.IO.Compression.CompressionLevel level)
+    internal static void AppendCompressionFilterArgs(
+        List<string> tarArgs, ArchiveContainerFormat format, System.IO.Compression.CompressionLevel level, CompressionThreads.Limit threadLimit)
     {
         (string? filterFlag, string? moduleName, int max) = format switch
         {
@@ -2120,7 +2121,7 @@ public sealed class TarSandboxedService : ITarService
             _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
         };
 
-        if (filterFlag is null)
+        if (filterFlag is null || moduleName is null)
             return;
 
         tarArgs.Add(filterFlag);
@@ -2137,9 +2138,14 @@ public sealed class TarSandboxedService : ITarService
         tarArgs.Add("--options");
         // T-F413: raw gzip would store the time of compression, not the file's (measured on
         // 3.8.9); no time is better than a wrong one for the reader that sets it on the file.
-        tarArgs.Add(format == ArchiveContainerFormat.GZip
-            ? $"{moduleName}:compression-level={numericLevel},{moduleName}:!timestamp"
-            : $"{moduleName}:compression-level={numericLevel}");
+        // T-F565: xz and zstd on threads; one thread keeps the option out.
+        string options = $"{moduleName}:compression-level={numericLevel}";
+        int threads = CompressionThreads.For(moduleName, numericLevel, threadLimit);
+        if (format == ArchiveContainerFormat.GZip)
+            options += $",{moduleName}:!timestamp";
+        else if (threads > 1)
+            options += "," + CompressionThreads.Option(moduleName, threads);
+        tarArgs.Add(options);
         // T-F413: the file's bytes alone, through the codec - no tar header, no name stored.
         if (ArchiveFormatPolicy.IsSingleFileFormat(format))
         {

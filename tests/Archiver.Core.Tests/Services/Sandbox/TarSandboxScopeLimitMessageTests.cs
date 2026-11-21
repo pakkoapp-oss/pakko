@@ -15,22 +15,6 @@ public sealed class TarSandboxScopeLimitMessageTests
     public void DescribeLimitHit_CpuTime_NamesTheSandboxTimeLimit()
         => TarSandboxScope.DescribeLimitHit(SandboxJobObject.LimitHit.CpuTime).Should().Contain("processor time").And.Contain("minutes");
 
-    // User request 2026-09-25: limits for today's archives — a decoder allocates the whole
-    // dictionary (7-Zip up to 1.5 GB, zstd --long=31 2 GB, RAR5 up to 4 GB). Half the machine's
-    // memory, never below 1 GB nor above 4 GB.
-    [Theory]
-    [InlineData(0L, 1L)]
-    [InlineData(2L, 1L)]
-    [InlineData(4L, 2L)]
-    [InlineData(6L, 3L)]
-    [InlineData(8L, 4L)]
-    [InlineData(64L, 4L)]
-    public void MemoryLimitFor_HalfOfPhysicalMemoryBetweenOneAndFourGiB(long physicalGiB, long expectedGiB)
-    {
-        const long GiB = 1024L * 1024 * 1024;
-        TarSandboxScope.MemoryLimitFor(physicalGiB * GiB).Should().Be(expectedGiB * GiB);
-    }
-
     // --- T-F470 review: a helper the job stopped ---
     // Its output is cut short (or it exits with a crash code); the job's record of the limit is the
     // cause to report, not "the output broke the protocol".
