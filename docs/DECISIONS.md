@@ -14983,6 +14983,60 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## v1.12.0 batch 3, step 0 - libarchive's threads for creation, measured (2026-11-21)
+
+T-F565, creation. Batch 1 showed creation is tar.exe's own time; what libarchive offers is threads.
+Read at the libarchive tags: `xz:threads` exists since 3.3 (the xz filter, `lzma_stream_encoder_mt`, no
+memory limit set; 0 means every core), `zstd:threads` since 3.6.0; the 7z writer has `threads` only in
+3.8 and uses it only for zstd inside a 7z (writing zstd in a 7z: 3.8.0; reading it: 3.7.0). gzip,
+bzip2 and lzma alone have none. Probed: Windows 11's 3.8.9 takes all of them; Windows 10's 3.5.2 writes
+only gzip and 7z (`zstd:threads` and `7zip:compression=zstd` are an undefined option and an unknown
+name there). A zstd 7z: 7za 26.02 refuses it ("Unsupported Method", 04F71101); NanaZip 7.0 and
+tar.exe 3.8.9 extract it.
+
+This machine (12 cores), the 3,619 SDK files (465 MiB), one run each, nothing else running:
+
+| Case | 1 thread | all cores | Size |
+|---|---|---|---|
+| tar.xz, level 6 | 196 s | 32 s | 131.6 / 132.9 MB |
+| tar.xz, level 9 | 194 s, 679 MiB | 82 s, 2.6 GB working set | 119.9 / 123.1 MB |
+| tar.zst, level 19 | 254 s | 45 s, 1.6 GB | 142.8 MB both |
+| tar.zst, level 3 | 2.5 s | 1.5 s | 177.8 MB both |
+| 7z LZMA2, level 5 (the default) | 136-150 s | the same (`threads` ignored) | 130.7 MB |
+| 7z zstd, level 19 / 9 / 6 | - / - / 6.7 s | 37 s / 3.8 s / 2.7 s | 141.4 / 163.4 / 169.2 MB |
+
+A second round of the first rows ran while the machine was busy with other work and is not used.
+
+"All cores" has no memory bound: xz at level 9 took 2.6 GB. The cost of one thread, from the same
+files twice (930 MB, enough blocks for four threads), at the levels Pakko uses (`AppendCompressionFilterArgs`:
+NoCompression 0, Fastest 1, Optimal half the maximum, SmallestSize the maximum), peak working set and
+peak commit (`PeakPagedMemorySize64`):
+
+| Level | 1 thread | 2 threads | 4 threads | Same bytes for 2 and 4 |
+|---|---|---|---|---|
+| xz 0 | 60 s, 8 / 4 MiB | 28 s, 17 / 13 MiB | 16 s, 28 / 24 MiB | yes (not for 1) |
+| xz 1 | 98 s, 14 / 10 MiB | 44 s, 39 / 37 MiB | 25 s, 69 / 72 MiB | yes (not for 1) |
+| xz 4 | 238 s, 53 / 48 MiB | 111 s, 145 / 168 MiB | 61 s, 282 / 335 MiB | yes (not for 1) |
+| xz 9 | (679 MiB above) | 214 s, 1,926 / 1,061 MiB | 142 s, 2,037 / 1,061 MiB | yes |
+| zstd 1 | 6.9 s, 19 / 14 MiB | 6.0 s, 25 / 21 MiB | 5.8 s, 31 / 28 MiB | yes, and for 1 |
+| zstd 9 | 20.5 s, 97 / 108 MiB | 12.8 s, 130 / 151 MiB | 9.8 s, 202 / 252 MiB | yes, and for 1 |
+| zstd 19 | 382 s, 239 / 276 MiB | 198 s, 362 / 421 MiB | 109 s, 612 / 713 MiB | yes, and for 1 |
+| 7z zstd 1 | 3.9 s, 21 / 17 MiB | 2.2 s, 25 / 21 MiB | 1.5 s, 33 / 30 MiB | yes, and for 1 |
+| 7z zstd 9 | 20.0 s, 98 / 678 MiB | 11.8 s, 131 / 678 MiB | 7.9 s, 205 / 678 MiB | yes, and for 1 |
+| 7z zstd 19 | 372 s, 242 / 678 MiB | 194 s, 367 / 678 MiB | 107 s, 626 / 747 MiB | yes, and for 1 |
+
+- **xz with threads writes other bytes than xz without**: one thread is liblzma's single-stream encoder,
+  more are its block encoder (blocks sized by the level, not by the count), so 2 and 4 threads give the
+  same archive and 1 another. zstd gives the same bytes for any count.
+- **The cost of a thread is the level's, and xz 9's is large:** about 1 GiB of working set a thread at
+  level 9, under 100 MiB at the others. The 7z writer commits a fixed 678 MiB at zstd levels 9 and 19
+  whatever the thread count.
+- **So threads are bounded by memory.** The count is the least of the cores, `-mmt` where given, and a
+  memory budget divided by the level's cost per thread, at least one. The budget is the sandbox's rule
+  for tar.exe's reading (half the physical memory, between 1 and 4 GiB): xz 9 gets one to four threads,
+  zstd 19 four to sixteen, the rest every core. Two creations at once each have their own budget, as two
+  sandboxed readings do.
+
 ## v1.12.0 batch 2, closing - tar.exe 3.5.2 on PakkoW10 (2026-11-21)
 
 T-F565. The run batch 1 left open (the tar.exe reading path) and the one step 1 left to the batch's
