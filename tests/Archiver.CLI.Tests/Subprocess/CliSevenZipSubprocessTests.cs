@@ -243,6 +243,31 @@ public sealed class CliSevenZipSubprocessTests : IAsyncLifetime
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be(Text);
     }
 
+    // T-F565: Zstandard, where tar.exe writes it; the archive tests and extracts back through Pakko.
+    [SevenZipZstdWriterFact]
+    public void Archive_SevenZipWithZstd_TestsAndExtractsBack()
+    {
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-t7z", "-m0=zstd", "-mx=9", Archive(), Source("a.txt"));
+
+        exitCode.Should().Be(0, stdErr);
+        (int testExit, _, string testErr) = CliProcessRunner.Run("t", Archive());
+        testExit.Should().Be(0, testErr);
+        string dest = Path.Combine(_temp.Path, "zstd-out");
+        (int extractExit, _, string extractErr) = CliProcessRunner.Run("x", $"-o{dest}", Archive());
+        extractExit.Should().Be(0, extractErr);
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be(Text);
+    }
+
+    [SevenZipZstdWriterFact]
+    public void Info_OnASystemWritingZstd_ListsZstandardLast()
+    {
+        (int exitCode, string stdOut, _) = CliProcessRunner.Run("i");
+
+        exitCode.Should().Be(0);
+        stdOut.Split('\n').Single(line => line.TrimStart().StartsWith("methods for 7z:", StringComparison.Ordinal))
+            .TrimEnd().Should().EndWith(", Zstandard");
+    }
+
     [SevenZipWriterFact]
     public void Info_OnASystemWithTheWriter_SaysSevenZipIsCreated()
     {

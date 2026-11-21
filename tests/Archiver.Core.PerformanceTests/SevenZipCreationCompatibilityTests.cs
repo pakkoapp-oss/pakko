@@ -19,6 +19,16 @@ public sealed class SevenZipWriterFactAttribute : FactAttribute
     }
 }
 
+/// <summary>T-F565: a test that needs a tar.exe seen writing Zstandard into 7z.</summary>
+public sealed class SevenZipZstdWriterFactAttribute : FactAttribute
+{
+    public SevenZipZstdWriterFactAttribute()
+    {
+        if (!new TarSandboxedService(new GroupPolicyOptions()).CanCreateSevenZipZstdAsync().GetAwaiter().GetResult())
+            Skip = "this system's tar.exe does not write Zstandard into 7z";
+    }
+}
+
 /// <summary>
 /// T-F342: the 7z archives tar.exe writes for Pakko, read by 7-Zip itself - Pakko's own reader is
 /// the same tar.exe and proves nothing about the format. In this project for the vendored 7za.exe,
@@ -78,7 +88,8 @@ public sealed partial class SevenZipCreationCompatibilityTests : IDisposable
     {
         string tree = BuildTree();
 
-        foreach (SevenZipMethod method in Enum.GetValues<SevenZipMethod>())
+        // Zstandard: 7-Zip cannot open it (ZstdMethod_SevenZipCannotOpenIt_TarExeReadsItBack).
+        foreach (SevenZipMethod method in Enum.GetValues<SevenZipMethod>().Where(method => method != SevenZipMethod.Zstd))
         {
             foreach (CompressionLevel level in Levels)
             {
@@ -143,6 +154,34 @@ public sealed partial class SevenZipCreationCompatibilityTests : IDisposable
 
         new FileInfo(archive).Length.Should().BeGreaterThan(Files(tree).Values.Sum(bytes => (long)bytes.Length));
         SevenZipRunner.Test(archive);
+    }
+
+    // T-F565: 7-Zip 26.02 has no Zstandard ("Unsupported Method", measured 2026-11-21; NanaZip and
+    // tar.exe open it), which the App's note under the method says. Pinned, so a 7-Zip that learns
+    // it shows up here and the note can change.
+    [SevenZipZstdWriterFact]
+    public async Task ZstdMethod_SevenZipCannotOpenIt_TarExeReadsItBack()
+    {
+        string tree = BuildTree();
+
+        foreach (CompressionLevel level in new[] { CompressionLevel.Fastest, CompressionLevel.Optimal, CompressionLevel.SmallestSize })
+        {
+            string archive = await CreateAsync(tree, $"zstd-{level}", SevenZipMethod.Zstd, level);
+
+            File.ReadAllBytes(archive).AsSpan(0, 6).SequenceEqual(Signature).Should().BeTrue(because: $"zstd/{level} must be a 7z");
+            Action sevenZip = () => SevenZipRunner.Test(archive);
+            sevenZip.Should().Throw<InvalidOperationException>().WithMessage("*Unsupported Method*");
+
+            string extracted = Path.Combine(_temp.Path, $"zstd-{level}-out");
+            ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [archive],
+                DestinationFolder = extracted,
+                Mode = ExtractMode.SingleFolder,
+            });
+            result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+            Files(Path.Combine(extracted, "tree")).Should().BeEquivalentTo(Files(tree), because: $"zstd/{level}");
+        }
     }
 
     // --- Boundary: sizes past the 16-bit and 32-bit limits (Slow / VeryLarge, on demand) ---

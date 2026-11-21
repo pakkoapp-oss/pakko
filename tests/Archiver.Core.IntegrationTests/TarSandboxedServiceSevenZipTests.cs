@@ -217,6 +217,27 @@ public sealed class TarSandboxedServiceSevenZipTests : IDisposable
         probes.Should().Be(1);
     }
 
+    // T-F565: Zstandard in 7z is written from libarchive 3.8.0 with libzstd; Windows 11's 3.8.x
+    // writes it, Windows 10's 3.5.2 answers "Unknown compression name". The answer follows the
+    // version here, so this test checks the probe on either system rather than skipping on one.
+    [SevenZipWriterFact]
+    public async Task ProbeSevenZipZstdWriterAsync_OnThisSystem_FollowsTheVersion()
+    {
+        TarCapabilities caps = await _sut.KnownCapabilitiesAsync();
+        bool expected = caps.SupportsZstd && Version.Parse(caps.Version) >= new Version(3, 8, 0);
+
+        (await TarSandboxedService.ProbeSevenZipZstdWriterAsync(TarExecutablePath, ProbeTimeout)).Should().Be(expected);
+        (await _sut.CanCreateSevenZipZstdAsync()).Should().Be(expected);
+    }
+
+    [SevenZipWriterFact]
+    public async Task ProbeSevenZipZstdWriterAsync_TimedOut_IsNoAnswer() =>
+        (await TarSandboxedService.ProbeSevenZipZstdWriterAsync(TarExecutablePath, TimeSpan.Zero)).Should().BeNull();
+
+    [Integration]
+    public async Task ProbeSevenZipZstdWriterAsync_NoTarExeAtThePath_IsFalse() =>
+        (await TarSandboxedService.ProbeSevenZipZstdWriterAsync(Path.Combine(_temp.Path, "no-tar.exe"), ProbeTimeout)).Should().BeFalse();
+
     [Integration]
     public async Task ProbeSevenZipWriterAsync_NoTarExeAtThePath_IsFalse() =>
         (await TarSandboxedService.ProbeSevenZipWriterAsync(Path.Combine(_temp.Path, "no-tar.exe"), ProbeTimeout)).Should().BeFalse();

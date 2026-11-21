@@ -511,6 +511,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["ITarService.KnownCapabilitiesAsync"] = "the same probe, asked again with more patience; takes no path",
         ["ITarService.CanCreateSevenZipAsync"] = "probes tar.exe's 7z writer in its own temp folder; takes no path",
         ["ITarService.AskSevenZipWriterAsync"] = "the same probe, keeping 'no answer' apart from 'no'; takes no path",
+        ["ITarService.CanCreateSevenZipZstdAsync"] = "probes tar.exe writing Zstandard into a 7z from stdin to stdout; takes no path (T-F565)",
         ["FileHashService.ComputeStreamDigestAsync"] = "hashes a stream the caller opened",
         ["EntryDiskName.AsPakkoWrites"] = "a name inside an archive, never opened",
         ["EntryDiskName.AsTarExeWrites"] = "a name inside an archive, never opened",

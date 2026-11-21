@@ -48,6 +48,9 @@ public sealed class TarSandboxedService : ITarService
     private readonly Func<Task<bool?>> _sevenZipWriterProbe;
     private readonly Lock _sevenZipWriterLock = new();
     private Task<bool?>? _sevenZipWriter;
+    private readonly Func<Task<bool?>> _sevenZipZstdWriterProbe;
+    private readonly Lock _sevenZipZstdWriterLock = new();
+    private Task<bool?>? _sevenZipZstdWriter;
     private readonly Lock _capabilitiesLock = new();
     private Task<TarCapabilities>? _knownCapabilities;
 
@@ -71,10 +74,10 @@ public sealed class TarSandboxedService : ITarService
     // beforeCreationLaunch (T-F390) runs after the name list is final and before tar.exe starts,
     // so a test can remove a source inside that window.
     // sevenZipWriterProbe (T-F342) stands in for the run of tar.exe's 7z writer; null is a run
-    // that gave no answer.
+    // that gave no answer. sevenZipZstdWriterProbe (T-F565) likewise for Zstandard in 7z.
     internal TarSandboxedService(
         GroupPolicyOptions policy, Func<Task<TarCapabilities>> probe, Action? beforeCreationLaunch = null,
-        Func<Task<bool?>>? sevenZipWriterProbe = null)
+        Func<Task<bool?>>? sevenZipWriterProbe = null, Func<Task<bool?>>? sevenZipZstdWriterProbe = null)
     {
         ArgumentNullException.ThrowIfNull(policy);
         _policy = policy;
@@ -82,6 +85,7 @@ public sealed class TarSandboxedService : ITarService
         _beforeCreationLaunch = beforeCreationLaunch;
         _sevenZipReaderProbe = probe;
         _sevenZipWriterProbe = sevenZipWriterProbe ?? (() => ProbeSevenZipWriterAsync(TarExecutablePath, SevenZipWriterProbeTimeout));
+        _sevenZipZstdWriterProbe = sevenZipZstdWriterProbe ?? (() => ProbeSevenZipZstdWriterAsync(TarExecutablePath, SevenZipWriterProbeTimeout));
     }
 
     // T-F261: POLICIES.md promises DisableTarExtraction means tar.exe is never started — enforced
@@ -148,6 +152,38 @@ public sealed class TarSandboxedService : ITarService
             : await _sevenZipReaderProbe().ConfigureAwait(false);
     }
 
+    /// <inheritdoc/>
+    public async Task<bool> CanCreateSevenZipZstdAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await CanCreateSevenZipAsync(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        Task<bool?> answer;
+        lock (_sevenZipZstdWriterLock)
+        {
+            if (_sevenZipZstdWriter is null
+                || (_sevenZipZstdWriter.IsCompleted && (!_sevenZipZstdWriter.IsCompletedSuccessfully || _sevenZipZstdWriter.Result is null)))
+            {
+                _sevenZipZstdWriter = AskSevenZipZstdWriterWithRetryAsync();
+            }
+            answer = _sevenZipZstdWriter;
+        }
+        return await answer.WaitAsync(cancellationToken).ConfigureAwait(false) == true;
+    }
+
+    // A zstd 7z Pakko could not open again is not offered: reading it needs libzstd.
+    private async Task<bool?> AskSevenZipZstdWriterWithRetryAsync()
+    {
+        TarCapabilities capabilities = await KnownCapabilitiesAsync().ConfigureAwait(false);
+        if (!capabilities.SupportsZstd)
+            return capabilities.Version.Length == 0 ? null : false;
+
+        bool? answer = null;
+        for (int attempt = 0; attempt < SevenZipWriterProbeAttempts && answer is null; attempt++)
+            answer = await _sevenZipZstdWriterProbe().ConfigureAwait(false);
+        return answer;
+    }
+
     private async Task<bool?> AskSevenZipWriterWithRetryAsync()
     {
         bool? answer = null;
@@ -173,6 +209,9 @@ public sealed class TarSandboxedService : ITarService
     // libarchive's name for the bzip2 codec: its filter module, its 7z method, and the format's name.
     private const string Bzip2Name = "bzip2";
 
+    // libarchive's name for Zstandard: its filter module and its 7z method.
+    private const string ZstdName = "zstd";
+
     // T-F342: no Windows or libarchive version says whether the 7z writer is there (the same
     // libarchive ships in different Windows releases), so tar.exe writes an empty archive to its
     // stdout: 32 bytes of 7z header, then padding. An unknown format exits 1 and writes nothing.
@@ -196,6 +235,42 @@ public sealed class TarSandboxedService : ITarService
         {
             return null;
         }
+    }
+
+    // T-F565: libarchive takes the name zstd where its 7z writer has no Zstandard encoder (3.8.1
+    // compiles a stub that fails on the first entry), so an empty archive proves nothing: tar.exe
+    // writes one small file into a 7z on its stdout, from a tar on its stdin built here in memory.
+    // An unknown method exits 1 (3.5.2: "Unknown compression name"). Unsandboxed and answered like
+    // ProbeSevenZipWriterAsync.
+    internal static async Task<bool?> ProbeSevenZipZstdWriterAsync(string tarExecutablePath, TimeSpan timeout)
+    {
+        try
+        {
+            if (!TarSignatureVerifier.Verify(tarExecutablePath))
+                return false;
+
+            using var timeoutCts = new CancellationTokenSource(timeout);
+            (int exitCode, string? output, _) = await SandboxedProcessLauncher.RunAsync(
+                tarExecutablePath, ["--format=7zip", "--options", $"7zip:compression={ZstdName}", "-cf", "-", "@-"],
+                new ProcessLaunchOptions(OutputEncoding: Encoding.Latin1, StdInData: SevenZipZstdProbeInput()), timeoutCts.Token).ConfigureAwait(false);
+            return IsSevenZipWriterOutput(exitCode, output);
+        }
+        catch (Exception) // No answer (its own timeout included): null. No caller's token; the probe is shared by the process
+        {
+            return null;
+        }
+    }
+
+    // One small file in a ustar archive, never on disk.
+    internal static byte[] SevenZipZstdProbeInput()
+    {
+        using var tar = new MemoryStream();
+        using (var writer = new System.Formats.Tar.TarWriter(tar, System.Formats.Tar.TarEntryFormat.Ustar, leaveOpen: true))
+        {
+            using var data = new MemoryStream("Pakko probe"u8.ToArray());
+            writer.WriteEntry(new System.Formats.Tar.UstarTarEntry(System.Formats.Tar.TarEntryType.RegularFile, "probe.txt") { DataStream = data });
+        }
+        return tar.ToArray();
     }
 
     // Exit 0 alone is not enough: the output has to start as a 7z archive does.
@@ -1286,7 +1361,9 @@ public sealed class TarSandboxedService : ITarService
         // tar.exe runs a program of that name from its working folder or PATH, outside any sandbox
         // (measured for zstd and bzip2 on zlib-only tar.exe builds).
         TarCapabilities capabilities = await KnownCapabilitiesAsync().ConfigureAwait(false);
-        if (ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities) is { } refusal)
+        bool zstdWriter = options is { Format: ArchiveContainerFormat.SevenZip, SevenZipMethod: SevenZipMethod.Zstd }
+            && await CanCreateSevenZipZstdAsync(cancellationToken).ConfigureAwait(false);
+        if (ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities, zstdWriter) is { } refusal)
             return refusal;
 
         // T-F342: refused before anything is written; a plain "tar -cf name.7z" would write ustar.
@@ -1598,7 +1675,7 @@ public sealed class TarSandboxedService : ITarService
     {
         var tarArgs = new List<string>();
         if (options.Format == ArchiveContainerFormat.SevenZip)
-            AppendSevenZipArgs(tarArgs, options.SevenZipMethod, options.CompressionLevel);
+            AppendSevenZipArgs(tarArgs, options.SevenZipMethod, options.CompressionLevel, CompressionThreads.Limit.ForThisMachine(options.MaxThreads));
         else
             AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel, CompressionThreads.Limit.ForThisMachine(options.MaxThreads));
         // T-F316: tar.exe walks a source folder itself, and when the destination lies inside
@@ -2081,7 +2158,9 @@ public sealed class TarSandboxedService : ITarService
     // and never a bare "-cf name.7z" (ustar under that name). The level is its own key:
     // "compression-level=0" is LZMA with a small dictionary, not "stored", so NoCompression is the
     // Copy method. Every method was measured with levels 1, 6 and 9 (docs/DECISIONS.md).
-    internal static void AppendSevenZipArgs(List<string> tarArgs, SevenZipMethod method, System.IO.Compression.CompressionLevel level)
+    // T-F565: Zstandard takes zstd's own levels, as tar.zst does, and threads; no other method has them.
+    internal static void AppendSevenZipArgs(
+        List<string> tarArgs, SevenZipMethod method, System.IO.Compression.CompressionLevel level, CompressionThreads.Limit threadLimit)
     {
         string? compression = level == System.IO.Compression.CompressionLevel.NoCompression ? null : method switch
         {
@@ -2090,18 +2169,30 @@ public sealed class TarSandboxedService : ITarService
             SevenZipMethod.BZip2 => Bzip2Name,
             SevenZipMethod.Deflate => "deflate",
             SevenZipMethod.Copy => null,
+            SevenZipMethod.Zstd => ZstdName,
             _ => throw new ArgumentOutOfRangeException(nameof(method), method, null),
         };
+        bool zstd = method == SevenZipMethod.Zstd;
         int numericLevel = level switch
         {
             System.IO.Compression.CompressionLevel.Fastest => 1,
-            System.IO.Compression.CompressionLevel.SmallestSize => 9,
-            _ => 6,
+            System.IO.Compression.CompressionLevel.SmallestSize => zstd ? 19 : 9,
+            _ => zstd ? 9 : 6,
         };
 
         tarArgs.Add("--format=7zip");
         tarArgs.Add("--options");
-        tarArgs.Add(compression is null ? "7zip:compression=copy" : $"7zip:compression={compression},compression-level={numericLevel}");
+        if (compression is null)
+        {
+            tarArgs.Add("7zip:compression=copy");
+            return;
+        }
+
+        string options = $"7zip:compression={compression},compression-level={numericLevel}";
+        int threads = zstd ? CompressionThreads.For(ZstdName, numericLevel, threadLimit) : 1;
+        if (threads > 1)
+            options += "," + CompressionThreads.Option("7zip", threads);
+        tarArgs.Add(options);
     }
 
     internal static void AppendCompressionFilterArgs(
