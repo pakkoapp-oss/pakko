@@ -284,7 +284,7 @@ Add-SmokeStep 'CLI-027' {
         Assert-Smoke ($reference.ExitCode -eq 0) "7za t after $($case.Switches -join ' '): exit $($reference.ExitCode)"
     }
 
-    foreach ($method in 'ppmd', 'zstd') {
+    foreach ($method in @('ppmd')) {
         $archive = Join-Path $folder "$method.7z"
         $refused = Invoke-Pakko @('a', '-t7z', "-m0=$method", $archive, $tree)
         Assert-Smoke ($refused.ExitCode -eq 7) "-m0=$method`: exit $($refused.ExitCode), expected 7: $($refused.Text)"
@@ -1056,6 +1056,36 @@ Add-SmokeStep 'CLI-071' {
     $pipe = Invoke-Pakko @('t', '\\.\pipe\pakko-smoke-cli071') -TimeoutSeconds 120
     Assert-Smoke ($pipe.ExitCode -eq 2 -and $pipe.Text -match 'does not exist') "pakko t on a pipe: exit $($pipe.ExitCode) $($pipe.Text)"
     ($results + 'a pipe: refused') -join '; '
+}
+
+# T-F565: Zstandard in 7z, where tar.exe writes it. 7-Zip cannot open such an archive; Pakko can.
+Add-SmokeStep 'CLI-072' {
+    $folder = Get-StepFolder 'cli072'
+    if (-not (Test-Path -LiteralPath $Smoke.SevenZip)) { Skip-Smoke 'the vendored 7za.exe is not there' }
+    $info = Invoke-Pakko @('i')
+    Assert-Smoke ($info.ExitCode -eq 0) "i: exit $($info.ExitCode) $($info.Text)"
+    $methods = @($info.Output -split '\r?\n' | Where-Object { $_ -match '^\s+methods for 7z:' })
+    if ($methods.Count -eq 0 -or $methods[0] -notmatch 'Zstandard') { Skip-Smoke "this tar.exe does not write Zstandard into 7z: $($methods -join ' ')" }
+    Assert-Smoke ($methods[0].TrimEnd() -match ', Zstandard$') "the methods line does not end with Zstandard: $($methods[0])"
+
+    $tree = Get-Fixture Tree
+    $name = Split-Path -Leaf $tree
+    $expected = Get-TreeHash $tree
+    foreach ($level in @('-mx=1', '-mx=9')) {
+        $archive = Join-Path $folder "zstd$level.7z"
+        $made = Invoke-Pakko @('a', '-t7z', '-m0=zstd', $level, $archive, $tree)
+        Assert-Smoke ($made.ExitCode -eq 0) "a -t7z -m0=zstd ${level}: exit $($made.ExitCode) $($made.Text)"
+        Assert-Smoke (Test-SevenZipSignature $archive) "zstd $level does not begin with the 7z signature"
+        $tested = Invoke-Pakko @('t', $archive)
+        Assert-Smoke ($tested.ExitCode -eq 0) "t zstd ${level}: exit $($tested.ExitCode) $($tested.Text)"
+        $reference = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('t', $archive)
+        Assert-Smoke ($reference.ExitCode -ne 0) "7za t opened the zstd $level archive; the App's note says it cannot"
+        $out = Join-Path $folder "zstd$level.out"
+        $extracted = Invoke-Pakko @('x', $archive, "-o$out")
+        Assert-Smoke ($extracted.ExitCode -eq 0) "x zstd ${level}: exit $($extracted.ExitCode) $($extracted.Text)"
+        Assert-Smoke ((Get-TreeHash (Join-Path $out $name)) -eq $expected) "x zstd ${level}: the extracted files differ from the sources"
+    }
+    "methods: $($methods[0].Trim()); zstd at -mx=1 and -mx=9 round-trip, 7za refuses them"
 }
 
 Add-SmokeStep 'CLI-057' {
