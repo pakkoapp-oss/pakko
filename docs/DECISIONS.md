@@ -15090,6 +15090,14 @@ is the test process's own platform; `canary-arm64` builds the ARM64 helper in it
 outcome counts in the job's verdict, so the helper and reading tests run there in an AppContainer
 on ARM64. `SECURITY.md`'s gate paragraph changed with the owner's OK (2026-11-21).
 
+**Closing review (fresh opus reviewer, the owner's OK):** no P1 or P2. Fixed: the CLI test's reader
+line follows the tested pakko.exe's own PE machine (an x64 pakko on ARM64 expects tar.exe), stale
+x64-only text in `scripts/smoke/Cli.ps1` and `docs/TASKS.md`, and `PeMachineOf` catches every failure
+a read of the file can give so the cause never reads "the probe failed" when no probe ran. Accepted: the gate
+checks the helper's machine once, and a later scope copies the file again without checking; whoever
+can replace a file in Pakko's folder already controls `pakko.exe`, the MSIX folder is read-only, and
+the worst case is an emulated helper (T-F546's lock), not a different reader of the archive.
+
 ## T-F567 - a listing reads all of a compressed stream: the CPU limit is the bound (2026-11-21)
 
 **Question.** T-F561 found that tar.exe's listing of a streamed ZIP inside gzip decompresses every

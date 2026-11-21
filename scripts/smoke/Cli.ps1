@@ -862,7 +862,7 @@ Add-SmokeStep 'CLI-049' {
     'a.txt. and a.txt beside a.txt both extracted, the trimmed one numbered'
 }
 
-# T-F470: on a native x64 Windows with a measured libarchive the tar-family reader is the archive
+# T-F470: on a native x64 or ARM64 Windows (T-F562) with a measured libarchive the tar-family reader is the archive
 # helper over archiveint.dll, and names outside the ANSI page arrive exactly (tar.exe lists them
 # by best fit, CLI-044). Pakko's own 'a -ttar' refuses such names, so the archive is written here,
 # each name in a pax 'path' record (UTF-8).
@@ -905,8 +905,8 @@ Add-SmokeStep 'CLI-050' {
 }
 
 # T-F470: without the helper beside it Pakko reads tar-family archives through tar.exe, quietly.
-# A copy of pakko.exe alone in a folder stands in for a build with no helper (ARM64 takes the same
-# path through its own check, covered by ArchiveintGateTests).
+# A copy of pakko.exe alone in a folder stands in for a build with no helper (an x64 pakko emulated on
+# ARM64 takes the same path through its own check, covered by ArchiveintGateTests).
 Add-SmokeStep 'CLI-051' {
     $folder = Get-StepFolder 'cli051'
     $alone = Join-Path $folder 'bin\pakko.exe'

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Archiver.Core.IO;
@@ -171,7 +172,10 @@ public sealed partial class ArchiveintGate
         return wow64Machine == MachineUnknown && own == host ? host : null;
     }
 
-    /// <summary>T-F562: the machine field of a PE image's file header; null for a file that is no image.</summary>
+    /// <summary>
+    /// T-F562: the machine field of a PE image's file header; null for a file that is no image or cannot
+    /// be read. Only the gate asks, of Pakko's own helper; no other code in Core reads PE headers.
+    /// </summary>
     internal static ushort? PeMachineOf(string path)
     {
         try
@@ -181,7 +185,7 @@ public sealed partial class ArchiveintGate
             if (file.ReadAtLeast(dosHeader, dosHeader.Length, throwOnEndOfStream: false) < dosHeader.Length
                 || dosHeader[0] != (byte)'M' || dosHeader[1] != (byte)'Z')
                 return null;
-            long peOffset = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(dosHeader[PeHeaderOffsetField..]);
+            long peOffset = BinaryPrimitives.ReadInt32LittleEndian(dosHeader[PeHeaderOffsetField..]);
             Span<byte> peHeader = stackalloc byte[sizeof(uint) + sizeof(ushort)];
             if (peOffset < dosHeader.Length || peOffset > file.Length - peHeader.Length)
                 return null;
@@ -189,9 +193,9 @@ public sealed partial class ArchiveintGate
             if (file.ReadAtLeast(peHeader, peHeader.Length, throwOnEndOfStream: false) < peHeader.Length
                 || !peHeader[..sizeof(uint)].SequenceEqual("PE\0\0"u8))
                 return null;
-            return System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(peHeader[sizeof(uint)..]);
+            return BinaryPrimitives.ReadUInt16LittleEndian(peHeader[sizeof(uint)..]);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             return null; // An unreadable helper is not one the gate can match; the decision says why.
         }
