@@ -28,11 +28,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     // multi-GB .tar.xz takes well over the old 5 CPU minutes, so the old limits of 512 MB and
     // five minutes refused real archives. Raised on 2026-09-25 at the user's request. The limits
     // cap, they do not reserve, and cancellation stays the way out of a slow run.
-    private const long GiB = 1024L * 1024 * 1024;
-    private static readonly long RamLimitBytes = MemoryLimitFor(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
-
-    /// <summary>Half of <paramref name="physicalMemoryBytes"/>, never below 1 GiB nor above 4 GiB.</summary>
-    internal static long MemoryLimitFor(long physicalMemoryBytes) => Math.Clamp(physicalMemoryBytes / 2, GiB, 4 * GiB);
+    private static readonly long RamLimitBytes = MemoryBudget.ThisMachine;
 
     // Decompression time follows the data, so the CPU-time cap does too: at least an hour, plus a
     // minute per 10 MB of archive. It only stops a crafted archive that spins; archive creation

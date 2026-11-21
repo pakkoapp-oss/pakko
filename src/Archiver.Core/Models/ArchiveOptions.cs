@@ -48,8 +48,9 @@ public sealed record ArchiveOptions
 
     /// <summary>
     /// T-F411: at most this many files are compressed at once by the ZIP engine (7-Zip's -mmt),
-    /// up to 16; 0 or less follows the core count. The archive's bytes do not depend on it. The
-    /// tar-family formats and 7z are written by tar.exe, which this does not reach.
+    /// up to 16; 0 or less follows the core count. The archive's bytes do not depend on it. T-F565:
+    /// also the most threads tar.exe compresses xz and zstd with (CompressionThreads, which bounds
+    /// them by memory too); xz written on one thread has other bytes than on more.
     /// </summary>
     public int MaxThreads { get; init; }
 
