@@ -1397,9 +1397,9 @@ re-measured with T-F346's script before and after.
   skipped entries (same conversion, `TextBoundaries.TarRawHeaderNames`) so only they are refused; keep
   it fail closed. Both builds; `TarSendsAsListedExhaustiveTests` asserts today's behaviour.
 - **Scope since 2026-11-08 (T-F470 step 4):** the tar.exe fallback only. Where `ArchiveintGate`
-  chooses the archive helper (native x64, a signed `archiveint.dll` of libarchive 3.5 to 3.8, the
-  helper beside Pakko) names come from the helper by index, never through tar.exe's listing or its
-  writes. This is left for ARM64, an x64 process under emulation, a libarchive version not measured,
+  chooses the archive helper (native x64 or ARM64, a signed `archiveint.dll` of libarchive 3.5 to 3.8,
+  the helper beside Pakko) names come from the helper by index, never through tar.exe's listing or its
+  writes. This is left for an x64 process under emulation, a libarchive version not measured,
   and a build or run without the helper (`pakko i` and the App log name the reader; smoke `CLI-050`,
   `CLI-051`, `APP-037`). P4: the fallback reaches few machines. The same holds for T-F464, T-F461 and T-F453.
 - **Reported by:** the agent, 2026-11-07.

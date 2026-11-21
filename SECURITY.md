@@ -477,9 +477,9 @@ own libarchive (`C:\Windows\System32\archiveint.dll`, the library `tar.exe` is b
 reports names as exact UTF-16.
 
 **The gate (`ArchiveintGate`, one per process):** the helper reads only when Group Policy allows
-tar-family archives, the helper sits beside Pakko's own binaries, the process is native x64 (ARM64's
-`archiveint.dll` is not measured; an x64 process under emulation is not x64), `archiveint.dll` is
-present and passes the signature check `tar.exe` gets, and a probe in the sandbox finishes with every
+tar-family archives, the helper sits beside Pakko's own binaries, the process is native x64 or native
+ARM64 (both ship `archiveint.dll`; an x64 process emulated on ARM64 is neither, T-F562) and the helper's
+image is built for that machine, `archiveint.dll` is present and passes the signature check `tar.exe` gets, and a probe in the sandbox finishes with every
 export Pakko calls and libarchive 3.5 to 3.8 (the measured versions). Anything else - a missing file,
 a failed or timed-out probe - reads with `tar.exe`. The decision is made once and kept for the life of
 the process, so a listing and the extraction after it never go through different parsers; it is

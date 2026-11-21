@@ -15064,6 +15064,32 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## T-F562 - the archive helper on ARM64 (2026-11-21)
+
+**Measured before (2026-11-20, run 44640387699):** Windows on ARM64 ships its own
+`C:\Windows\System32\archiveint.dll` (libarchive 3.8.9, Microsoft-signed, PE machine 0xAA64), and
+a native ARM64 `Archiver.ArchiveHelper.exe` passes `probe` for every format. T-F470's "no ARM64
+build" was a gap in Winbindex.
+
+**What already shipped.** `CI-Build-Msix.ps1`, `Deploy.ps1` and `Publish-Cli.ps1` build the helper
+for their own platform, and `Archiver.App.csproj` takes it from `bin\$(Platform)\Release`: the
+arm64 MSIX of `7a030db1` (build run 44898689896) holds `Archiver.ArchiveHelper.exe` with PE machine
+0xAA64, as are its App, Shell and `pakko.exe`. No packaging change.
+
+**The gate.** `ArchiveintGate` now admits a process built for the machine it runs on, x64 or ARM64
+(`NativeMachineOf`). `IsWow64Process2` names no process machine for x64 emulated on ARM64 (that is
+not WOW64), so the process's own architecture must equal the host's; an emulated x64 Pakko still
+reads with tar.exe, where its helper's image stays locked after it exits (T-F546). New: the helper's
+PE machine (`PeMachineOf`, two bytes of its header) must be the process's, so an x64 helper beside an
+ARM64 Pakko (a mixed CLI zip, a dev build) is never run emulated in the sandbox; the cause reads "the
+archive helper is not built for this machine". Mutants of each condition (x64 only, no helper check,
+no process check, no PE signature, no lower bound on the header offset) each fail a test.
+
+**Tests.** `NativeX64Fact` became `NativeFact` (native x64 or native ARM64); `ArchiveHelperBuild.ExePath`
+is the test process's own platform; `canary-arm64` builds the ARM64 helper in its own step and its
+outcome counts in the job's verdict, so the helper and reading tests run there in an AppContainer
+on ARM64. `SECURITY.md`'s gate paragraph changed with the owner's OK (2026-11-21).
+
 ## T-F567 - a listing reads all of a compressed stream: the CPU limit is the bound (2026-11-21)
 
 **Question.** T-F561 found that tar.exe's listing of a streamed ZIP inside gzip decompresses every

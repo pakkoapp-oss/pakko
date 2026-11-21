@@ -168,7 +168,7 @@ public sealed class EntryLimitTests : IDisposable
         listed.ErrorText!.Code.Should().Be(MessageCode.TooManyEntries, listed.ErrorMessage);
     }
 
-    [NativeX64Fact]
+    [NativeFact]
     [Trait("Category", "Slow")]
     public async Task TarGz_OneEntryOverTheRealLimit_IsRefused_ThroughTheHelper()
     {
@@ -197,7 +197,7 @@ public sealed class EntryLimitTests : IDisposable
 
     // T-F529: the limit is the helper's protocol's own ceiling - its last index, and its output for
     // that many entries within the stdout cap.
-    [NativeX64Fact]
+    [NativeFact]
     [Trait("Category", "Slow")]
     public async Task TarGz_AtTheRealLimit_IsListedAndTested_ThroughTheHelper()
     {

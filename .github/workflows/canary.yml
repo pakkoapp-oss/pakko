@@ -343,6 +343,18 @@ jobs:
         with:
           dotnet-version: "11.0.x"
 
+      # T-F562: the gate reads through the ARM64 helper in a native ARM64 process, so the helper's
+      # tests (and the reading tests the gate sends to it) run here in an AppContainer on ARM64.
+      # Built in its own step so a compile failure shows as itself, as build.yml does for x64.
+      - name: Build Archiver.ArchiveHelper for ARM64 (T-F562)
+        id: helper_arm64
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\Current\Bin\MSBuild.exe' | Select-Object -First 1
+          & $msbuild src\Archiver.ArchiveHelper\Archiver.ArchiveHelper.vcxproj /p:Configuration=Release /p:Platform=ARM64 "/p:SolutionDir=$PWD\" /m /nodeReuse:false
+          if ($LASTEXITCODE -ne 0) { throw "Archiver.ArchiveHelper ARM64 build failed (exit $LASTEXITCODE)" }
+
       - name: Run .NET test suite on ARM64 (2 attempts)
         id: build_test
         continue-on-error: true
@@ -412,7 +424,7 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}', '${{ steps.aot_cli.outcome }}')
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.helper_arm64.outcome }}', '${{ steps.build_test.outcome }}', '${{ steps.aot_cli.outcome }}')
           $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
           "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 

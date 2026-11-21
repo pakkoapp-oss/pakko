@@ -389,7 +389,8 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
     one under both; extract, scan, list and Test through a real `ArchiveintGate`. Mutants:
     `docs/DECISIONS.md`, T-F470 step 3.
   - `tests/Archiver.Core.IntegrationTests/ArchiveintGateTests.cs`: the gate chooses the helper with
-    the real probe; each condition falls back to tar.exe (policy, no helper, not native x64, an
+    the real probe; each condition falls back to tar.exe (policy, no helper, not native x64 or ARM64,
+    a helper built for another machine (T-F562), an
     unsigned DLL, a version not measured, a missing export, an unfinished, forged or hung probe);
     the decision is made once, a failure is not retried, a cancelled first caller is not the verdict;
     `DecideAsync` returns while the signature check still runs (T-F490: the checks before the
@@ -1062,8 +1063,9 @@ regression worth investigating, not the old expected noise.
   VM only. Archives named as a device ("CON.zip") are the console on Windows 10 and Server 2022: the
   tests that make one take its `\\?\` spelling there and expect the plain path refused.
 - `[SevenZipWriterFact]` (T-F342) — skipped where `CanCreateSevenZipAsync` is false.
-- `[NativeX64Fact]` (T-F470) — the tests that need the real gate to choose the helper, or that touch
-  the helper's copy right after it ran; skipped outside a native x64 process (the ARM64 canary).
+- `[NativeFact]` (T-F470, T-F562) — the tests that need the real gate to choose the helper, or that touch
+  the helper's copy right after it ran; skipped outside a native x64 or native ARM64 process (an x64
+  test host emulated on ARM64). `canary-arm64` builds the ARM64 helper and runs them in an AppContainer.
   T-F342, the App and the Explorer menu: `TarCapabilitySnapshotTests` (Core, renamed at T-F403: the file's line, the
   package folder's name, no write without an answer or under `DisableTarExtraction`, a read-only
   or blocked target), `CreationFormatOptionTests`, `SevenZipMethodOptionTests` and

@@ -29,7 +29,7 @@
     <Compile Include="..\Archiver.Core.Tests\Helpers\LegacyZipBuilder.cs" Link="Helpers\LegacyZipBuilder.cs" />
     <!-- T-F542: the archive helper, built as the integration tests build it (CatalogMemoryBudgetTests). -->
     <Compile Include="..\Archiver.Core.IntegrationTests\ArchiveHelperBuild.cs" Link="Helpers\ArchiveHelperBuild.cs" />
-    <Compile Include="..\Archiver.Core.IntegrationTests\NativeX64FactAttribute.cs" Link="Helpers\NativeX64FactAttribute.cs" />
+    <Compile Include="..\Archiver.Core.IntegrationTests\NativeFactAttribute.cs" Link="Helpers\NativeFactAttribute.cs" />
   </ItemGroup>
 
   <ItemGroup>

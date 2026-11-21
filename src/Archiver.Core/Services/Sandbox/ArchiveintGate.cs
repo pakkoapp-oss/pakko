@@ -14,6 +14,9 @@ namespace Archiver.Core.Services.Sandbox;
 public sealed partial class ArchiveintGate
 {
     private const ushort MachineAmd64 = 0x8664;
+    private const ushort MachineArm64 = 0xAA64;
+    private const ushort MachineUnknown = 0;
+    private const int PeHeaderOffsetField = 0x3C;
     private const string ArchiveintPath = @"C:\Windows\System32\archiveint.dll"; // NOSONAR: S1075 — the system DLL the helper loads, by absolute path (CLAUDE.md)
     private const string HelperFileName = "Archiver.ArchiveHelper.exe";
 
@@ -24,6 +27,7 @@ public sealed partial class ArchiveintGate
     private readonly GroupPolicyOptions _policy;
     private readonly string _helperPath;
     private readonly Func<ushort?> _nativeMachine;
+    private readonly Func<string, ushort?> _helperMachine;
     private readonly Func<string, bool> _verifyArchiveint;
     private readonly Func<string, CancellationToken, Task<ArchiveHelperOutput>> _probe;
     private readonly TimeSpan _probeTimeout;
@@ -35,15 +39,18 @@ public sealed partial class ArchiveintGate
     {
     }
 
-    // Test seams: the helper's path, the machine, the DLL's signature check, the probe and its patience.
+    // Test seams: the helper's path, the machine, the DLL's signature check, the probe and its patience,
+    // the machine the helper is built for.
     internal ArchiveintGate(
         GroupPolicyOptions policy, string helperPath, Func<ushort?>? nativeMachine = null, Func<string, bool>? verifyArchiveint = null,
-        Func<string, CancellationToken, Task<ArchiveHelperOutput>>? probe = null, TimeSpan? probeTimeout = null)
+        Func<string, CancellationToken, Task<ArchiveHelperOutput>>? probe = null, TimeSpan? probeTimeout = null,
+        Func<string, ushort?>? helperMachine = null)
     {
         ArgumentNullException.ThrowIfNull(policy);
         _policy = policy;
         _helperPath = helperPath;
-        _nativeMachine = nativeMachine ?? NativeMachineOfAnX64Process;
+        _nativeMachine = nativeMachine ?? NativeMachineOfThisProcess;
+        _helperMachine = helperMachine ?? PeMachineOf;
         _verifyArchiveint = verifyArchiveint ?? TarSignatureVerifier.Verify;
         _probe = probe ?? ProbeAsync;
         _probeTimeout = probeTimeout ?? ProbeTimeout;
@@ -68,9 +75,13 @@ public sealed partial class ArchiveintGate
                 return ArchiveintDecision.ForTarExe(null, "Group Policy disables tar-family archives");
             if (!File.Exists(_helperPath))
                 return ArchiveintDecision.ForTarExe(null, "no archive helper beside Pakko");
-            // ARM64's archiveint.dll is not measured; an x64 process under emulation is not x64.
-            if (_nativeMachine() != MachineAmd64)
-                return ArchiveintDecision.ForTarExe(null, "not a native x64 process");
+            // T-F562: x64 and ARM64 ship archiveint.dll (measured); an x64 process under emulation on
+            // ARM64 is neither, and its helper's image stays locked after it exits (T-F546).
+            ushort? machine = _nativeMachine();
+            if (machine is not (MachineAmd64 or MachineArm64))
+                return ArchiveintDecision.ForTarExe(null, "not a native x64 or ARM64 process");
+            if (_helperMachine(_helperPath) != machine)
+                return ArchiveintDecision.ForTarExe(null, "the archive helper is not built for this machine");
             if (!File.Exists(ArchiveintPath) || !_verifyArchiveint(ArchiveintPath))
                 return ArchiveintDecision.ForTarExe(null, "archiveint.dll is missing or not signed by Microsoft");
             using var timeout = new CancellationTokenSource(_probeTimeout);
@@ -137,10 +148,54 @@ public sealed partial class ArchiveintGate
         }
     }
 
-    // Null for a process that is not x64 itself, so one seam stands for both conditions and a test
-    // that fakes the machine decides the same on an ARM64 runner (the canary).
-    private static ushort? NativeMachineOfAnX64Process() =>
-        RuntimeInformation.ProcessArchitecture == Architecture.X64 && IsWow64Process2(-1, out _, out ushort native) ? native : null;
+    // Null for a process not built for the machine it runs on, so one seam stands for both conditions
+    // and a test that fakes the machine decides the same on an ARM64 runner (the canary).
+    private static ushort? NativeMachineOfThisProcess() =>
+        IsWow64Process2(-1, out ushort wow64Machine, out ushort native)
+            ? NativeMachineOf(RuntimeInformation.ProcessArchitecture, wow64Machine, native)
+            : null;
+
+    /// <summary>
+    /// T-F562: the host's machine when the process is built for it, else null. IsWow64Process2 names
+    /// no process machine for x64 emulated on ARM64 (that is not WOW64), so the process's own
+    /// architecture has to match the host as well.
+    /// </summary>
+    internal static ushort? NativeMachineOf(Architecture process, ushort wow64Machine, ushort host)
+    {
+        ushort? own = process switch
+        {
+            Architecture.X64 => MachineAmd64,
+            Architecture.Arm64 => MachineArm64,
+            _ => null,
+        };
+        return wow64Machine == MachineUnknown && own == host ? host : null;
+    }
+
+    /// <summary>T-F562: the machine field of a PE image's file header; null for a file that is no image.</summary>
+    internal static ushort? PeMachineOf(string path)
+    {
+        try
+        {
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            Span<byte> dosHeader = stackalloc byte[PeHeaderOffsetField + sizeof(int)];
+            if (file.ReadAtLeast(dosHeader, dosHeader.Length, throwOnEndOfStream: false) < dosHeader.Length
+                || dosHeader[0] != (byte)'M' || dosHeader[1] != (byte)'Z')
+                return null;
+            long peOffset = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(dosHeader[PeHeaderOffsetField..]);
+            Span<byte> peHeader = stackalloc byte[sizeof(uint) + sizeof(ushort)];
+            if (peOffset < dosHeader.Length || peOffset > file.Length - peHeader.Length)
+                return null;
+            file.Position = peOffset;
+            if (file.ReadAtLeast(peHeader, peHeader.Length, throwOnEndOfStream: false) < peHeader.Length
+                || !peHeader[..sizeof(uint)].SequenceEqual("PE\0\0"u8))
+                return null;
+            return System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(peHeader[sizeof(uint)..]);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null; // An unreadable helper is not one the gate can match; the decision says why.
+        }
+    }
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

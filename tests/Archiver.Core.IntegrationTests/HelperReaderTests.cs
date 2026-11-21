@@ -912,7 +912,7 @@ public sealed class HelperReaderTests : IDisposable
 
     // --- Through the process's gate (T-F470 3b-ii): the services ask it, and read as it decided ---
 
-    [NativeX64Fact]
+    [NativeFact]
     public async Task Gate_ExtractionAndTheScan_ReadThroughTheBackendItChose()
     {
         var gate = new ArchiveintGate(new GroupPolicyOptions(), ArchiveHelperBuild.ExePath);
@@ -937,7 +937,7 @@ public sealed class HelperReaderTests : IDisposable
     }
 
     // The listing and Test take the gate too: names tar.exe prints only in the ANSI page come back exact.
-    [NativeX64Fact]
+    [NativeFact]
     public async Task Gate_ListingAndTest_ReadThroughTheBackendItChose()
     {
         var gate = new ArchiveintGate(new GroupPolicyOptions(), ArchiveHelperBuild.ExePath);
