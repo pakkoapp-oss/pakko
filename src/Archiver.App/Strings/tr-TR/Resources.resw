@@ -647,4 +647,10 @@
   <data name="RemoveRowName" xml:space="preserve">
     <value>Listeden kaldır: {0}</value>
   </data>
+  <data name="KeepDamagedCheck.Content" xml:space="preserve">
+    <value>Hasarlı bir dosyanın içeriğini sakla (ZIP)</value>
+  </data>
+  <data name="KeepDamagedNote.Text" xml:space="preserve">
+    <value>Denetimden geçemeyen bir dosya, okunabilen baytlarla name.damaged olarak kaydedilir. Yalnızca bu ayıklama için.</value>
+  </data>
 </root>

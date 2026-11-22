@@ -698,4 +698,10 @@
   <data name="RemoveRowName" xml:space="preserve">
     <value>Remove from list: {0}</value>
   </data>
+  <data name="KeepDamagedCheck.Content" xml:space="preserve">
+    <value>Keep what a damaged file holds (ZIP)</value>
+  </data>
+  <data name="KeepDamagedNote.Text" xml:space="preserve">
+    <value>A file that fails its check is saved as name.damaged, with the bytes that could be read. For this extraction only.</value>
+  </data>
 </root>

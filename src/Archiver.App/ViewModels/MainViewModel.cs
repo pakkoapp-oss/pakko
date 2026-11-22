@@ -235,11 +235,22 @@ public sealed partial class MainViewModel : ObservableObject
         _ => string.Empty,
     };
 
+    // T-F496: "keep what a damaged file holds", off for every new list or archive and after each
+    // extraction that read it; never saved.
+    [ObservableProperty]
+    public partial bool KeepDamagedFiles { get; set; }
+
+    private bool KeepDamagedOffered => KeepDamagedOption.Offered(
+        IsBrowsingArchive ? Location.ShowsExtractActions : _listActions.Accent == PrimaryAction.Extract, _policy);
+
+    public Visibility KeepDamagedVisibility => KeepDamagedOffered ? Visibility.Visible : Visibility.Collapsed;
+
     private void RefreshDownloadMark()
     {
         int generation = ++_downloadMarkGeneration;
         _anyArchiveMarked = false;
         ApplyDownloadMark = true;
+        KeepDamagedFiles = false;
         RaiseDownloadMark();
         string[] archives = IsBrowsingArchive
             ? (BrowsedArchivePath is { } browsed ? [browsed] : [])
@@ -263,6 +274,7 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(DownloadMarkChecked));
         OnPropertyChanged(nameof(DownloadMarkCanChange));
         OnPropertyChanged(nameof(DownloadMarkNoteText));
+        OnPropertyChanged(nameof(KeepDamagedVisibility));
     }
 
     // T-F05: collapses while the archive browser is open.
@@ -1167,7 +1179,9 @@ public sealed partial class MainViewModel : ObservableObject
                 SelectedEntryPaths = selectedEntryPaths,
                 // T-F360: the single file the unsafe-type warning extracts is about to be opened.
                 ApplyDownloadMark = destinationOverride is not null || MarkView.ApplyMark,
+                KeepDamagedFiles = KeepDamagedOption.Requested(KeepDamagedOffered, KeepDamagedFiles, openingOneFile: destinationOverride is not null),
             };
+            KeepDamagedFiles = false;
 
             _operationStatusPrefix = string.Format(System.Globalization.CultureInfo.CurrentCulture, _res.GetString("StatusExtractingCount"), options.ArchivePaths.Count);
             StatusMessage = _operationStatusPrefix;
