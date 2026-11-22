@@ -15064,6 +15064,41 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## Batch 5 (v1.12.0) - names (T-F556, T-F563, T-F559; 2026-11-22)
+
+**T-F556 - a name Windows trims, archived as Explorer lists it.** Explorer hands the Shell
+`SIGDN_FILESYSPATH` and a drop hands the App `StorageItem.Path`: both are the name as listed, `b.txt `
+with its space. Its plain path opens the twin `b.txt`, so Core refused it (T-F509), and ZIP read it only
+written as `\\?\` (T-F531). `InputPaths.Listed` gives such a full path its `\\?\` form, without
+`GetFullPath` (which trims); a relative path, one with `/`, `.` or `..` parts, and every path with no part
+Windows trims come back as they are, so Core judges them as before. `InputPaths.PlainParent` is the
+folder it lies in, plain where the plain path names it (`SamePlainPath`), so the archive's destination
+reads `C:\x` and Explorer opens it; under a trimmed folder (`\\?\C:\x\d.\f.txt`) it stays literal,
+which is the right folder.
+
+Who asks it (the agent's decision, after the opening advisor):
+- **The Shell's archive command only** (`ShellCommands.ArchiveAsync`). Extract, test, hash, scan and
+  recovery keep the plain path: an archive `x.zip ` stays refused by its plain path, with the same
+  text (`ExtractHere_AnArchiveNameWindowsTrims_IsStillRefusedByItsPlainPath`). The App takes `--open-ui`
+  paths through its own list. A typed `Archiver.Shell.exe --archive "b.txt "` reads the literal file too;
+  the Shell is Explorer's, never typed by a person.
+- **The App's `PendingPaths.Split`**, before its duplicate check, so `b.txt ` and its `\\?\` spelling are
+  one row. Every source of the list is a listing: a drop, a picker, a file activation, the Shell.
+- **Never the CLI.** `pakko a "b.txt "` means `b.txt`, as `del` does (T-F509).
+- **A device name at the top** (a selected `NUL` made through `\\?\`) is not converted: `Problem` still
+  refuses it as not found.
+
+What Batch 5l already gives such a source, unchanged: tar refuses it before tar.exe runs; "move to the
+Recycle Bin" and `-sdel` keep it (`KeepReason.TrimmedName`), as extracting cannot give the name back.
+
+**T-F563** is closed by T-F556: the dropped `b.txt ` is listed by its literal path with its own size and
+CRC, the twin never read in its place (`FileItemTests`, with and without the twin). A path that cannot be
+read at all (gone between the drop and the list) keeps the log line: the task allowed either, and such a
+path is rare.
+
+**Red before the change:** `PendingPathsTests` (2), `FileItemTests` (2) and the Shell's archive test failed
+with `Listed` returning the path as given. `InputPathsListedTests` pins the table.
+
 ## T-F562 - the archive helper on ARM64 (2026-11-21)
 
 **Measured before (2026-11-20, run 44640387699):** Windows on ARM64 ships its own

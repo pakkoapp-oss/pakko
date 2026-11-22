@@ -42,6 +42,26 @@ public sealed class PendingPathsTests
         alreadyListed.Should().Be(1);
     }
 
+    // T-F556: a drop or an Explorer selection names "b.txt " as listed; by its plain path that is the twin.
+    [Fact]
+    public void ANameWindowsTrims_IsAddedByItsLiteralPath()
+    {
+        (IReadOnlyList<string> added, int alreadyListed) = PendingPaths.Split([], [@"C:\a\b.txt ", @"C:\a\c.txt"]);
+
+        added.Should().Equal(@"\\?\C:\a\b.txt ", @"C:\a\c.txt");
+        alreadyListed.Should().Be(0);
+    }
+
+    // Both spellings of one file are one row: converted before they are compared.
+    [Fact]
+    public void ANameWindowsTrims_ListedByEitherSpelling_IsOneRow()
+    {
+        (IReadOnlyList<string> added, int alreadyListed) = PendingPaths.Split([@"\\?\C:\a\b.txt "], [@"C:\a\b.txt "]);
+
+        added.Should().BeEmpty();
+        alreadyListed.Should().Be(1);
+    }
+
     [Fact]
     public void EmptyDrop_ChangesNothing()
     {

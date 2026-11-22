@@ -229,6 +229,9 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         _ = SourceKey.Of(path);
         _ = InputPaths.SamePlainPath(path);
         _ = InputPaths.SamePlainPath(@"\\?\" + path);
+        _ = InputPaths.Listed(path);
+        _ = InputPaths.PlainParent(path);
+        _ = InputPaths.PlainParent(InputPaths.Listed(path));
         return Task.CompletedTask;
     });
 
@@ -497,6 +500,8 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["PathIdentity.FinalPathOfItself"] = [nameof(PathIdentity_Path)],
         ["SourceKey.Of"] = [nameof(PathIdentity_Path)],
         ["InputPaths.SamePlainPath"] = [nameof(PathIdentity_Path)],
+        ["InputPaths.Listed"] = [nameof(PathIdentity_Path)],
+        ["InputPaths.PlainParent"] = [nameof(PathIdentity_Path)],
         ["TempOwner.SweepStaleInTemp"] = [nameof(TempOwner_Path)],
         ["DirectoryWalker.Walk"] = [nameof(DirectoryWalker_Path)],
         ["DirectoryWalker.RelativePath"] = [nameof(DirectoryWalker_Path)],

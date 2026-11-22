@@ -1,3 +1,5 @@
+using Archiver.Core.Services;
+
 namespace Archiver.App.Core;
 
 /// <summary>
@@ -15,7 +17,9 @@ public static class PendingPaths
         var seen = new HashSet<string>(listed, StringComparer.OrdinalIgnoreCase);
         var added = new List<string>();
         int alreadyListed = 0;
-        foreach (string path in incoming)
+        // T-F556: every source of the list is a listing (a drop, a picker, Explorer's selection), which
+        // names "b.txt " as spelled; by its plain path it is the twin.
+        foreach (string path in incoming.Select(InputPaths.Listed))
         {
             if (seen.Add(path))
                 added.Add(path);

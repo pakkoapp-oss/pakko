@@ -929,7 +929,7 @@ public sealed partial class MainViewModel : ObservableObject
     private void UpdateDefaultDestination()
     {
         if (FileItems.Count > 0)
-            DestinationPath = Path.GetDirectoryName(FileItems[0].FullPath) ?? DestinationPath;
+            DestinationPath = InputPaths.PlainParent(FileItems[0].FullPath) ?? DestinationPath;
         else
             DestinationPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
     }

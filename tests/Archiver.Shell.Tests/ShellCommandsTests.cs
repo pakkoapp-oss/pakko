@@ -208,6 +208,46 @@ public sealed class ShellCommandsTests : IDisposable
         File.Exists(Path.Combine(folder, "MyStuff.zip")).Should().BeTrue();
     }
 
+    // T-F556: Explorer hands over "b.txt " as it lists it; by its plain path that is the twin "b.txt".
+    // The command archives the file as spelled, next to it in the plain folder, and leaves the twin.
+    [Fact]
+    public async Task Archive_ANameWindowsTrims_IsArchivedAsExplorerListsIt()
+    {
+        string folder = Path.Combine(_root, "tw");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "b.txt"), "twin");
+        File.WriteAllText(@"\\?\" + Path.Combine(folder, "b.txt "), "spaced");
+        var ui = new FakeOperationUi();
+
+        await Create(ui).ArchiveAsync([Path.Combine(folder, "b.txt ")], ArchiveContainerFormat.Zip);
+
+        ui.Messages.Should().BeEmpty();
+        string zip = Directory.GetFiles(folder, "*.zip").Should().ContainSingle().Subject;
+        using (ZipArchive archive = ZipFile.OpenRead(zip))
+        {
+            ZipArchiveEntry entry = archive.Entries.Should().ContainSingle().Subject;
+            entry.FullName.Should().Be("b.txt ");
+            using var reader = new StreamReader(entry.Open());
+            reader.ReadToEnd().Should().Be("spaced");
+        }
+        File.ReadAllText(Path.Combine(folder, "b.txt")).Should().Be("twin");
+    }
+
+    // T-F556 reaches only the archive command: an archive "x.zip " beside "x.zip" is still refused by its
+    // plain path, as before, and the twin is never extracted in its place.
+    [Fact]
+    public async Task ExtractHere_AnArchiveNameWindowsTrims_IsStillRefusedByItsPlainPath()
+    {
+        MakeZip("x.zip", ("twin.txt", "T"));
+        MakeZip(@"\\?\" + Path.Combine(_root, "x.zip "), ("a.txt", "A"));
+        var ui = new FakeOperationUi();
+
+        await Create(ui).ExtractHereAsync([Path.Combine(_root, "x.zip ")]);
+
+        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain(Path.Combine(_root, "x.zip ")).And.NotContain(@"\\?\");
+        Directory.GetDirectories(_root).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task Test_ValidArchive_ShowsNoErrorsInformation()
     {

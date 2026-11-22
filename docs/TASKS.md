@@ -1383,7 +1383,12 @@ re-measured with T-F346's script before and after.
 
 ### T-F556 - The Shell and the App could archive a name Windows trims as Explorer lists it (P3, from T-F531)
 
-- [ ] **Status:** open. ZIP archives "`a.txt `" written as `\\?\` (T-F531), but Explorer hands the
+- [~] **Status:** fixed on `batch-5-names` (2026-11-22): `InputPaths.Listed` gives a path from a listing
+  its `\\?\` form where Windows would trim a part; the Shell's archive command and the App's
+  `PendingPaths` ask it, the CLI never (a typed path keeps Win32's reading). The destination is
+  `InputPaths.PlainParent`. Extraction, test, hash and scan keep the plain path and its refusal.
+  `docs/DECISIONS.md`, "Batch 5 (v1.12.0) - names". Left: `SHL-019` on the deployed package. Before:
+  ZIP archives "`a.txt `" written as `\\?\` (T-F531), but Explorer hands the
   Shell and the App the plain path, which is the twin's, so `b.txt ` picked in Explorer is still
   refused. The Shell gets the item from Explorer's own listing (`IShellItemArray`), which knows the
   spelling; it could pass the `\\?\` form. Deletion of such a source stays forbidden either way
