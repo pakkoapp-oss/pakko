@@ -16804,7 +16804,7 @@ On 1.11.0.8 (2026-11-22): the App's taskbar button yellow at a single-file "file
 
 ### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 6)
 
-- [x] **Status:** done 2026-11-22 (`batch-6-taskbar-list`): while yellow or red the bar fills at
+- [x] **Status:** done 2026-11-22 (`batch-6-taskbar-list`, PR #280): while yellow or red the bar fills at
   least `MinimumVisiblePercent` (25; 10 measured as 2-3 px of yellow on a 24 px bar, too faint), in `OperationIndicator.BarPercent` (the App's button and tray
   icon; the tooltip keeps the true percent) and `OperationWindowModel.IndicatorPercent`; green at 0
   stays empty. `APP-031` and `OPW-006` at 0 % passed on 1.11.0.8.
@@ -16820,7 +16820,7 @@ On 1.11.0.8 (2026-11-22): the App's taskbar button yellow at a single-file "file
 
 ### T-F566 - The file list's per-row removal cannot be seen (P3, batch 6)
 
-- [x] **Status:** done 2026-11-22 (`batch-6-taskbar-list`): a cross (`E711`) at the end of each
+- [x] **Status:** done 2026-11-22 (`batch-6-taskbar-list`, PR #280): a cross (`E711`) at the end of each
   row, always shown, no tab stop, named and tooltipped "Remove from list: <name>" (`RemoveRowName`, built
   per locale from `RemoveMenuItem` and the locale's own ": {0}"), greyed out while `ClearCommand` cannot
   run; a double click on it is swallowed so the list never opens the next row. `APP-039` passed on 1.11.0.8.
