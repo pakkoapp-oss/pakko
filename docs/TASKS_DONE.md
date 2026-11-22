@@ -16843,3 +16843,41 @@ On 1.11.0.8 (2026-11-22): the App's taskbar button yellow at a single-file "file
     during an operation, focus after removing the last row.
   Not in it: the Archive Browser's list, which has its own selection.
 - **Reported by:** the user, 2026-11-21.
+
+### T-F496 - Keep a damaged file on request: what is left of an entry whose data or CRC-32 is bad (P3, user-requested, after v1.11.0)
+
+- [x] **Status:** done 2026-11-22 (`batch-7-keep-damaged`): `pakko x -kb` and the App's "Keep what a damaged file holds (ZIP)" box keep a plain ZIP entry's decoded bytes, at most its declared size, as `name.ext.damaged` (Partial, `EntryKeptDamaged`, exit 2, the archive's mark); Group Policy `DisableKeepDamagedFiles` forbids it; Explorer never keeps. ZIP-only and plain entries only, measured and decided in `docs/DECISIONS.md`, "Batch 7 (v1.12.0)"; AES split off as T-F568. `CLI-075` and `APP-040` passed on 1.11.0.9, the CLI also on PakkoW10 (tar.exe 3.5.2); `POL-011` (elevated) waits for the release's UAC batch.
+  Before: The user, 2026-11-11: an archive with one bad block
+  still holds data someone may need at any cost. Today a ZIP entry that fails its CRC-32 (T-F246),
+  runs longer than declared (T-F231) or has a damaged deflate stream fails alone, the other entries
+  are extracted, and its half-written file is deleted (`CopyEntryToDestinationAsync`, T-F230). .NET 11
+  checks the CRC too (T-F492); that changed the message's source, not the outcome. What a kept file
+  can hold: a CRC mismatch only - the whole decoded data (a flipped bit in a stored entry, or a bad
+  CRC field); a deflate stream broken midway - the bytes before the break (deflate does not
+  resynchronise after it); AES - the same, decryption is per block. A damaged central directory
+  stays out of reach: the BCL does not scan local headers, and a scanner of our own is not this task.
+  WinRAR has "Keep broken files", 7-Zip keeps them by default.
+  **Guards, each a test, so the option never becomes a hole in a later release:**
+  1. Off by default and per operation only: an explicit switch in the App's extract dialog and
+     `pakko x` (`-kb` or similar, checked against 7-Zip's switches first), never remembered as a
+     setting, never on for Explorer's one-click "Extract here". A Group Policy can forbid it.
+  2. A kept file is never mistaken for a good one: a suffix in its name (e.g. `name.damaged.ext`,
+     so no program opens it by its old association), the operation `Partial` with the reason per
+     entry, exit code 2 in the CLI, the log line.
+  3. Every other guard runs unchanged before and while the file is written: path traversal,
+     reserved names, ADS, reparse points, the compression-ratio and disk-space checks (a damaged
+     entry's declared size is untrusted; the bytes written stay capped by it, T-F231), Mark of the
+     Web on the kept file.
+  4. Only the decoded bytes: nothing is guessed, padded or zero-filled past the break.
+  5. Encrypted entries: a file is kept only if the password was verified (AES's HMAC failing on a
+     damaged block is the damage; a wrong password is not and keeps nothing). Open: Pakko's
+     reader, kept by T-F493 (batch 7), checks the HMAC before any byte and returns no stream when
+     it fails (`EncryptedZipEntryReader`), so a damaged AES entry has nothing to keep until this
+     task gives the reader a path that decodes it anyway; decide that here.
+  6. Test, Hash, preview and the AMSI scan never use it: they report the damage as today.
+  7. tar, 7z, RAR and the read-only formats: first measure what the archive helper and `tar.exe`
+     leave on disk for a damaged entry today, on both tar builds (Win11 3.8.x and PakkoW10 3.5.2);
+     the same guards apply, or the option is ZIP-only and says so.
+  Before code: plan mode + advisor (irreversible writes from untrusted input), tests of every guard
+  seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
+- **Reported by:** the user, 2026-11-11.
