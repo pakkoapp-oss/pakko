@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>Δημιουργία δεδομένων ανάκτησης...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>Αφαίρεση από τη λίστα: {0}</value>
+  </data>
 </root>

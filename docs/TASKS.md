@@ -1274,7 +1274,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F566 - The file list's per-row removal cannot be seen (P3, batch 6)
 
-- [ ] **Status:** open. The user, 2026-11-21: in the App's list of files to archive only "Clear"
+- [~] **Status:** fixed on `batch-6-taskbar-list` (2026-11-22): a cross (`E711`) at the end of each
+  row, always shown, no tab stop, named and tooltipped "Remove from list: <name>" (`RemoveRowName`, built
+  per locale from `RemoveMenuItem` and the locale's own ": {0}"), greyed out while `ClearCommand` cannot
+  run; a double click on it is swallowed so the list never opens the next row. Left: `APP-039` on the device.
+  Before: open. The user, 2026-11-21: in the App's list of files to archive only "Clear"
   shows; a single file or folder seems impossible to take out. It is possible, but hidden: the
   row's right-click menu ("Remove from list", `RemoveMenuItem`), Shift+F10 or the menu key, and
   Delete on a focused row (`PendingList_PreviewKeyDown`, which also moves focus to the next row).

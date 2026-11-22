@@ -17,6 +17,8 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
 
+    private readonly HashSet<Button> _removeRowButtons = [];
+
     // T-F106: EnsureWindow's Activate() returns before RootGrid's first Loaded/layout pass
     // completes — mutating ViewModel state (FileItems, IsBrowsingArchive) synchronously right
     // after Activate() realizes ListView containers against an incomplete layout, leaving rows
@@ -137,6 +139,7 @@ public sealed partial class MainWindow : Window
         NewArchiveCard.Expanding += (_, _) => ArrangeCards();
         NewArchiveCard.Collapsed += (_, _) => ArrangeCards();
         NewArchiveCard.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => ArrangeCards());
+        ViewModel.ClearCommand.CanExecuteChanged += (_, _) => UpdateRemoveRowButtons();
 
         // T-F199: content extends into the title bar; TitleText shows AppWindow.Title (the build stamp).
         ExtendsContentIntoTitleBar = true;
@@ -404,6 +407,38 @@ public sealed partial class MainWindow : Window
             App.ReportUnexpected(ex, nameof(FileList_Drop));
         }
     }
+
+    // T-F566: the row's own remove button. Its template sees only the FileItem, so the window keeps
+    // the realized buttons to grey them out while ClearCommand cannot run, as the menu and Delete are.
+    private void RemoveRowButton_Loaded(object sender, RoutedEventArgs e)
+    {
+        var button = (Button)sender;
+        _removeRowButtons.Add(button);
+        button.IsEnabled = ViewModel.ClearCommand.CanExecute(null);
+    }
+
+    private void RemoveRowButton_Unloaded(object sender, RoutedEventArgs e) => _removeRowButtons.Remove((Button)sender);
+
+    private void UpdateRemoveRowButtons()
+    {
+        bool canRemove = ViewModel.ClearCommand.CanExecute(null);
+        foreach (Button button in _removeRowButtons)
+            button.IsEnabled = canRemove;
+    }
+
+    private void RemoveRowButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: FileItem item } || !ViewModel.ClearCommand.CanExecute(null))
+            return;
+        int index = ViewModel.FileItems.IndexOf(item);
+        if (index < 0)
+            return;
+        ViewModel.RemovePath(item.FullPath);
+        FocusRowLater(FileListView, System.Math.Min(index, ViewModel.FileItems.Count - 1));
+    }
+
+    // A quick second click must not reach the list, which opens the row now under the pointer.
+    private void RemoveRowButton_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e) => e.Handled = true;
 
     private void RemoveItem_Click(object sender, RoutedEventArgs e)
     {

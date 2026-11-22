@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>Vytvárajú sa údaje na obnovenie...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>Odobrať zo zoznamu: {0}</value>
+  </data>
 </root>

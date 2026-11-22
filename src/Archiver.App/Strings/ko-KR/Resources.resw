@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>복구 데이터를 만드는 중...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>목록에서 제거: {0}</value>
+  </data>
 </root>

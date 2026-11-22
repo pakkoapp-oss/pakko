@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>กำลังสร้างข้อมูลกู้คืน...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>นำออกจากรายการ: {0}</value>
+  </data>
 </root>

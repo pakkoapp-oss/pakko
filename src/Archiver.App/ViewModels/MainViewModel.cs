@@ -551,6 +551,8 @@ public sealed partial class MainViewModel : ObservableObject
     public static string BrowseUpButtonName => _res.GetString("BrowseUpButtonName");
     // T-F384: what a screen reader calls the two lists.
     public static string PendingListName => _res.GetString("PendingListName");
+    public static string RemoveRowName(string name) =>
+        string.Format(System.Globalization.CultureInfo.CurrentCulture, _res.GetString("RemoveRowName"), name);
     public static string ArchiveContentsListName => _res.GetString("ArchiveContentsListName");
     public static string DestinationUpButtonName => _res.GetString("DestinationUpButtonName");
     public static string DestinationBrowseButtonName => _res.GetString("DestinationBrowseButtonName");
