@@ -170,9 +170,9 @@ public sealed partial class MainWindow : Window
             if (closed)
                 return;
             TaskbarProgressState state = indicator.State;
-            int percent = indicator.Percent;
-            taskbarButton.Show((uint)state, percent);
-            trayProgress.Show(state, percent);
+            int bar = indicator.BarPercent;
+            taskbarButton.Show((uint)state, bar);
+            trayProgress.Show(state, bar, indicator.Percent);
         });
         indicator.Changed += showProgress;
         this.Closed += (_, _) =>

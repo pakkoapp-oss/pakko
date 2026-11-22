@@ -1316,9 +1316,13 @@ re-measured with T-F346's script before and after.
 - **2026-11-21, the user, later:** Zstandard in 7z dropped after it was built ("not worth it");
   threads for xz and zstd in tar stay. Why: `docs/DECISIONS.md`, "v1.12.0 batch 3, steps 1-3".
 - **Reported by:** the agent, from the user's request for Store figures, 2026-11-20.
-### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 8)
+### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 6)
 
-- [ ] **Status:** open. Found 2026-11-20 by `APP-031`/`OPW-006` (T-F432) on 1.10.0.40, Windows 11
+- [~] **Status:** fixed on `batch-6-taskbar-list` (2026-11-22): while yellow or red the bar fills at
+  least `MinimumVisiblePercent` (10), in `OperationIndicator.BarPercent` (the App's button and tray
+  icon; the tooltip keeps the true percent) and `OperationWindowModel.IndicatorPercent`; green at 0
+  stays empty. Left: `APP-031`, `OPW-006` on the device, and whether 10 reads as yellow and red there.
+  Before: open. Found 2026-11-20 by `APP-031`/`OPW-006` (T-F432) on 1.10.0.40, Windows 11
   26300. An operation that waits for a conflict answer or fails while its percent is still 0 shows
   only the grey track: a 4 KB damaged ZIP failing at once, and a single-file extraction asking
   "the file exists", in both the App and the operation window. Near 100 % red is full width, so the

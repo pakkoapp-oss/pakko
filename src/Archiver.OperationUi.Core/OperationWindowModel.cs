@@ -113,15 +113,29 @@ public sealed class OperationWindowModel
         _ => throw new InvalidOperationException($"No taskbar state for {Phase}."),
     };
 
-    /// <summary>T-F432: the whole batch, as Explorer's copy shows it: the archives done plus this one's share.</summary>
+    /// <summary>
+    /// T-F564: the least a yellow or red taskbar bar fills, so its colour shows at 0 % (the bar is
+    /// only a grey track there).
+    /// </summary>
+    public const int MinimumVisiblePercent = 10;
+
+    /// <summary>
+    /// T-F432: the whole batch, as Explorer's copy shows it: the archives done plus this one's share;
+    /// at least <see cref="MinimumVisiblePercent"/> while yellow or red (T-F564).
+    /// </summary>
     public int IndicatorPercent
     {
         get
         {
-            if (_itemCount <= 1)
-                return Percent;
-            long done = Math.Clamp(_itemIndex, 1, _itemCount) - 1L;
-            return (int)Math.Clamp((done * 100 + Percent) / _itemCount, 0, 100);
+            int percent = Percent;
+            if (_itemCount > 1)
+            {
+                long done = Math.Clamp(_itemIndex, 1, _itemCount) - 1L;
+                percent = (int)Math.Clamp((done * 100 + Percent) / _itemCount, 0, 100);
+            }
+            return IndicatorState is TaskbarProgressState.Paused or TaskbarProgressState.Error
+                ? Math.Max(percent, MinimumVisiblePercent)
+                : percent;
         }
     }
 

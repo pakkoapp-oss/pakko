@@ -120,6 +120,53 @@ public sealed class OperationIndicatorTests
         indicator.Percent.Should().Be(0);
     }
 
+    // --- Boundary (T-F564) ---
+
+    [Fact]
+    public void BarPercent_IsThePercent_WhileGreen_EvenAtZero()
+    {
+        Running(0).BarPercent.Should().Be(0);
+        Running(42).BarPercent.Should().Be(42);
+    }
+
+    [Theory]
+    [InlineData(0, OperationIndicator.MinimumVisiblePercent)]
+    [InlineData(OperationIndicator.MinimumVisiblePercent - 1, OperationIndicator.MinimumVisiblePercent)]
+    [InlineData(42, 42)]
+    public void APromptAtLowPercent_ShowsAVisibleYellowBar_ThePercentStaysTrue(int percent, int bar)
+    {
+        OperationIndicator indicator = Running(percent);
+
+        indicator.PromptOpened();
+
+        indicator.State.Should().Be(TaskbarProgressState.Paused);
+        indicator.BarPercent.Should().Be(bar);
+        indicator.Percent.Should().Be(percent);
+    }
+
+    [Fact]
+    public void AFailureAtZero_ShowsAVisibleRedBar()
+    {
+        OperationIndicator indicator = Running(0);
+
+        indicator.Finished(failed: true);
+
+        indicator.State.Should().Be(TaskbarProgressState.Error);
+        indicator.BarPercent.Should().Be(OperationIndicator.MinimumVisiblePercent);
+        indicator.Percent.Should().Be(0);
+    }
+
+    [Fact]
+    public void AnsweringThePrompt_ReturnsTheBarToTheTruePercent()
+    {
+        OperationIndicator indicator = Running(0);
+        indicator.PromptOpened();
+
+        indicator.PromptClosed();
+
+        indicator.BarPercent.Should().Be(0);
+    }
+
     // --- Error path ---
 
     [Fact]
