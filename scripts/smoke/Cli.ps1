@@ -1110,6 +1110,36 @@ Add-SmokeStep 'CLI-074' {
     $results -join '; '
 }
 
+# T-F496: -kb keeps a damaged ZIP entry's bytes as name.damaged, with the archive's mark; without
+# it nothing of the entry is left; on a tar.gz it is a warning and keeps nothing.
+Add-SmokeStep 'CLI-075' {
+    $folder = Get-StepFolder 'cli075'
+    $zip = Join-Path $folder 'damaged.zip'
+    $length = Write-DamagedStoredZip -Path $zip
+    Set-Content -LiteralPath $zip -Stream 'Zone.Identifier' -Value "[ZoneTransfer]`r`nZoneId=3"
+
+    $kept = Join-Path $folder 'kept'
+    $run = Invoke-Pakko @('x', '-kb', "-o$kept", $zip)
+    $damaged = Join-Path $kept 'doc.txt.damaged'
+    Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('doc.txt.damaged')) "x -kb: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke ((Test-Path -LiteralPath $damaged) -and -not (Test-Path -LiteralPath (Join-Path $kept 'doc.txt'))) 'x -kb: doc.txt.damaged missing, or doc.txt written'
+    Assert-Smoke ([System.IO.File]::ReadAllBytes($damaged).Length -eq $length) 'x -kb: the kept file is not the entry''s length'
+    Assert-Smoke ($null -ne (Get-Item -LiteralPath $damaged -Stream 'Zone.Identifier' -ErrorAction SilentlyContinue)) 'x -kb: the kept file has no download mark'
+
+    $plain = Join-Path $folder 'plain'
+    $run = Invoke-Pakko @('x', "-o$plain", $zip)
+    $left = @(Get-ChildItem -LiteralPath $plain -File -Recurse -Force -ErrorAction SilentlyContinue)
+    Assert-Smoke ($run.ExitCode -eq 2 -and $left.Count -eq 0) "x without -kb: exit $($run.ExitCode), $($left.Count) files left"
+
+    $tarGz = Join-Path $folder 'ok.tar.gz'
+    $tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
+    & $tarExe -czf $tarGz -C $folder 'damaged.zip'
+    Assert-Smoke ($LASTEXITCODE -eq 0) 'tar.exe could not write the tar.gz'
+    $run = Invoke-Pakko @('x', '-kb', "-o$(Join-Path $folder 'tgz')", $tarGz)
+    Assert-Smoke ($run.ExitCode -eq 1 -and $run.Text.Contains('only from ZIP')) "x -kb on a tar.gz: exit $($run.ExitCode) $($run.Text)"
+    'zip: kept as doc.txt.damaged with its mark, exit 2; without -kb nothing left; tar.gz: warning, exit 1'
+}
+
 Add-SmokeStep 'CLI-057' {
     $folder = Get-StepFolder 'cli057'
     $source = Join-Path $folder 'cs'
