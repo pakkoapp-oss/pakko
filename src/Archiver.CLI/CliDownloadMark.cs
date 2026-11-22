@@ -2,7 +2,7 @@ using Archiver.Core.Models;
 
 namespace Archiver.CLI;
 
-/// <summary>T-F360: what pakko says when Group Policy overrides -snz.</summary>
+/// <summary>T-F360: what pakko says when Group Policy overrides -snz; T-F496: or forbids -kb.</summary>
 public static class CliDownloadMark
 {
     /// <summary>A stderr line when an EnforceMOTW policy gives another mark than -snz asked for; otherwise null.</summary>
@@ -22,5 +22,14 @@ public static class CliDownloadMark
             _ => "every extracted file gets the mark",
         };
         return $"pakko: warning: -snz asked for {given}, but Group Policy (EnforceMOTW) decides: {effect}";
+    }
+
+    /// <summary>A stderr line when -kb was given and the DisableKeepDamagedFiles policy forbids it; otherwise null.</summary>
+    public static string? KeepDamagedForbiddenWarning(bool requested, GroupPolicyOptions policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        return requested && policy.DisableKeepDamagedFiles
+            ? "pakko: warning: -kb asked to keep damaged files, but Group Policy (DisableKeepDamagedFiles) forbids it: a damaged file leaves nothing"
+            : null;
     }
 }

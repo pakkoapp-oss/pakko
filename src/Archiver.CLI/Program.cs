@@ -185,6 +185,8 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
         if (CliDownloadMark.PolicyOverrideWarning(command.ApplyDownloadMark, services.Policy) is { } markWarning)
             await Console.Error.WriteLineAsync(markWarning).ConfigureAwait(false);
+        if (CliDownloadMark.KeepDamagedForbiddenWarning(command.KeepDamagedFiles, services.Policy) is { } keepWarning)
+            await Console.Error.WriteLineAsync(keepWarning).ConfigureAwait(false);
 
         // T-F525: next to where the files go; -so's go to %TEMP% anyway.
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(
@@ -306,6 +308,7 @@ static ExtractOptions BuildExtractOptions(
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes, progress, report),
         ApplyDownloadMark = command.ApplyDownloadMark ?? true,
+        KeepDamagedFiles = command.KeepDamagedFiles,
         DuplicateRootName = command.DropRootNamedLikeOutput ? OutputFolderName(command.OutputDirectory) : null,
         OnItemExtracted = command.Output.LogLevel >= 1 ? NameExtractedItem(destination, progress) : null,
     };

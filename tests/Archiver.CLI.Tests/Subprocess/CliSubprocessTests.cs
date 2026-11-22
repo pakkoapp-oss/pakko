@@ -71,6 +71,35 @@ public sealed class CliSubprocessTests
         File.Exists(Path.Combine(destDir, "a.txt") + ":Zone.Identifier").Should().Be(expectMarked);
     }
 
+    // T-F496: an entry with one flipped byte; -kb keeps its bytes as doc.txt.damaged, the run stays
+    // an error (exit 2) either way, and without -kb nothing of it is left.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Extract_DamagedEntry_KbKeepsItAsDamaged(bool keep)
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(scratchDir, "damaged.zip");
+        string content = string.Concat(Enumerable.Repeat("integrity-check ", 64));
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        using (var writer = new StreamWriter(archive.CreateEntry("doc.txt", CompressionLevel.NoCompression).Open()))
+            writer.Write(content);
+        byte[] bytes = File.ReadAllBytes(zipPath);
+        int dataAt = bytes.AsSpan().IndexOf(System.Text.Encoding.ASCII.GetBytes(content[..32]));
+        bytes[dataAt + 5] ^= 0x01;
+        File.WriteAllBytes(zipPath, bytes);
+
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        string[] args = keep ? ["x", "-kb", $"-o{destDir}", zipPath] : ["x", $"-o{destDir}", zipPath];
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run(args);
+
+        exitCode.Should().Be(2, stdErr);
+        File.Exists(Path.Combine(destDir, "doc.txt")).Should().BeFalse();
+        File.Exists(Path.Combine(destDir, "doc.txt.damaged")).Should().Be(keep);
+        if (keep)
+            stdErr.Should().Contain("doc.txt.damaged");
+    }
+
     // T-F154: pakko.exe's own "x" command always uses ExtractMode.SingleFolder (see
     // Archiver.CLI/Program.cs's BuildExtractOptions) — never SeparateFolders, the mode the T-F154
     // bug actually lived in (App's default Extract button, Explorer's "Extract Here"). Confirms

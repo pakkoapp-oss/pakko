@@ -59,6 +59,7 @@ public sealed record ParsedCliCommand
     public bool StopOnUnreadableSource { get; init; }                 // -sse, a only (T-F411)
     public bool DeleteSourcesAfter { get; init; }                     // -sdel, a only (T-F411)
     public bool DropRootNamedLikeOutput { get; init; }                // -spe[-], x only (T-F411)
+    public bool KeepDamagedFiles { get; init; }                       // -kb, x only (T-F496): Pakko's own, WinRAR's name
     public bool TechListing { get; init; }                            // -slt, l only (T-F412): 7-Zip's "Name = value" blocks
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
@@ -337,6 +338,7 @@ public static class CliArgumentParser
         public bool PromptForPassword { get; set; }
         public bool? ApplyDownloadMark { get; set; }
         public bool DropRootNamedLikeOutput { get; set; }
+        public bool KeepDamagedFiles { get; set; }
     }
 
     private static ParsedCliCommand ParseExtract(CliToken[] rest)
@@ -354,6 +356,9 @@ public static class CliArgumentParser
             return Invalid("'-so' cannot be combined with '-o' (mutually exclusive destinations)");
         if (state.ReadFromStdin && state.PromptForPassword)
             return Invalid(BarePasswordWithStdinReason);
+        // T-F496: a kept file is told apart by its name, which -so does not write.
+        if (state.WriteToStdout && state.KeepDamagedFiles)
+            return Invalid("'-kb' cannot be combined with '-so': a damaged file is kept under its own name, which standard output does not have");
 
         return new ParsedCliCommand
         {
@@ -368,6 +373,7 @@ public static class CliArgumentParser
             PromptForPassword = state.PromptForPassword,
             ApplyDownloadMark = state.ApplyDownloadMark,
             DropRootNamedLikeOutput = state.DropRootNamedLikeOutput,
+            KeepDamagedFiles = state.KeepDamagedFiles,
         };
     }
 
@@ -386,6 +392,9 @@ public static class CliArgumentParser
         if (token == "-si") { state.ReadFromStdin = true; return null; }
         if (token == "-so") { state.WriteToStdout = true; return null; }
         if (token == "-y") { state.AssumeYes = true; return null; }
+        if (token == "-kb") { state.KeepDamagedFiles = true; return null; }
+        if (token.StartsWith("-kb", StringComparison.Ordinal))
+            return $"Incorrect command line: -kb takes no value, got '{token}'";
 
         if (token.StartsWith("-spe", StringComparison.Ordinal))
         {
@@ -1128,6 +1137,7 @@ public static class CliArgumentParser
         ("-ssw", "not supported on this command: -ssw (read files open for writing) is only meaningful for 'a'"),
         ("-sse", "not supported on this command: -sse (stop at a file that cannot be read) is only meaningful for 'a'"),
         ("-spe", "not supported on this command: -spe (drop the root folder named like -o) is only meaningful for 'x'"),
+        ("-kb", "not supported on this command: -kb (keep what a damaged file holds) is only meaningful for 'x'"),
         ("-sdel", "not supported on this command: -sdel (delete the sources once archived) is only meaningful for 'a'"),
         ("-slt", "not supported on this command: -slt (the technical listing) is only meaningful for 'l'"),
         ("-ssp", "not supported by Pakko: -ssp (keep the sources' last access time) - tar.exe cannot keep it, and Windows mostly does not update it"),

@@ -33,6 +33,7 @@ public static class CliSwitchNames
         ("sdel", false), ("stl", false),
         ("p", false),
         ("rr", false),
+        ("kb", false),
     ];
 
     /// <summary>
