@@ -1330,7 +1330,10 @@ re-measured with T-F346's script before and after.
 
 ### T-F563 - A dropped name Windows trims leaves the App's list with only a log line (P3, batch 8)
 
-- [ ] **Status:** open. Found 2026-11-20 by `SHL-019` (T-F509): the App given `b.txt ` (a trailing
+- [~] **Status:** fixed on `batch-5-names` (2026-11-22) by T-F556: `PendingPaths` lists `b.txt ` by its
+  `\\?\` path, with its own size and CRC (`FileItemTests`); a path that cannot be read at all keeps the
+  log line (`docs/DECISIONS.md`, "Batch 5 (v1.12.0) - names"). Left: `SHL-019`'s App half. Before:
+  Found 2026-11-20 by `SHL-019` (T-F509): the App given `b.txt ` (a trailing
   space) next to its folder, as a drop or `--open-ui --archive` hands it, lists the folder and drops
   the file with only "Skipped unreadable path" in the log (`FileItem.TryCreate`, T-F232); nothing on
   screen says why. The Explorer verb and the Shell name the reason. Next: the App shows the same
