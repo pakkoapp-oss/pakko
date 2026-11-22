@@ -102,6 +102,44 @@ public sealed class OperationWindowModelIndicatorTests
         model.IndicatorState.Should().Be(TaskbarProgressState.None);
     }
 
+    // --- Boundary (T-F564) ---
+
+    [Fact]
+    public void APromptAtZero_ShowsAVisibleYellowBar()
+    {
+        OperationWindowModel model = Running(new Progress(0, null, null), Conflict(1));
+
+        model.IndicatorState.Should().Be(TaskbarProgressState.Paused);
+        model.IndicatorPercent.Should().Be(OperationWindowModel.MinimumVisiblePercent);
+    }
+
+    [Fact]
+    public void APromptEarlyInABatch_ShowsAVisibleYellowBar()
+    {
+        // The floor is on the whole batch's value: item 1 of 20 at 0 % is 0.
+        OperationWindowModel model = Running(new Item("a.zip", 1, 20), new Progress(0, null, null), Conflict(1));
+
+        model.IndicatorPercent.Should().Be(OperationWindowModel.MinimumVisiblePercent);
+    }
+
+    [Fact]
+    public void AnErrorResultAtZero_ShowsAVisibleRedBar()
+    {
+        OperationWindowModel model = Running(new Complete(new ResultText(ResultSeverity.Error, "Failed", "a.zip: damaged")));
+
+        model.IndicatorState.Should().Be(TaskbarProgressState.Error);
+        model.IndicatorPercent.Should().Be(OperationWindowModel.MinimumVisiblePercent);
+    }
+
+    [Fact]
+    public void RunningAtZero_ShowsNoGreen()
+    {
+        OperationWindowModel model = Running(new Progress(0, null, null));
+
+        model.IndicatorState.Should().Be(TaskbarProgressState.Normal);
+        model.IndicatorPercent.Should().Be(0);
+    }
+
     // --- Error path ---
 
     [Fact]

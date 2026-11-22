@@ -28,9 +28,9 @@ internal sealed unsafe partial class TrayProgressRenderer : IDisposable
         _hwnd = hwnd;
     }
 
-    public void Show(TaskbarProgressState state, int percent)
+    public void Show(TaskbarProgressState state, int barPercent, int percent)
     {
-        (TaskbarProgressState State, int Step) wanted = (state, state == TaskbarProgressState.None ? 0 : TrayProgressIcon.Step(percent));
+        (TaskbarProgressState State, int Step) wanted = (state, state == TaskbarProgressState.None ? 0 : TrayProgressIcon.Step(barPercent));
         if (wanted == _shown)
             return;
         if (state == TaskbarProgressState.None)
