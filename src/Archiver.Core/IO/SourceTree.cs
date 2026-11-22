@@ -75,6 +75,7 @@ public static class SourceTree
                         links.Add(entry.Info.FullName);
                         break;
                     case WalkEntryKind.UnreadableDirectory:
+                    case WalkEntryKind.DeviceName: // T-F559: never opened, so never read in full
                         unreadable = true;
                         break;
                     case WalkEntryKind.TrimmedName:

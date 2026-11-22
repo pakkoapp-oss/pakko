@@ -213,6 +213,10 @@ public static class FileHashService
                 case WalkEntryKind.TrimmedName:
                     entries.Add(CoreMessages.HashError(entry.Info.FullName, CoreMessages.Text(MessageCode.SourceNameTrimmed, entry.Info.FullName)));
                     break;
+                // T-F559: hashed by that path, it was the device's CRC (0 for NUL), under the name "\\.\NUL".
+                case WalkEntryKind.DeviceName:
+                    entries.Add(CoreMessages.HashError(entry.Info.FullName, CoreMessages.Text(MessageCode.SourceNotFound, entry.Info.FullName)));
+                    break;
             }
         }
         return files;

@@ -15099,6 +15099,46 @@ path is rare.
 **Red before the change:** `PendingPathsTests` (2), `FileItemTests` (2) and the Shell's archive test failed
 with `Listed` returning the path as given. `InputPathsListedTests` pins the table.
 
+**T-F559 - a device-named file inside a source.** T-F558 refused a path Windows opens as a device only
+where Core is given it. A walk opened what it met by the plain path, so a file `nul` (the null device on
+every Windows) or `CON.txt` (the console on Windows 10 and Server 2022), made through `\\?\`, WSL or a share,
+was read as the device. Measured with `pakko a` on a folder holding `nul` and `ok.txt`:
+
+| | Windows 11 26300 (debug build) | PakkoW10, 19045, v1.11.0 AOT | after, both |
+|---|---|---|---|
+| ZIP | exit 0, an empty entry `z///./NUL` (`RelativePath` of `\\.\NUL`) | the same | exit 2, "does not exist", `ok.txt` archived |
+| ZIP `-sdel` | exit 0; `nul` kept (its delete failed) | exit 0, **`ok.txt` deleted**, the archive holding no `nul` bytes | exit 2, nothing deleted |
+| tar.gz | exit 0; tar.exe itself read `t/NUL` with its 18 bytes | the same | exit 2, the source refused whole |
+| hash | exit 0, `00000000  \\.\NUL` | the same | exit 1, an error for the entry |
+| `CON.txt` | a file here (Windows 11 opens only a bare device name as one) | **hung** (90 s, killed) | exit 2, no hang |
+
+The rule lives in the walk's owner: `DirectoryWalker` reports such an entry as `WalkEntryKind.DeviceName`
+and never opens or enters it, in a spelled walk too (only a trimmed name is spelled there). Every consumer
+has a case: ZIP's three walks and hash give an error for the entry; tar refuses the source whole, as for a
+trimmed name (what Core checks of tar.exe's names opens them by their plain paths); `SourceTree` counts
+the source as not read in full, so neither frontend deletes it; the CLI's archive search hands a file to
+Core, which refuses it, and stops at a folder. Below a `\\?\` root every path is literal and the file is
+read as itself (`Create_ZipLiteralFolderHoldingADeviceName_ArchivesTheFile`).
+
+Decisions:
+- **Refused, not read by `\\?\` as T-F531 reads a trimmed name.** The name could not come back either:
+  Pakko's extraction renames a device name (`EntryDiskName`), so the source would have to be kept anyway,
+  and the case is rare. Fail closed, one kind for every consumer.
+- **The text is `SourceNotFound`** ("Source path does not exist"), as T-F558 refuses such a path given to
+  Core: no new string in 37 locales.
+- **Cost.** `InputPaths.EntryNamesADevice` asks `GetFullPath` only for a name `MayNameADevice` lets
+  through: a stem of 3 to 7 characters, before a dot or a colon and without trailing spaces, starting with
+  C, P, A, N or L. Measured against `GetFullPath` itself on 384 candidates: 4 devices on Windows 11, 240
+  on Windows 10 (`CONIN$`, superscript ports and extensions included), none missed on either
+  (`InputPathsDeviceEntryTests` runs the same table on whatever Windows runs it).
+- **Not changed:** `FolderTotals`, `-stl`'s time and ZIP's size estimate count only files and folders, so
+  a `DeviceName` adds nothing there; `TempOwner` walks literal paths only.
+
+**Red before the change:** with the walker's device rule removed, 10 of `DeviceNamedEntryTests`, both
+new `DirectoryWalkerTests` and both `Sdel_FolderHoldingADeviceName_DeletesNothing` rows failed; the
+literal-root row passed, as it should. `CLI-074` passed on the AOT build; the same commands on PakkoW10
+by PowerShell Direct (its smoke runner needs pwsh 7).
+
 ## T-F562 - the archive helper on ARM64 (2026-11-21)
 
 **Measured before (2026-11-20, run 44640387699):** Windows on ARM64 ships its own

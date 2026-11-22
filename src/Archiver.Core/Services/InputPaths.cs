@@ -139,6 +139,24 @@ public static class InputPaths
     /// it runs on. False for a path that cannot be parsed.</summary>
     internal static bool NamesADevice(string path) => ParseProblem(path) is null && IsDeviceFullPath(Path.GetFullPath(path));
 
+    /// <summary>T-F559: <see cref="NamesADevice"/> for an entry a walk met, by its plain path: a file "NUL" (on
+    /// every Windows) or "CON.txt" (Windows 10, Server 2022) made through <c>\\?\</c> opens as the device. Asked
+    /// of every entry of a walk, so <see cref="Path.GetFullPath(string)"/> runs only for a name that could be one
+    /// (<see cref="MayNameADevice"/>).</summary>
+    internal static bool EntryNamesADevice(string fullName) =>
+        MayNameADevice(Path.GetFileName(fullName)) && NamesADevice(fullName);
+
+    // Every device name Windows knows starts with C, P, A, N or L and has 3 to 7 characters (CON, PRN, AUX,
+    // NUL, COM1, LPT1 and its superscript-digit forms, CONIN$, CONOUT$) before an extension or a stream;
+    // trailing spaces do not count.
+    // A superset: GetFullPath decides.
+    internal static bool MayNameADevice(string name)
+    {
+        int end = name.AsSpan().IndexOfAny('.', ':');
+        ReadOnlySpan<char> stem = (end >= 0 ? name.AsSpan(0, end) : name.AsSpan()).TrimEnd(' ');
+        return stem.Length is >= 3 and <= 7 && "CcPpAaNnLl".Contains(stem[0]);
+    }
+
     // Only in the device namespace: "C:\x\NUL" is "\\.\NUL" by then. The batch 6 review: an allow-list,
     // not a list of device names - a pipe, a mailslot, a disk, a raw volume (no separator after "C:") or
     // \??\NUL all open as something that is no file.

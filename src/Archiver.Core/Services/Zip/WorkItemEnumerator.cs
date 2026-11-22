@@ -98,6 +98,9 @@ internal static class WorkItemEnumerator
                 case WalkEntryKind.TrimmedName:
                     reportError(ZipArchiveService.TrimmedNameError(entry.Info.FullName));
                     break;
+                case WalkEntryKind.DeviceName:
+                    reportError(ZipArchiveService.DeviceNameError(entry.Info.FullName));
+                    break;
                 case WalkEntryKind.Directory:
                 case WalkEntryKind.LeftOut:
                     break;

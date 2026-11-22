@@ -1766,10 +1766,10 @@ public sealed class TarSandboxedService : ITarService
             var links = new List<FileSystemInfo>();
             var leftOut = new List<FileSystemInfo>();
             var sourceFiles = new List<string>();
-            var trimmedNames = new List<string>();
+            var unopened = new List<WalkEntry>();
             (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(
-                fullSource, links, names.LeaveOutBelow(fullSource, isDriveRoot ? "" : name), leftOut, sourceFiles, trimmedNames);
-            if (WalkRefusal(sourcePath, trimmedNames, unrepresentable) is { } refusal)
+                fullSource, links, names.LeaveOutBelow(fullSource, isDriveRoot ? "" : name), leftOut, sourceFiles, unopened);
+            if (WalkRefusal(sourcePath, unopened, unrepresentable) is { } refusal)
             {
                 errors.Add(refusal);
                 continue;
@@ -1795,11 +1795,13 @@ public sealed class TarSandboxedService : ITarService
 
     // Why tar.exe must not get this source, from what Core's walk of it met; null when it may.
     // T-F509: tar.exe would read "a.txt " itself, but what Core checks of the names it meets (the
-    // filter, links, the code page, hard-link pairs) opens them by their plain paths.
-    private static ArchiveError? WalkRefusal(string sourcePath, List<string> trimmedNames, string? unrepresentable)
+    // filter, links, the code page, hard-link pairs) opens them by their plain paths. T-F559: so does a name
+    // Windows opens as a device, which by that path is no file ("not found", as T-F558 says of such a source).
+    private static ArchiveError? WalkRefusal(string sourcePath, List<WalkEntry> unopened, string? unrepresentable)
     {
-        if (trimmedNames.Count > 0)
-            return CoreMessages.Error(sourcePath, MessageCode.SourceNameTrimmed, trimmedNames[0]);
+        if (unopened.Count > 0)
+            return CoreMessages.Error(sourcePath,
+                unopened[0].Kind == WalkEntryKind.DeviceName ? MessageCode.SourceNotFound : MessageCode.SourceNameTrimmed, unopened[0].Info.FullName);
         return unrepresentable is null
             ? null
             : CoreMessages.Error(sourcePath, TarArgumentEncodingException.Describe(unrepresentable, TarCommandLineEncoding.AnsiCodePage));
@@ -1998,10 +2000,10 @@ public sealed class TarSandboxedService : ITarService
     // T-F391: every link met inside the source is added to links.
     // T-F410: what leaveOut leaves out is added to leftOut and neither counted nor entered.
     // T-F392: every file tar.exe will pack is added to files.
-    // T-F509: every name Windows trims is added to trimmed, and not entered.
+    // T-F509: every name Windows trims is added to unopened, and not entered; T-F559: every name it opens as a device too.
     internal static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(
         string sourcePath, List<FileSystemInfo>? links = null, Func<FileSystemInfo, bool>? leaveOut = null, List<FileSystemInfo>? leftOut = null,
-        List<string>? files = null, List<string>? trimmed = null)
+        List<string>? files = null, List<WalkEntry>? unopened = null)
     {
         // T-F467: the page read once for the whole walk.
         uint commandLinePage = TarCommandLineEncoding.AnsiCodePage;
@@ -2026,8 +2028,8 @@ public sealed class TarSandboxedService : ITarService
                 leftOut?.Add(entry.Info);
                 continue;
             }
-            if (entry.Kind == WalkEntryKind.TrimmedName)
-                trimmed?.Add(entry.Info.FullName);
+            if (entry.Kind is WalkEntryKind.TrimmedName or WalkEntryKind.DeviceName)
+                unopened?.Add(entry);
             bool isRoot = count == 0; // the walk always starts with the root itself
             count++;
             if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name, commandLinePage))
