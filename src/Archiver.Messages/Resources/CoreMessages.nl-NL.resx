@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Een item in dit archief heeft een naam of gegevens die te lang zijn om in Pakko te openen. Limiet: {0} bytes.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>‘{0}’ is beschadigd; wat ervan gelezen kon worden, is bewaard als ‘{1}’: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Beschadigde bestanden worden alleen uit ZIP-archieven bewaard; van een beschadigd bestand in dit archief blijft niets over.</value>
+  </data>
 </root>

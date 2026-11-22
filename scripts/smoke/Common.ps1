@@ -36,6 +36,23 @@ function Write-DamagedEncryptedZip {
     [System.IO.File]::WriteAllBytes($Path, $bytes)
 }
 
+# T-F496: a ZIP whose one stored entry doc.txt has a flipped byte; returns the entry's length.
+function Write-DamagedStoredZip {
+    param([Parameter(Mandatory)][string]$Path)
+    $content = 'integrity-check ' * 64
+    $archive = [System.IO.Compression.ZipFile]::Open($Path, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $writer = [System.IO.StreamWriter]::new($archive.CreateEntry('doc.txt', [System.IO.Compression.CompressionLevel]::NoCompression).Open())
+        try { $writer.Write($content) } finally { $writer.Dispose() }
+    } finally { $archive.Dispose() }
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    $at = [System.Text.Encoding]::ASCII.GetString($bytes).IndexOf($content.Substring(0, 32), [System.StringComparison]::Ordinal)
+    Assert-Smoke ($at -gt 0) 'the entry data was not found in the archive'
+    $bytes[$at + 5] = $bytes[$at + 5] -bxor 1
+    [System.IO.File]::WriteAllBytes($Path, $bytes)
+    $content.Length
+}
+
 function Invoke-Tool {
     # -CommandLine: the arguments as one string, for a program that parses its own (cmd.exe).
     # A program still running after -TimeoutSeconds is killed with its children, and the step fails.

@@ -426,4 +426,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>An entry in this archive has a name or details too long for Pakko to open. Limit: {0} bytes.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>'{0}' is damaged; what could be read of it is kept as '{1}': {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Damaged files are kept only from ZIP archives; a damaged file in this archive leaves nothing.</value>
+  </data>
 </root>

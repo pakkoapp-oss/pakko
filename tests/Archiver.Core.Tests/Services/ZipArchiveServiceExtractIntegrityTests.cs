@@ -34,7 +34,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
     }
 
     // Offsets of doc.txt's local header and central directory record.
-    private static (int Local, int Central) FindHeaders(byte[] bytes, string entryName)
+    internal static (int Local, int Central) FindHeaders(byte[] bytes, string entryName)
     {
         byte[] name = Encoding.UTF8.GetBytes(entryName);
         int local = -1, central = -1;
@@ -60,9 +60,9 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         File.WriteAllBytes(zipPath, bytes);
     }
 
-    private static void PatchCrc(string zipPath, string entryName, uint crc) => PatchUInt32(zipPath, entryName, 14, 16, crc);
+    internal static void PatchCrc(string zipPath, string entryName, uint crc) => PatchUInt32(zipPath, entryName, 14, 16, crc);
 
-    private static void PatchUncompressedSize(string zipPath, string entryName, uint size) => PatchUInt32(zipPath, entryName, 22, 24, size);
+    internal static void PatchUncompressedSize(string zipPath, string entryName, uint size) => PatchUInt32(zipPath, entryName, 22, 24, size);
 
     private async Task<(ArchiveResult Result, string Dest)> ExtractAsync(string zip, string? password = null)
     {

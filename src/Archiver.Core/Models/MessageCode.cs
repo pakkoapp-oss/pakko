@@ -195,4 +195,8 @@ public enum MessageCode
 
     // One line of tar.exe's listing longer than Pakko reads: a name or an owner too long (T-F549)
     ListingLineTooLong,
+
+    // A damaged ZIP entry kept on request, and the formats that keep nothing (T-F496)
+    EntryKeptDamaged,
+    KeepDamagedZipOnly,
 }

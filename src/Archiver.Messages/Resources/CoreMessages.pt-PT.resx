@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Uma entrada neste arquivo tem um nome ou dados demasiado longos para o Pakko o abrir. Limite: {0} bytes.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>«{0}» está danificado; o que foi possível ler foi guardado como «{1}»: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Os ficheiros danificados só são guardados a partir de arquivos ZIP; de um ficheiro danificado neste arquivo não fica nada.</value>
+  </data>
 </root>

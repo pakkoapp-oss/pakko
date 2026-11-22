@@ -521,6 +521,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["EntryDiskName.AsTarExeWrites"] = "a name inside an archive, never opened",
         ["EntryDiskName.Renames"] = "a name inside an archive, never opened",
         ["EntryDiskName.SingleName"] = "one name Pakko writes, never opened",
+        ["EntryDiskName.Damaged"] = "one name Pakko writes, never opened",
         ["InputPaths.NameTrimmed"] = "a question about a path's spelling, never opened",
         ["TempOwner.NewName"] = "a new name, never opened",
         ["TempOwner.IsRunningHere"] = "a question about a process, never a path",

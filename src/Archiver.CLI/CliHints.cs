@@ -87,6 +87,7 @@ public static class CliHints
         MessageCode.TestedStructureOnly, MessageCode.SingleFileFormatNeedsOneFile, MessageCode.TarHardLinkPair, MessageCode.ScanEntryBlockedByPolicy, MessageCode.ScanProviderDoesNotReport, MessageCode.TarGaveNoVersion,
         MessageCode.ScanFilesMissing, MessageCode.TarFilesMissing, MessageCode.TarListedNameUntrusted,
         MessageCode.SourceNameTrimmed, MessageCode.TooManyEntries, MessageCode.CatalogTooLarge, MessageCode.ListingLineTooLong,
+        MessageCode.EntryKeptDamaged, MessageCode.KeepDamagedZipOnly,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>

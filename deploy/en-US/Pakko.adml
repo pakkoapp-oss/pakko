@@ -14,10 +14,12 @@
             <string id="Pakko">Pakko</string>
             <string id="Pakko14">Pakko 1.4</string>
             <string id="Pakko18">Pakko 1.8</string>
+            <string id="Pakko112">Pakko 1.12</string>
 
             <!-- Definitions -->
             <string id="SUPPORTED_Pakko14">At least Pakko 1.4</string>
             <string id="SUPPORTED_Pakko18">At least Pakko 1.8</string>
+            <string id="SUPPORTED_Pakko112">At least Pakko 1.12</string>
 
             <!-- Categories -->
             <string id="PakkoPolicies">Pakko</string>
@@ -69,6 +71,12 @@ If you disable or do not configure this policy setting, Pakko launches tar.exe f
 If you enable this policy setting, the recovery data option is hidden, a request for recovery data (pakko a -rr) is refused with an error before any archive is written, and the verify and repair commands are not offered.
 
 If you disable or do not configure this policy setting, the user may add recovery data when creating an archive and verify or repair an archive that has it.</string>
+            <string id="DisableKeepDamagedFiles">Do not keep damaged files</string>
+            <string id="DisableKeepDamagedFilesExplain">This policy setting controls whether a user may ask Pakko to keep what a damaged file in a ZIP archive holds, saved as name.damaged next to where the file would have gone.
+
+If you enable this policy setting, a damaged file always leaves nothing on disk: the app hides the option, and pakko x -kb extracts as if -kb were not given, with a warning that the policy forbids it.
+
+If you disable or do not configure this policy setting, the user may turn the option on for one extraction at a time; it is off by default, and Explorer's extraction never turns it on.</string>
         </stringTable>
 
         <presentationTable>

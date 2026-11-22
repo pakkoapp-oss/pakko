@@ -20,6 +20,11 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
     private long _totalRead;
     private bool _finished;
 
+    /// <summary>T-F496: when .NET's CRC-32 check failed the read that reached the declared size, the
+    /// bytes that read decoded and did not return: the end of the content. Empty otherwise - also
+    /// when .NET refused a read past the declared size, since what its buffer then holds is unknown.</summary>
+    internal byte[] DamagedTail { get; private set; } = [];
+
     // T-F492: the runtime's own texts (System.IO.Compression's SR.CrcMismatch and
     // SR.UnexpectedStreamLength, .NET 11). VerifyingReadStreamTests pins them against ZipArchive.
     internal const string BclCrcMismatchText = "The CRC32 checksum of the extracted data does not match the expected value from the archive.";
@@ -98,6 +103,7 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
         if (ex.Message != BclCrcMismatchText || expectedCrc32 is not { } expected || rest < 0 || rest > buffer.Length)
             return CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentDamaged), ex);
         _accumulator.Update(buffer[..(int)rest]);
+        DamagedTail = buffer[..(int)rest].ToArray();
         uint computed = _accumulator.Finish();
         return CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentCrcMismatch,
             expected.ToString("X8", CultureInfo.InvariantCulture), computed.ToString("X8", CultureInfo.InvariantCulture)), ex);

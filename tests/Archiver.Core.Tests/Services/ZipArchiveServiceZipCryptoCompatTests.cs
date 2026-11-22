@@ -159,6 +159,27 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         File.Exists(Path.Combine(dest, "big.bin")).Should().BeFalse();
     }
 
+    // T-F496 guard 5: the garbage of a wrong password that passed the check byte fails the CRC-32
+    // exactly as damage does, so an encrypted entry never keeps a file.
+    [Fact]
+    public async Task ExtractAsync_KeepDamaged_CheckByteCollidingWrongPassword_KeepsNothing()
+    {
+        (string? zip, string? colliding) = LargeZipCryptoWithCollidingPassword();
+        string dest = Path.Combine(_temp.Path, "keep");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = Fixed(colliding),
+            KeepDamagedFiles = true,
+        });
+
+        result.Success.Should().BeFalse();
+        Directory.EnumerateFiles(_temp.Path, "*.damaged*", SearchOption.AllDirectories).Should().BeEmpty();
+    }
+
     // T-F244 item 3: a non-ASCII ZipCrypto password's bytes depend on the tool that made the
     // archive — Windows tools use the ANSI code page (7-Zip/NanaZip decode with CP_ACP), Linux ones
     // UTF-8. Pakko tried UTF-8 only, so a Cyrillic password from a Windows tool never matched.

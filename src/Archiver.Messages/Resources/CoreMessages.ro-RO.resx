@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Un element din această arhivă are un nume sau detalii prea lungi pentru ca Pakko să o deschidă. Limită: {0} octeți.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>„{0}” este deteriorat; ce s-a putut citi a fost păstrat ca „{1}”: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Fișierele deteriorate se păstrează doar din arhivele ZIP; dintr-un fișier deteriorat din această arhivă nu rămâne nimic.</value>
+  </data>
 </root>

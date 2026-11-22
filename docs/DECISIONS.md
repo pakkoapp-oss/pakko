@@ -15096,6 +15096,31 @@ the two cannot be told apart from one entry. Keeping only plain entries (stored,
 deflate64) holds guard 5 by construction. AES keeping, when another entry of the same run passed
 its HMAC with the same password, is T-F568.
 
+**Where the plan changed while building (step 2-4).**
+- *The name is `a.txt.damaged`, not `a.damaged.txt`.* The planned form keeps the extension, so
+  `report.damaged.exe` still opens as a program and `doc.damaged.docx` in Word, both without any
+  hint beyond the name. A suffix after the whole name makes Windows treat it as an unknown type,
+  which is the point; WinRAR's kept file keeps its own name, which Pakko rejected for guard 2. The
+  name is cut to fit 255 UTF-16 units, never inside a surrogate pair (`EntryDiskName.Damaged`).
+- *It is made from the entry's own final name,* not from a name a conflict rename gave it, and is
+  numbered past files, folders and names the run claimed. The entry's own name stays claimed, so
+  `-aot`'s rename of an existing file only happens where a staged file of that name exists
+  (`ExtractionStaging`): nothing to undo, and an existing good file is left as it was under every
+  conflict mode (test). The archive is then never deleted after the run (Partial), the safe side.
+- *A stored entry whose length .NET itself rejects keeps nothing.* .NET throws its own length
+  error before Pakko's `VerifyingReadStream` sees the bytes; a probe showed its buffer filled, but
+  nothing documents that, so it is not relied on. A deflated entry with an understated size keeps
+  exactly the declared bytes (Pakko's own check).
+- *The read that throws still has data.* .NET 11 checks CRC-32 on the read that reaches the
+  declared size and throws from it; its bytes are in the caller's buffer, which `CopyToAsync`
+  never writes. `VerifyingReadStream.DamagedTail` keeps that tail and the keep path appends it.
+- *Nothing is kept when nothing was decoded,* and only content damage triggers it
+  (`ContentCrcMismatch`, `ContentLargerThanDeclared`, `ContentSmallerThanDeclared`,
+  `ContentDamaged`): a cancel, an `IOException` or anything else still deletes the file.
+- *`-kb` with `-so` is refused,* exit 7: standard output has no name to mark the bytes as damaged.
+- *Explorer never keeps* (no Shell option); the App's box hides under the policy and for the one
+  file the unsafe-type warning extracts to open.
+
 ## Batch 5 (v1.12.0) - names (T-F556, T-F563, T-F559; 2026-11-22)
 
 **T-F556 - a name Windows trims, archived as Explorer lists it.** Explorer hands the Shell

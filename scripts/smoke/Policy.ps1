@@ -228,6 +228,20 @@ Add-SmokeStep 'POL-005' {
     }
 }
 
+# T-F496: under DisableKeepDamagedFiles -kb keeps nothing and says the policy forbids it.
+Add-SmokeStep 'POL-011' {
+    $root = Get-StepFolder 'pol011'
+    $zip = Join-Path $root 'damaged.zip'
+    $null = Write-DamagedStoredZip -Path $zip
+    Use-SmokePolicy -Values @{ DisableKeepDamagedFiles = 1 } -Body {
+        $out = Join-Path $root 'out'
+        $run = Invoke-Pakko @('x', '-kb', "-o$out", $zip)
+        $left = @(Get-ChildItem -LiteralPath $out -File -Recurse -Force -ErrorAction SilentlyContinue)
+        Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('DisableKeepDamagedFiles') -and $left.Count -eq 0) "x -kb under DisableKeepDamagedFiles=1: exit $($run.ExitCode), $($left.Count) files left. $($run.Text)"
+    }
+    'x -kb under the policy: exit 2, the policy named, nothing kept'
+}
+
 Add-SmokeStep 'POL-006' {
     $root = Get-StepFolder 'pol006'
     $zip = Join-Path $root 'data.zip'

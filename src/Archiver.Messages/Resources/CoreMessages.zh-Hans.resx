@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>此压缩包中某个条目的名称或详细信息过长，Pakko 无法打开。上限：{0} 字节。</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>“{0}”已损坏；已将可读取的部分保留为“{1}”：{2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>仅从 ZIP 压缩包中保留损坏的文件；此压缩包中的损坏文件不会留下任何内容。</value>
+  </data>
 </root>

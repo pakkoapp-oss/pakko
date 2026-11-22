@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Bu arşivdeki bir öğenin adı veya ayrıntıları Pakko'nun açamayacağı kadar uzun. Sınır: {0} bayt.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>“{0}” hasarlı; okunabilen kısmı “{1}” olarak saklandı: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Hasarlı dosyalar yalnızca ZIP arşivlerinden saklanır; bu arşivdeki hasarlı bir dosyadan hiçbir şey kalmaz.</value>
+  </data>
 </root>

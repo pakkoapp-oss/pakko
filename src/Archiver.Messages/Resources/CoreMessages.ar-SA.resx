@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>يحتوي عنصر في هذا الأرشيف على اسم أو تفاصيل أطول من أن يفتحها Pakko. الحد: {0} بايت.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>"{0}" تالف؛ تم الاحتفاظ بما أمكن قراءته منه باسم "{1}": {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>يتم الاحتفاظ بالملفات التالفة من أرشيفات ZIP فقط؛ لا يترك الملف التالف في هذا الأرشيف أي شيء.</value>
+  </data>
 </root>
