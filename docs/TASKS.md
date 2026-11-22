@@ -78,7 +78,7 @@ reviewer at the batch's close, with the user's OK.
 | 5 | Names | T-F556, T-F563, T-F559 | One deploy, `SHL-019`, PakkoW10 for T-F559 |
 | 6 | Taskbar, the file list | T-F564, T-F566 | `APP-031`, `OPW-006` and T-F566's new APP row on the device |
 | 7 | A damaged entry kept | T-F496 | The failure matrix (CRC, length, deflate) at every test level, one deploy |
-| 8 | Device, user, release | T-F432 (`APP-032` by eye), T-F494, T-F444, T-F446, T-F447, T-F254, T-F508, T-F317 (only with the user's OK); `STO-005`, `STO-006`, `STO-008` for 1.11.0 after certification; the release tier; the tag after the user's OK | As batch 8 of v1.11.0 |
+| 8 | Device, user, release | T-F432 (`APP-032` by eye), `POL-011` (T-F496's policy, elevated), T-F494, T-F444, T-F446, T-F447, T-F254, T-F508, T-F317 (only with the user's OK); `STO-005`, `STO-006`, `STO-008` for 1.11.0 after certification; the release tier; the tag after the user's OK | As batch 8 of v1.11.0 |
 
 Order: this plan, then batch 1, then 2 and 3; 4 to 7 between them while no long series runs; 8 last.
 
@@ -1220,43 +1220,6 @@ re-measured with T-F346's script before and after.
   run as written (an elevated `testhost` held `Archiver.App.Core.Tests`' bin, so the release ran it
   project by project).
 - **Reported by:** the agent, 2026-11-11.
-
-### T-F496 - Keep a damaged file on request: what is left of an entry whose data or CRC-32 is bad (P3, user-requested, after v1.11.0)
-
-- [ ] **Status:** in progress, batch 7 (2026-11-22): ZIP-only and plain entries only, measured and decided in `docs/DECISIONS.md`, "Batch 7 (v1.12.0)"; AES split off as T-F568. The user, 2026-11-11: an archive with one bad block
-  still holds data someone may need at any cost. Today a ZIP entry that fails its CRC-32 (T-F246),
-  runs longer than declared (T-F231) or has a damaged deflate stream fails alone, the other entries
-  are extracted, and its half-written file is deleted (`CopyEntryToDestinationAsync`, T-F230). .NET 11
-  checks the CRC too (T-F492); that changed the message's source, not the outcome. What a kept file
-  can hold: a CRC mismatch only - the whole decoded data (a flipped bit in a stored entry, or a bad
-  CRC field); a deflate stream broken midway - the bytes before the break (deflate does not
-  resynchronise after it); AES - the same, decryption is per block. A damaged central directory
-  stays out of reach: the BCL does not scan local headers, and a scanner of our own is not this task.
-  WinRAR has "Keep broken files", 7-Zip keeps them by default.
-  **Guards, each a test, so the option never becomes a hole in a later release:**
-  1. Off by default and per operation only: an explicit switch in the App's extract dialog and
-     `pakko x` (`-kb` or similar, checked against 7-Zip's switches first), never remembered as a
-     setting, never on for Explorer's one-click "Extract here". A Group Policy can forbid it.
-  2. A kept file is never mistaken for a good one: a suffix in its name (e.g. `name.damaged.ext`,
-     so no program opens it by its old association), the operation `Partial` with the reason per
-     entry, exit code 2 in the CLI, the log line.
-  3. Every other guard runs unchanged before and while the file is written: path traversal,
-     reserved names, ADS, reparse points, the compression-ratio and disk-space checks (a damaged
-     entry's declared size is untrusted; the bytes written stay capped by it, T-F231), Mark of the
-     Web on the kept file.
-  4. Only the decoded bytes: nothing is guessed, padded or zero-filled past the break.
-  5. Encrypted entries: a file is kept only if the password was verified (AES's HMAC failing on a
-     damaged block is the damage; a wrong password is not and keeps nothing). Open: Pakko's
-     reader, kept by T-F493 (batch 7), checks the HMAC before any byte and returns no stream when
-     it fails (`EncryptedZipEntryReader`), so a damaged AES entry has nothing to keep until this
-     task gives the reader a path that decodes it anyway; decide that here.
-  6. Test, Hash, preview and the AMSI scan never use it: they report the damage as today.
-  7. tar, 7z, RAR and the read-only formats: first measure what the archive helper and `tar.exe`
-     leave on disk for a damaged entry today, on both tar builds (Win11 3.8.x and PakkoW10 3.5.2);
-     the same guards apply, or the option is ZIP-only and says so.
-  Before code: plan mode + advisor (irreversible writes from untrusted input), tests of every guard
-  seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
-- **Reported by:** the user, 2026-11-11.
 
 ### T-F568 - Keep a damaged AES entry when the run proved the password (P4, from T-F496)
 
