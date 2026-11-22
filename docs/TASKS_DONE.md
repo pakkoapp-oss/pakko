@@ -16751,3 +16751,50 @@ except the next submission), T-F202 (the old UI gate, replaced by `docs/SMOKE.md
       3. Measure time and peak memory against tar.exe on the T-F498 trees.
       4. A recommendation in DECISIONS (adopt for which formats, or reject with the reason); a change
          of the trust boundary needs the owner's decision and a `SECURITY.md` edit with their OK.
+
+## Graduated 2026-11-22 (batch 5 of v1.12.0)
+
+`SHL-019` passed on 1.11.0.6 (2026-11-22): Explorer's "Add to b.zip" and Compress... into the App both archived `b.txt ` with its own bytes beside its twin; with the Recycle Bin on, the source stayed (log: "Not deleted after operation (TrimmedName)"); the plain destination folder opened.
+
+### T-F563 - A dropped name Windows trims leaves the App's list with only a log line (P3, batch 8)
+
+- [x] **Status:** done 2026-11-22 (`batch-5-names`, PR #279) by T-F556: `PendingPaths` lists `b.txt ` by its
+  `\\?\` path, with its own size and CRC (`FileItemTests`); a path that cannot be read at all keeps the
+  log line (`docs/DECISIONS.md`, "Batch 5 (v1.12.0) - names"). Before:
+  Found 2026-11-20 by `SHL-019` (T-F509): the App given `b.txt ` (a trailing
+  space) next to its folder, as a drop or `--open-ui --archive` hands it, lists the folder and drops
+  the file with only "Skipped unreadable path" in the log (`FileItem.TryCreate`, T-F232); nothing on
+  screen says why. The Explorer verb and the Shell name the reason. Next: the App shows the same
+  reason the Shell does (one line in the list's status or a dialog), or takes the `\\?\` spelling
+  with T-F556.
+- **Reported by:** the agent (batch 8), 2026-11-20.
+
+### T-F559 - A device-named file inside a source folder on Windows 10 (P3, from T-F558)
+
+- [x] **Status:** done 2026-11-22 (`batch-5-names`, PR #279): `DirectoryWalker` reports such an entry as
+  `DeviceName` and never opens it; ZIP and hash refuse the entry, tar the source, `SourceTree` keeps it from
+  deletion. Probed before and after on the host and PakkoW10 (v1.11.0: ZIP `-sdel` exit 0 deleted `ok.txt`
+  beside an empty `nul` entry; `CON.txt` hung). `docs/DECISIONS.md`, "Batch 5 (v1.12.0) - names".
+  Windows 10's rule is Server 2022's (T-F558), so PakkoW10 stands for that image. Before: T-F558 refuses a path Windows opens as a device where Core is given it
+  (`InputPaths.Problem`), but a folder walked as a source can hold one ("`CON.txt`", made through
+  `\\?\`): on Windows 10 and Server 2022 its plain path is the console, and the walk's readers open
+  it by that path. Likely the same block T-F558 fixed for an archive. Probe on PakkoW10 and on the
+  CI image (a folder holding `CON.txt` archived as ZIP and as tar, hashed, scanned) before a fix;
+  the fix belongs to the walk's owner (`DirectoryWalker`), as T-F531's spelled walk did for names
+  Windows trims.
+- **Reported by:** the agent (batch 6, T-F558's closing review), 2026-11-18.
+
+### T-F556 - The Shell and the App could archive a name Windows trims as Explorer lists it (P3, from T-F531)
+
+- [x] **Status:** done 2026-11-22 (`batch-5-names`, PR #279): `InputPaths.Listed` gives a path from a listing
+  its `\\?\` form where Windows would trim a part; the Shell's archive command and the App's
+  `PendingPaths` ask it, the CLI never (a typed path keeps Win32's reading). The destination is
+  `InputPaths.PlainParent`. Extraction, test, hash and scan keep the plain path and its refusal.
+  `docs/DECISIONS.md`, "Batch 5 (v1.12.0) - names". Before:
+  ZIP archives "`a.txt `" written as `\\?\` (T-F531), but Explorer hands the
+  Shell and the App the plain path, which is the twin's, so `b.txt ` picked in Explorer is still
+  refused. The Shell gets the item from Explorer's own listing (`IShellItemArray`), which knows the
+  spelling; it could pass the `\\?\` form. Deletion of such a source stays forbidden either way
+  (`docs/DECISIONS.md`, "Batch 5l").
+- **Reported by:** the agent (batch 5l), 2026-11-18.
+
