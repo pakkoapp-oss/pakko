@@ -16800,7 +16800,7 @@ except the next submission), T-F202 (the old UI gate, replaced by `docs/SMOKE.md
 
 ## Graduated 2026-11-22 (batch 6 of v1.12.0)
 
-On 1.11.0.8 (2026-11-22): the App's taskbar button yellow at a single-file "file exists" prompt at 0 % and red for a 4 KB damaged ZIP, both a quarter of the bar; the operation window (Shell `--extract-flat`, `--extract-here`) the same; the list's cross took out only its row, a double click took two rows and opened nothing, greyed out while the extraction ran, UI Automation names "Прибрати зі списку: <name>", the last row left the drop zone, the header columns aligned. Not run: touch or pen (no such device here), the tray icon (`APP-032`, batch 8).
+On 1.11.0.8 (2026-11-22): the App's taskbar button yellow at a single-file "file exists" prompt at 0 % and red for a 4 KB damaged ZIP, both a quarter of the bar; the operation window (Shell `--extract-flat`, `--extract-here`) the same; the list's cross took out only its row, a double click took two rows and opened nothing, greyed out while the extraction ran, UI Automation names "Прибрати зі списку: <name>", the last row left the drop zone, the header columns aligned; after a click on the second row's cross, Delete took out the row that moved up (focus there). Read through UI Automation, not Narrator itself. Not run: Narrator, touch or pen (no such device here), the tray icon (`APP-032`, batch 8).
 
 ### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 6)
 

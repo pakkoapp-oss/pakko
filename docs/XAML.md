@@ -32,11 +32,14 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │       T-F210) / About. Visibility=IsBrowsingArchiveVisibility.
         │
         ├── Row 1 (create mode): Grid (RowDefinitions="Auto,*") — File table.
-        │   ├── Header: Border -> Grid (*,80,100,90,140) — Name/Type/Size/Crc/Modified, each a
+        │   ├── Header: Border -> Grid (*,80,100,90,140,32) — Name/Type/Size/Crc/Modified, each a
         │   │       sortable Button (SortByCommand)
         │   └── Body: Grid
         │       ├── ListView FileListView (UIA name PendingListName, T-F384; SelectionMode=None, AllowDrop, DoubleTapped ->
-        │       │       PendingList_DoubleTapped); row ContextFlyout "Remove from list"
+        │       │       PendingList_DoubleTapped); row ContextFlyout "Remove from list"; the row's sixth
+        │       │       column a remove Button (T-F566: no tab stop, UIA name and tooltip from
+        │       │       MainViewModel.RemoveRowName(Name), greyed out by the window while ClearCommand
+        │       │       cannot run, its DoubleTapped handled so the list never opens the next row)
         │       └── StackPanel empty state (T-F199 board 3) — drop zone WITH its own drop handlers
         │               and its own Add Files / Add Folder buttons; hit-testable, so it takes the
         │               drop itself (see "Empty-state overlay" below). IsFileListEmptyVisibility.
