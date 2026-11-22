@@ -647,4 +647,10 @@
   <data name="RemoveRowName" xml:space="preserve">
     <value>Odobrať zo zoznamu: {0}</value>
   </data>
+  <data name="KeepDamagedCheck.Content" xml:space="preserve">
+    <value>Uchovať obsah poškodeného súboru (ZIP)</value>
+  </data>
+  <data name="KeepDamagedNote.Text" xml:space="preserve">
+    <value>Súbor, ktorý neprejde kontrolou, sa uloží ako name.damaged s bajtmi, ktoré sa podarilo prečítať. Len pre túto extrakciu.</value>
+  </data>
 </root>

@@ -647,4 +647,10 @@
   <data name="RemoveRowName" xml:space="preserve">
     <value>Fjern fra listen: {0}</value>
   </data>
+  <data name="KeepDamagedCheck.Content" xml:space="preserve">
+    <value>Behold innholdet i en skadet fil (ZIP)</value>
+  </data>
+  <data name="KeepDamagedNote.Text" xml:space="preserve">
+    <value>En fil som ikke består kontrollen, lagres som name.damaged med de bytene som kunne leses. Bare for denne utpakkingen.</value>
+  </data>
 </root>

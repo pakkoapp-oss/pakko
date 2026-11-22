@@ -647,4 +647,10 @@
   <data name="RemoveRowName" xml:space="preserve">
     <value>从列表中移除: {0}</value>
   </data>
+  <data name="KeepDamagedCheck.Content" xml:space="preserve">
+    <value>保留损坏文件的内容 (ZIP)</value>
+  </data>
+  <data name="KeepDamagedNote.Text" xml:space="preserve">
+    <value>未通过校验的文件将连同可读取的字节一起保存为 name.damaged。仅适用于本次解压。</value>
+  </data>
 </root>

@@ -86,13 +86,16 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │       │       the card's edge), and Copy disables Compression; the PAR2 check and its box are a left-aligned Grid (*, Auto) so
         │       │       a long label wraps (T-F387). When the password panel appears, code-behind scrolls EncryptConfirmBox
         │       │       into view (EncryptionPanel.SizeChanged), so both boxes show at 1100x780.
-        │       └── DestinationCard — Border (card), Grid (Auto,*) with 7 rows: title, destination
+        │       └── DestinationCard — Border (card), Grid (Auto,*) with 8 rows: title, destination
         │               (Up button NavigateDestinationUpCommand, read-only TextBox, "..."), "If file
         │               exists" ComboBox (Overwrite/Skip/Rename/Ask), Open destination, delete-after
         │               CheckBox (words from DeleteAfterLabel, T-F207) + Recycle Bin note, then
         │               (T-F360) a StackPanel shown by DownloadMarkVisibility: the download-mark
         │               CheckBox (DownloadMarkChecked, enabled by DownloadMarkCanChange) and its
-        │               note (DownloadMarkNoteText: cost, risk or policy).
+        │               note (DownloadMarkNoteText: cost, risk or policy); then (T-F496) a
+        │               StackPanel shown by KeepDamagedVisibility: "Keep what a damaged file holds
+        │               (ZIP)" (KeepDamagedFiles, enabled by IsNotBusy; unticked for each new list
+        │               and after each extraction, never saved) and its note (KeepDamagedNote).
         │
         │   OptionsMoreBelow (T-F405): a Border over the bottom 24 px of Row 2, a gradient and a
         │   divider line, shown by MainWindow.xaml.cs while ScrollEdgeHint says content is below.

@@ -676,6 +676,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock x:Uid="DestinationCardTitle" Grid.Row="0" Grid.ColumnSpan="2" FontWeight="SemiBold"/>
@@ -752,6 +753,21 @@
                                 IsEnabled="{x:Bind ViewModel.DownloadMarkCanChange, Mode=OneWay}"/>
                             <TextBlock
                                 Text="{x:Bind ViewModel.DownloadMarkNoteText, Mode=OneWay}"
+                                TextWrapping="Wrap"
+                                Opacity="0.7"
+                                Style="{StaticResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <!-- T-F496: off unless ticked for this one extraction; hidden by the DisableKeepDamagedFiles policy. -->
+                        <StackPanel
+                            Grid.Row="7" Grid.Column="1"
+                            Spacing="2"
+                            Visibility="{x:Bind ViewModel.KeepDamagedVisibility, Mode=OneWay}">
+                            <CheckBox
+                                x:Uid="KeepDamagedCheck"
+                                IsChecked="{x:Bind ViewModel.KeepDamagedFiles, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                            <TextBlock
+                                x:Uid="KeepDamagedNote"
                                 TextWrapping="Wrap"
                                 Opacity="0.7"
                                 Style="{StaticResource CaptionTextBlockStyle}"/>
