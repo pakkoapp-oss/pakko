@@ -43,7 +43,7 @@ public sealed class OperationIndicator
     /// T-F564: the least a yellow or red bar fills, so its colour shows at 0 % (the taskbar's and the
     /// tray's bars are only a grey track there).
     /// </summary>
-    public const int MinimumVisiblePercent = 10;
+    public const int MinimumVisiblePercent = 25;
 
     /// <summary>What the bar fills: <see cref="Percent"/>, at least <see cref="MinimumVisiblePercent"/> while yellow or red.</summary>
     public int BarPercent

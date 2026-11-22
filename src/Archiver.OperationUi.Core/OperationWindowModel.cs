@@ -117,7 +117,7 @@ public sealed class OperationWindowModel
     /// T-F564: the least a yellow or red taskbar bar fills, so its colour shows at 0 % (the bar is
     /// only a grey track there).
     /// </summary>
-    public const int MinimumVisiblePercent = 10;
+    public const int MinimumVisiblePercent = 25;
 
     /// <summary>
     /// T-F432: the whole batch, as Explorer's copy shows it: the archives done plus this one's share;
