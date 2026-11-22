@@ -1087,6 +1087,29 @@ Add-SmokeStep 'CLI-073' {
     "x and t: refused, exit $($x.ExitCode)/$($t.ExitCode), nothing written"
 }
 
+# T-F559: a file inside a source whose plain path opens a device ("nul" everywhere, "CON.txt" on Windows 10
+# and Server 2022, both made through \\?\). ZIP held an empty entry under a mangled name, exit 0, and -sdel
+# deleted the rest of the folder. The entry is refused where the walk meets it: exit 2, nothing deleted.
+Add-SmokeStep 'CLI-074' {
+    $folder = Get-StepFolder 'cli074'
+    $results = foreach ($archive in @('dv.zip', 'dv.tar')) {
+        $source = Join-Path $folder ('src-' + $archive.Replace('.', '-'))
+        $null = [System.IO.Directory]::CreateDirectory($source)
+        [System.IO.File]::WriteAllText('\\?\' + (Join-Path $source 'nul'), 'DEVICE-NAMED')
+        [System.IO.File]::WriteAllText('\\?\' + (Join-Path $source 'CON.txt'), 'CONSOLE-NAMED')
+        [System.IO.File]::WriteAllText((Join-Path $source 'ok.txt'), 'OK')
+        $switches = if ($archive -like '*.tar') { @('a', '-ttar', '-sdel') } else { @('a', '-sdel') }
+        $run = Invoke-Pakko ($switches + @((Join-Path $folder $archive), $source)) -TimeoutSeconds 120
+        Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text -match 'does not exist') "pakko a -sdel ${archive}: exit $($run.ExitCode) $($run.Text)"
+        foreach ($name in 'nul', 'CON.txt', 'ok.txt') {
+            Assert-Smoke ([System.IO.File]::Exists('\\?\' + (Join-Path $source $name))) "pakko a -sdel ${archive}: $name went"
+        }
+        Remove-Item -LiteralPath ('\\?\' + $source) -Recurse -Force
+        "${archive}: refused, exit 2, all kept"
+    }
+    $results -join '; '
+}
+
 Add-SmokeStep 'CLI-057' {
     $folder = Get-StepFolder 'cli057'
     $source = Join-Path $folder 'cs'

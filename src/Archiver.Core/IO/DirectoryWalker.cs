@@ -23,6 +23,13 @@ public enum WalkEntryKind
     /// ("a.txt ", "d."), which then names a twin ("a.txt", "d") or nothing. Never entered: listing
     /// "d." lists "d". A filter's <see cref="LeftOut"/> and a <see cref="ReparsePoint"/> come first.</summary>
     TrimmedName,
+
+    /// <summary>T-F559: a file or folder whose plain path Windows opens as a device ("NUL" on every Windows,
+    /// "CON.txt" on Windows 10 and Server 2022), made through <c>\\?\</c>. Never entered or opened, in a spelled
+    /// walk too: by that path a reader gets the device, never the file. Below a <c>\\?\</c> root every path is
+    /// literal and such an entry is a file or folder as any other. A <see cref="LeftOut"/> and a
+    /// <see cref="ReparsePoint"/> come first.</summary>
+    DeviceName,
 }
 
 /// <summary>One step of <see cref="DirectoryWalker.Walk"/>.</summary>
@@ -160,8 +167,8 @@ public static class DirectoryWalker
         return children;
     }
 
-    // The subfolders to walk go on the stack, first one on top; those with a name Windows trims are
-    // returned instead, in order, and never entered.
+    // The subfolders to walk go on the stack, first one on top; those with a name Windows trims or opens as
+    // a device are returned instead, in order, and never entered.
     private static List<WalkEntry> PushSubfolders(FileSystemInfo[] children, Stack<(DirectoryInfo Dir, bool IsReparsePoint)> pending, bool asSpelled)
     {
         DirectoryInfo[] subDirs = [.. children.OfType<DirectoryInfo>().OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
@@ -169,7 +176,7 @@ public static class DirectoryWalker
         for (int i = subDirs.Length - 1; i >= 0; i--)
         {
             WalkEntryKind kind = KindOf(subDirs[i], WalkEntryKind.Directory, asSpelled);
-            if (kind == WalkEntryKind.TrimmedName)
+            if (kind is WalkEntryKind.TrimmedName or WalkEntryKind.DeviceName)
                 trimmed.Add(new WalkEntry(kind, subDirs[i]));
             else
                 pending.Push((subDirs[i], kind == WalkEntryKind.ReparsePoint));
@@ -183,7 +190,10 @@ public static class DirectoryWalker
     {
         if (IsReparsePoint(child))
             return WalkEntryKind.ReparsePoint;
-        return !asSpelled && Archiver.Core.Services.InputPaths.OwnNameTrimmed(child.Name) ? WalkEntryKind.TrimmedName : plain;
+        if (!asSpelled && Archiver.Core.Services.InputPaths.OwnNameTrimmed(child.Name))
+            return WalkEntryKind.TrimmedName;
+        // T-F559: a literal path (below a \\?\ root, a trimmed name in a spelled walk) is never a device.
+        return Archiver.Core.Services.InputPaths.EntryNamesADevice(child.FullName) ? WalkEntryKind.DeviceName : plain;
     }
 
     // T-F410: the children leaveOut keeps; leftOut gets the others, in the walk's order.

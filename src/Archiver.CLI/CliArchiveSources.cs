@@ -229,11 +229,13 @@ public static class CliArchiveSources
                         _problems.Add(new CliSourceProblem(entry.Info.FullName, entry.Error?.Message ?? ""));
                         break;
                     // Taken or skipped in LeaveOut; a link is not entered; never TrimmedName in a spelled walk.
+                    // T-F559: a device-named one LeaveOut took goes to Core, which refuses it as not found.
                     case WalkEntryKind.Directory:
                     case WalkEntryKind.File:
                     case WalkEntryKind.LeftOut:
                     case WalkEntryKind.ReparsePoint:
                     case WalkEntryKind.TrimmedName:
+                    case WalkEntryKind.DeviceName:
                         break;
                 }
             }

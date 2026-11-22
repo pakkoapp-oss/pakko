@@ -100,6 +100,30 @@ public sealed class SdelAdversarialTests : IDisposable
         File.Delete(@"\\?\" + Path.Combine(folder, "a.txt "));
     }
 
+    // T-F559: a file "nul" (made through \\?\) in the folder. Its plain path is the null device: ZIP held an
+    // empty entry "dv///./nul", exit 0, and -sdel went on to delete. The entry is refused where the walk meets
+    // it: the run is not complete, and nothing is deleted.
+    [Theory]
+    [InlineData("dv.zip")]
+    [InlineData("dv.tar")]
+    public void Sdel_FolderHoldingADeviceName_DeletesNothing(string archive)
+    {
+        string folder = _scratch.Inside("dv");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(@"\\?\" + Path.Combine(folder, "nul"), "DEVICE-NAMED");
+        File.WriteAllText(Path.Combine(folder, "ok.txt"), "OK");
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko(archive.EndsWith(".tar", StringComparison.Ordinal)
+            ? ["a", "-ttar", "-sdel", archive, "dv"]
+            : ["a", "-sdel", archive, "dv"]);
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("does not exist");
+        File.ReadAllText(@"\\?\" + Path.Combine(folder, "nul")).Should().Be("DEVICE-NAMED");
+        File.ReadAllText(Path.Combine(folder, "ok.txt")).Should().Be("OK");
+        File.Delete(@"\\?\" + Path.Combine(folder, "nul"));
+    }
+
     // T-F531 review (P1): a folder "d " or "d.." in the middle of a path is opened as spelled, but
     // extracting trims every part ("d /f.txt" lands in "d"): a file the search found below one is
     // archived and kept, never deleted.

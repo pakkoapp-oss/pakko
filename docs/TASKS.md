@@ -1375,7 +1375,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F559 - A device-named file inside a source folder on Windows 10 (P3, from T-F558)
 
-- [ ] **Status:** open. T-F558 refuses a path Windows opens as a device where Core is given it
+- [~] **Status:** fixed on `batch-5-names` (2026-11-22): `DirectoryWalker` reports such an entry as
+  `DeviceName` and never opens it; ZIP and hash refuse the entry, tar the source, `SourceTree` keeps it from
+  deletion. Probed before and after on the host and PakkoW10 (v1.11.0: ZIP `-sdel` exit 0 deleted `ok.txt`
+  beside an empty `nul` entry; `CON.txt` hung). `docs/DECISIONS.md`, "Batch 5 (v1.12.0) - names".
+  Windows 10's rule is Server 2022's (T-F558), so PakkoW10 stands for that image. Left: `CLI-074` in the release run. Before: T-F558 refuses a path Windows opens as a device where Core is given it
   (`InputPaths.Problem`), but a folder walked as a source can hold one ("`CON.txt`", made through
   `\\?\`): on Windows 10 and Server 2022 its plain path is the console, and the walk's readers open
   it by that path. Likely the same block T-F558 fixed for an archive. Probe on PakkoW10 and on the

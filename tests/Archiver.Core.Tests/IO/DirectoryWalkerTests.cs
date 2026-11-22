@@ -138,6 +138,63 @@ public sealed class DirectoryWalkerTests : IDisposable
         }
     }
 
+    // T-F559: a file or folder "NUL" made through \\?\ opens, by its plain path, the null device on every
+    // Windows ("CON.txt" the console on Windows 10): a reader got 0 bytes, a ZIP an empty entry "z///./NUL".
+    // The walk reports it as DeviceName, never entered, in a plain walk and a spelled one alike; below a
+    // \\?\ root every path is literal and it is a file as any other.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Walk_NamesWindowsOpensAsADevice_AreDeviceNameAndNeverEntered(bool spelledBelow)
+    {
+        string root = Path.Combine(_temp.Path, "dev");
+        MakeDeviceNamedTree(root);
+        try
+        {
+            List<string> order = [.. DirectoryWalker.Walk(root, spelledBelow: spelledBelow).Select(e => $"{e.Kind}:{e.Info.FullName[Math.Min(root.Length + 1, e.Info.FullName.Length)..].Replace('\\', '/')}")];
+
+            order.Should().Equal(
+                "Directory:", "DeviceName:nul", "File:ok.txt",
+                "Directory:sub", "File:sub/in.txt", "DeviceName:sub/NUL");
+            DirectoryWalker.Walk(root).First().IsEmptyDirectory.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(@"\\?\" + root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Walk_LiteralRoot_TakesADeviceNameAsTheFileItIs()
+    {
+        string root = Path.Combine(_temp.Path, "devlit");
+        MakeDeviceNamedTree(root);
+        try
+        {
+            string literal = @"\\?\" + root;
+            List<string> order = [.. DirectoryWalker.Walk(literal, spelledBelow: true).Select(e => $"{e.Kind}:{e.Info.FullName[Math.Min(literal.Length + 1, e.Info.FullName.Length)..].Replace('\\', '/')}")];
+
+            order.Should().Equal(
+                "Directory:", "File:nul", "File:ok.txt",
+                "Directory:sub", "File:sub/in.txt", "Directory:sub/NUL", "File:sub/NUL/in.txt");
+        }
+        finally
+        {
+            Directory.Delete(@"\\?\" + root, recursive: true);
+        }
+    }
+
+    // A file "nul", a folder "sub/NUL" holding a file, and ordinary entries.
+    private static void MakeDeviceNamedTree(string root)
+    {
+        Directory.CreateDirectory(Path.Combine(root, "sub"));
+        File.WriteAllText(Path.Combine(root, "ok.txt"), "ok");
+        File.WriteAllText(Path.Combine(root, "sub", "in.txt"), "in");
+        File.WriteAllText(@"\\?\" + Path.Combine(root, "nul"), "device-named bytes");
+        Directory.CreateDirectory(@"\\?\" + Path.Combine(root, "sub", "NUL"));
+        File.WriteAllText(@"\\?\" + Path.Combine(root, "sub", "NUL", "in.txt"), "inside");
+    }
+
     // T-F547: Pakko's own folder walked by its \\?\ path: every path stays literal, so a name Windows
     // trims names that entry and no twin, and it is entered as any other.
     [Fact]

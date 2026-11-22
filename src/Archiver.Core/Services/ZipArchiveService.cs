@@ -2261,6 +2261,9 @@ public sealed class ZipArchiveService : IArchiveService
                 case WalkEntryKind.TrimmedName:
                     context.ReportError(TrimmedNameError(entry.Info.FullName));
                     break;
+                case WalkEntryKind.DeviceName:
+                    context.ReportError(DeviceNameError(entry.Info.FullName));
+                    break;
                 case WalkEntryKind.Directory:
                 case WalkEntryKind.LeftOut:
                     break;
@@ -2328,6 +2331,9 @@ public sealed class ZipArchiveService : IArchiveService
         CoreMessages.Skip(info.FullName, info is DirectoryInfo ? MessageCode.FolderLinkNotFollowed : MessageCode.ReparsePointNotArchived);
 
     internal static ArchiveError TrimmedNameError(string path) => CoreMessages.Error(path, MessageCode.SourceNameTrimmed, path);
+
+    // T-F559: as T-F558 refuses such a path given to Core, "not found": by it Windows opens no file.
+    internal static ArchiveError DeviceNameError(string path) => CoreMessages.Error(path, MessageCode.SourceNotFound, path);
 
     // T-F236: a subfolder that cannot be listed — one error; the rest of the tree is archived.
     internal static ArchiveError UnreadableDirectoryError(string directory, Exception ex) =>

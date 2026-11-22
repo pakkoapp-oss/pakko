@@ -206,13 +206,17 @@ public static class CliNameSelection
                     unreadable = entry.Info.FullName + ": " + entry.Error?.Message;
                     return null;
                 case WalkEntryKind.TrimmedName when entry.Info is DirectoryInfo:
+                // T-F559: a folder "NUL" is the device by its plain path; the same text holds.
+                case WalkEntryKind.DeviceName when entry.Info is DirectoryInfo:
                     // T-F510: the walk never enters it, so its archives would be skipped in silence.
                     unreadable = entry.Info.FullName + ": " + FolderNameTrimmed;
                     return null;
                 case WalkEntryKind.File:
                 case WalkEntryKind.ReparsePoint when entry.Info is FileInfo:
                 case WalkEntryKind.TrimmedName when entry.Info is FileInfo:
-                    // A file Windows trims goes to Core as found, which refuses it (T-F509).
+                case WalkEntryKind.DeviceName when entry.Info is FileInfo:
+                    // A file Windows trims or opens as a device goes to Core as found, which refuses it
+                    // (T-F509, T-F558).
                     files.Add(entry.Info.FullName);
                     break;
                 case WalkEntryKind.Directory:
