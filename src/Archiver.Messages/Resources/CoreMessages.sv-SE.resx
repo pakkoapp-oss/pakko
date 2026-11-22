@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>En post i det här arkivet har ett namn eller uppgifter som är för långa för att Pakko ska öppna det. Gräns: {0} byte.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>”{0}” är skadad; det som kunde läsas har behållits som ”{1}”: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Skadade filer behålls bara från ZIP-arkiv; av en skadad fil i det här arkivet blir ingenting kvar.</value>
+  </data>
 </root>

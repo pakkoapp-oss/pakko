@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Une entrée de cette archive a un nom ou des détails trop longs pour que Pakko l’ouvre. Limite : {0} octets.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>« {0} » est endommagé ; ce qui a pu en être lu est conservé sous « {1} » : {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Les fichiers endommagés ne sont conservés que depuis les archives ZIP ; d’un fichier endommagé dans cette archive, il ne reste rien.</value>
+  </data>
 </root>

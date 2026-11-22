@@ -7,6 +7,32 @@ namespace Archiver.Core.Tests.Services;
 // engines share when two entries meet on one path.
 public sealed class EntryDiskNameTests
 {
+    // T-F496: the suffix goes after the whole name, so the extension's program never opens it.
+    [Theory]
+    [InlineData("a.txt", "a.txt.damaged")]
+    [InlineData("README", "README.damaged")]
+    [InlineData(".bashrc", ".bashrc.damaged")]
+    [InlineData("a.tar.gz", "a.tar.gz.damaged")]
+    [InlineData("run.exe", "run.exe.damaged")]
+    public void Damaged_AddsTheSuffixAfterTheWholeName(string name, string expected) =>
+        EntryDiskName.Damaged(name).Should().Be(expected);
+
+    [Fact]
+    public void Damaged_NameAtTheLimit_StaysWithin255Units()
+    {
+        string damaged = EntryDiskName.Damaged(new string('n', 251) + ".txt");
+
+        damaged.Should().HaveLength(255).And.EndWith(EntryDiskName.DamagedSuffix).And.StartWith(new string('n', 247));
+    }
+
+    [Fact]
+    public void Damaged_CutNeverSplitsASurrogatePair()
+    {
+        string damaged = EntryDiskName.Damaged(new string('n', 246) + "\U0001F600\U0001F600");
+
+        damaged.Should().Be(new string('n', 246) + EntryDiskName.DamagedSuffix);
+    }
+
     // T-F511: one name, never a path: its separators are characters, and "." or ".." is no step.
     [Theory]
     [InlineData("ok", "ok")]

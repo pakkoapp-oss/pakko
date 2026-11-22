@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Елемент в този архив има име или данни, твърде дълги, за да го отвори Pakko. Ограничение: {0} байта.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>„{0}“ е повреден; прочетеното от него е запазено като „{1}“: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Повредени файлове се запазват само от ZIP архиви; повреден файл в този архив не оставя нищо.</value>
+  </data>
 </root>

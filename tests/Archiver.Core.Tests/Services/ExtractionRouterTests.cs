@@ -158,6 +158,25 @@ public sealed class ExtractionRouterTests : IDisposable
         result.Success.Should().BeTrue();
     }
 
+    // T-F496: keeping a damaged file is ZIP-only; each other archive is named in a warning, the ZIP
+    // in none, and a policy that forbids keeping leaves nothing to warn about.
+    [Theory]
+    [InlineData(true, false, 1)]
+    [InlineData(false, false, 0)]
+    [InlineData(true, true, 0)]
+    public async Task ExtractAsync_KeepDamaged_WarnsForEachArchiveThatIsNotZip(bool keep, bool forbidden, int expectedWarnings)
+    {
+        string zip = WriteBytes("a.zip", [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0]);
+        string tar = WriteTar("b.tar");
+        var router = new ExtractionRouter(new FakeArchiveService(), new FakeTarService(), AllSupported,
+            new GroupPolicyOptions { DisableKeepDamagedFiles = forbidden });
+
+        ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path, KeepDamagedFiles = keep });
+
+        result.Warnings.Select(w => (w.SourcePath, w.Text!.Code)).Should()
+            .Equal(Enumerable.Repeat((tar, MessageCode.KeepDamagedZipOnly), expectedWarnings));
+    }
+
     [Fact]
     public async Task ExtractAsync_PureTarSelection_OnlyCallsTarService()
     {

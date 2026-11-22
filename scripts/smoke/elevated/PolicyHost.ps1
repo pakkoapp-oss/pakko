@@ -25,7 +25,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $policyKey = 'HKLM:\Software\Policies\Pakko'
 $fipsKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\FipsAlgorithmPolicy'
-$policyNames = @('EnforceMOTW', 'AllowedFormats', 'BlockedFormats', 'DisableTarExtraction', 'DisableRecoveryData')
+$policyNames = @('EnforceMOTW', 'AllowedFormats', 'BlockedFormats', 'DisableTarExtraction', 'DisableRecoveryData', 'DisableKeepDamagedFiles')
 $log = Join-Path $Folder 'host.log'
 
 function Write-HostLog {

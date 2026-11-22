@@ -574,6 +574,16 @@ thrown); `IO/WorkRootOwnerTests`
 CompressAsync_WhileTarRuns_TheDestinationHoldsOneHiddenWorkRoot`; `CliStreamStagingTests`' `-si`
 next to a destination and its %TEMP% fallback.
 
+**T-F496 (a damaged entry kept on request):** `ZipArchiveServiceKeepDamagedTests` (off by
+default, stored and deflated CRC failures, the declared-size cap, a stored entry .NET rejects, a
+broken deflate stream's prefix, the policy, AES, a traversal name, the download mark, an existing
+good or `.damaged` file under every conflict mode, a cancel inside the entry - archives patched in
+the test with `ZipArchiveServiceExtractIntegrityTests`' helpers); ZipCrypto's colliding check byte
+in `ZipArchiveServiceZipCryptoCompatTests`; `EntryDiskNameTests.Damaged_*`; the router's ZIP-only
+warning in `ExtractionRouterTests`; `KeepDamagedOwnerTests` (only the listed files name the option);
+`CliKeepDamagedTests` and `CliSubprocessTests.Extract_DamagedEntry_KbKeepsItAsDamaged`;
+`KeepDamagedOptionTests` (App.Core).
+
 ### ZIP Names and Reader Hardening (fix phase 3, 2026-09-25)
 
 Written red first (see `docs/DECISIONS.md`'s fix-phase-3 entry). `Zip/ZipEntryNameDecoderTests`

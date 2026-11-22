@@ -426,4 +426,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Елемент у цьому архіві має задовге ім'я чи відомості, щоб Pakko його відкрив. Ліміт: {0} байтів.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>«{0}» пошкоджено; те, що вдалося прочитати, збережено як «{1}»: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Пошкоджені файли зберігаються лише з архівів ZIP; від пошкодженого файлу в цьому архіві нічого не лишається.</value>
+  </data>
 </root>

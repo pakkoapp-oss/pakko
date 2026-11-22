@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Položka v tomto archíve má názov alebo údaje príliš dlhé na to, aby ho Pakko otvoril. Limit: {0} bajtov.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>„{0}“ je poškodený; čo sa z neho podarilo prečítať, je uložené ako „{1}“: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Poškodené súbory sa uchovávajú len z archívov ZIP; z poškodeného súboru v tomto archíve nezostane nič.</value>
+  </data>
 </root>

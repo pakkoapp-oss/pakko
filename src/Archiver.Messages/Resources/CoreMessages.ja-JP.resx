@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>このアーカイブのエントリの名前または詳細が長すぎるため、Pakko では開けません。上限: {0} バイト。</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>「{0}」は破損しています。読み取れた部分を「{1}」として保持しました: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>破損したファイルは ZIP アーカイブからのみ保持されます。このアーカイブ内の破損したファイルは何も残りません。</value>
+  </data>
 </root>

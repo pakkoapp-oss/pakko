@@ -767,6 +767,34 @@ Design and research: `docs/DECISIONS.md` "T-F275 — PAR2 recovery data".
 
 ---
 
+## Keeping a Damaged File (T-F496, v1.12)
+
+By default a ZIP entry that fails its CRC-32, its declared size or its deflate stream leaves nothing
+on disk (T-F230). On request (`pakko x -kb`, or the App's box for one extraction) what was decoded
+before the failure is kept. The trade-off: bytes that did not pass the archive's own check reach the
+disk. What bounds it:
+
+- **Off by default, one operation at a time, never from Explorer.** The App's box is unticked for
+  every new list and after each extraction and is never saved; the Shell never sets it
+  (`KeepDamagedOwnerTests`). Group Policy `DisableKeepDamagedFiles` forbids it outright.
+- **Never mistaken for the good file.** It is `<name>.damaged`, so its type no longer opens by
+  double-click; it is never written over a file, folder or another kept file; the run is Partial,
+  exit 2, with an error naming it; the archive is never deleted after it.
+- **Every other guard still applies.** The name, path, reparse-point, conflict and bomb checks run
+  before any byte is written; the kept file carries the archive's download mark.
+- **Only decoded bytes, at most the declared size.** Nothing is padded; a stored entry whose length
+  .NET itself rejects keeps nothing, since the buffer then holds bytes nothing vouches for.
+- **Encrypted entries keep nothing.** ZipCrypto's 1-byte and AES's 2-byte password check let a wrong
+  password through 1 in 256 and 1 in 65,536 times, and the failure then looks exactly like damage:
+  keeping it would write garbage that a wrong password produced (T-F568 for AES, when another entry
+  proved the password).
+- **ZIP only.** tar.exe and the archive helper commit nothing from a run that found damage; keeping
+  from them would be a second path out of the sandbox's quarantine.
+
+Design: `docs/DECISIONS.md` "Batch 7 (v1.12.0) - a damaged entry kept on request".
+
+---
+
 ## Vendored 7-Zip: Test-Only, Sandboxed, Never Shipped (T-F114)
 
 `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/{x64,arm64}/7za.exe` is a pinned,

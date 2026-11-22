@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>รายการในไฟล์บีบอัดนี้มีชื่อหรือรายละเอียดยาวเกินกว่าที่ Pakko จะเปิดได้ ขีดจำกัด: {0} ไบต์</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>"{0}" เสียหาย ส่วนที่อ่านได้ถูกเก็บไว้เป็น "{1}": {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>ไฟล์ที่เสียหายจะถูกเก็บไว้จากไฟล์บีบอัด ZIP เท่านั้น ไฟล์ที่เสียหายในไฟล์บีบอัดนี้จะไม่เหลืออะไรไว้</value>
+  </data>
 </root>

@@ -420,11 +420,12 @@ flowchart TD
     K2 --> K
     K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW in<br/>EffectiveMotwMode, T-F360 (keeps the file time), then the entry time: NTFS 0x000A, else<br/>Unix 0x5455, else DOS (T-F298, best-effort)"]
     K -- "CRC mismatch / longer than declared / I/O error /<br/>encrypted entry: wrong password, unsupported method, authentication failed" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
+    K -- "T-F496: content damage of a plain entry with KeepDamagedFiles,<br/>some bytes decoded (never a cancel, I/O error or encrypted entry)" --> KD["the decoded bytes, at most the declared size, renamed to<br/>EntryDiskName.Damaged(final name), numbered past files, folders and claimed names,<br/>MOTW and time like any file. Errors += EntryKeptDamaged"]
     T -. "ERROR_DISK_FULL" .-> X["rethrown: one archive-level error"]
     K --> L["extractedCount++"]
     FK -- "folder new at the destination" --> L
     FK -- "already there (T-F87: a re-extract with Skip is still nothing extracted)" --> M
-    E0 & E1 & S1 & S4 & S6 & E2 & Z --> M{"More entries?"}
+    E0 & E1 & S1 & S4 & S6 & E2 & KD & Z --> M{"More entries?"}
     L --> M
     M -- yes --> A
     M -- no --> N["staging.CommitInto(actualDest): if actualDest is new and no existing file is to be renamed (T-F411), clear Hidden<br/>then Directory.Move (T-F161). An overwrite clears a read-only target first (T-F419). Otherwise, or on IOException, merge:<br/>folders first (T-F197) - a folder not there yet moves whole by one rename<br/>when no file to rename is below it, no link is on its way and its parent passes down<br/>what its staging parent did (T-F565), else it is created -<br/>then the other files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170),<br/>a file left out through a link = SkippedFiles (EntryThroughReparsePoint),<br/>or AccessDenied under a folder whose attributes cannot be read (T-F522),<br/>a folder in a file's place = ArchiveError (DestinationIsAFolder).<br/>Last, recorded folder-entry times on the folders the commit created (T-F298).<br/>T-F408: options.OnItemExtracted gets each folder and file that arrived,<br/>after the rename or after each file's own move, never a locked one"]

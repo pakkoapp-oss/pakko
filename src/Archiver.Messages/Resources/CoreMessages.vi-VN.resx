@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Một mục trong tệp nén này có tên hoặc thông tin quá dài để Pakko mở. Giới hạn: {0} byte.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>"{0}" bị hỏng; phần đọc được đã được giữ lại thành "{1}": {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Tệp bị hỏng chỉ được giữ lại từ tệp nén ZIP; tệp bị hỏng trong tệp nén này không để lại gì.</value>
+  </data>
 </root>

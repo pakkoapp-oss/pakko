@@ -102,6 +102,17 @@ public sealed record ExtractOptions
     /// exception from it is not caught.
     /// </summary>
     public Func<string, bool, bool>? EntryFilter { get; init; }
+
+    /// <summary>
+    /// T-F496: a plain (not encrypted) ZIP entry whose content fails its CRC-32, its declared size or
+    /// its decompression keeps the bytes decoded before the failure, at most its declared size, as
+    /// <c>name.damaged.ext</c> beside where it belonged (<see cref="Services.EntryDiskName.Damaged"/>),
+    /// never over a file; the entry stays an error, so the archive is never deletable. False (the
+    /// default) deletes what was written, as before. For one operation only: nothing remembers it.
+    /// Ignored under <see cref="GroupPolicyOptions.DisableKeepDamagedFiles"/>, and for every format
+    /// tar.exe or the archive helper reads (a warning says so).
+    /// </summary>
+    public bool KeepDamagedFiles { get; init; }
 }
 
 /// <summary>How multiple archives being extracted at once land relative to each other.</summary>

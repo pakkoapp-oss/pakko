@@ -30,6 +30,10 @@ public sealed record GroupPolicyOptions
     /// <summary>T-F275: no PAR2 recovery data is created (<see cref="ArchiveOptions.RecoveryPercent"/>).</summary>
     public bool DisableRecoveryData { get; init; }
 
+    /// <summary>T-F496: <see cref="ExtractOptions.KeepDamagedFiles"/> is ignored; a damaged entry
+    /// leaves nothing on disk.</summary>
+    public bool DisableKeepDamagedFiles { get; init; }
+
     /// <summary>
     /// The mode an extraction uses: the policy's when it is set, otherwise the user's choice —
     /// <see cref="MotwMode"/> with the mark on, <see cref="MotwMode.Disabled"/> with it off (T-F360).

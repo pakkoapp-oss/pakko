@@ -98,7 +98,7 @@ bypasses" is code that does an owner's job itself; it is listed in T-F511 and go
 | How much one tar.exe run may write (T-F561) | `Sandbox/TarSandboxScope.RunAsync` (`writeLimit`), `Sandbox/JobWriteLimit` | the run's Job Object (`WriteTransferCount`, `TerminateJobObject`). Adds the rule: the declared bytes of what the run extracts, less the stderr read, plus 1 MiB; past it the job is stopped and the run fails with `ContentLargerThanDeclared` | `JobWriteLimitTests`; `TarWriteLimitOwnerTests` (every `-x` run passes a limit; no `-x` outside the scope) | - |
 | What kind of error an exception is (T-F511 PR 6) | `Services/CoreMessages` (`IsDiskFull`, `IsSharingViolation`, `IsAlreadyExists`; the Windows code a message shows) | the exception's `HResult` as `HRESULT_FROM_WIN32`, asked of the exception itself | `CoreMessagesClassifierTests`; `ErrorClassificationOwnerTests` (no `.HResult` outside it, a decision on an exception's text only as listed, a catch of everything in Core says why or rethrows, every `ArgumentException` catch in Core listed with why) | none (PR 6: `ArchiveTempFile`, `RecoveryService`, `TarSandboxScope`, `ZipArchiveService` ask it) |
 | What counts as a per-item failure; Windows error codes (`HResult`) | **none yet** (T-F511) | `IOException` subtypes. Sharing violation, disk full and "already exists" have no type, only an `HResult`. | - | about 75 `catch ... when` filters of 12 shapes; `HResult` checks in 5 files |
-| An archive entry's name on disk; one name Pakko writes (`SingleName`) | `Services/EntryDiskName` | 7-Zip's `Correct_FsPath`/`Get_Correct_FsFile_Name`; the device list of `ArchiveEntrySecurity` (judges every part strictly: Pakko writes every part trimmed, as 7-Zip; `InputPaths` judges the user's path by what Windows opens, where a folder in the middle keeps its spaces - DECISIONS, T-F511 PR 5) | its own tests; the path matrix (T-F512); `InputPathsOwnerTests` | - |
+| An archive entry's name on disk; one name Pakko writes (`SingleName`); the name a damaged entry is kept under (`Damaged`, T-F496) | `Services/EntryDiskName` | 7-Zip's `Correct_FsPath`/`Get_Correct_FsFile_Name`; the device list of `ArchiveEntrySecurity` (judges every part strictly: Pakko writes every part trimmed, as 7-Zip; `InputPaths` judges the user's path by what Windows opens, where a folder in the middle keeps its spaces - DECISIONS, T-F511 PR 5) | its own tests; the path matrix (T-F512); `InputPathsOwnerTests` | - |
 | Entry traversal and device names | `Services/ArchiveEntrySecurity` | - | its own tests | - |
 | Default archive name, "name (1)", the folder an archive extracts into (`GetFolderName`) | `Services/ArchiveNaming` | `EntryDiskName.SingleName` for the folder | its own tests; the path matrix (T-F512) | - |
 | Reading tar.exe's formats (list, extract, test, scan) | `Sandbox/ISandboxedArchiveReader` (`TarExeReader`, `HelperReader`) over `TarSandboxScope` | `SandboxedProcessLauncher` (AppContainer, Job Object). T-F541/T-F542: each reader keeps one copy of each name (`TarCatalog`: names and sizes by index; the helper's `Entry[]`), every step as indices, the quarantine walked, never listed | `SandboxedReaderOwnerTests`, `CatalogMemoryBudgetTests` | - |
@@ -141,7 +141,7 @@ src/
 │   │   ├── ArchiveEntrySecurity.cs     ← ADS/reserved-name/reparse-point/bomb checks, shared
 │   │   ├── EntryDiskName.cs            ← T-F420: public; how an entry name lands on disk (AsPakkoWrites,
 │   │   │                                  AsTarExeWrites, SingleName, Renames, Trims, SameName, TrimmedTwins,
-│   │   │                                  ShortNameAliasOfAnother); ExtractionNameRegistry.cs (internal):
+│   │   │                                  ShortNameAliasOfAnother, Damaged); ExtractionNameRegistry.cs (internal):
 │   │   │                                  one extraction's claimed paths, twins and replaced archives
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based (.lzma by name, T-F398)
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
@@ -496,6 +496,11 @@ public sealed record ExtractOptions
 
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
+
+    // T-F496: a plain ZIP entry that fails its CRC-32, size or deflate keeps its decoded bytes as
+    // name.damaged. Off by default; ignored under DisableKeepDamagedFiles and for the tar.exe and
+    // helper formats (the router warns KeepDamagedZipOnly once per such archive).
+    public bool KeepDamagedFiles { get; init; }
 
     // T-F94: invoked when an archive looks like a decompression bomb (declared uncompressed
     // size vs. compressed size exceeds the ratio threshold) AND the destination has enough free

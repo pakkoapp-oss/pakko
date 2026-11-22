@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Šī arhīva vienumam ir pārāk garš nosaukums vai dati, lai Pakko to atvērtu. Ierobežojums: {0} baiti.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>“{0}” ir bojāts; nolasītā daļa saglabāta kā “{1}”: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Bojāti faili tiek saglabāti tikai no ZIP arhīviem; no bojāta faila šajā arhīvā nepaliek nekas.</value>
+  </data>
 </root>

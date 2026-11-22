@@ -40,6 +40,24 @@ public static class EntryDiskName
         return ArchiveEntrySecurity.HasReservedName(part) ? "_" + part : part;
     }
 
+    /// <summary>The ending <see cref="Damaged"/> adds.</summary>
+    public const string DamagedSuffix = ".damaged";
+
+    // NTFS's limit for one name, in UTF-16 units.
+    private const int MaxNameLength = 255;
+
+    /// <summary>T-F496: the name a damaged entry's kept bytes get, from the name its file would have
+    /// had (one part, as Pakko writes it): <see cref="DamagedSuffix"/> after the whole name
+    /// ("a.txt" as "a.txt.damaged"), so no program opens it by the extension it had and an ".exe"
+    /// does not run. A name that would pass NTFS's 255 units loses the end of its own part first.</summary>
+    public static string Damaged(string fileName)
+    {
+        int keep = Math.Min(fileName.Length, MaxNameLength - DamagedSuffix.Length);
+        if (keep < fileName.Length && keep > 0 && char.IsHighSurrogate(fileName[keep - 1]))
+            keep--;
+        return fileName[..keep] + DamagedSuffix;
+    }
+
     /// <summary>Whether Pakko writes <paramref name="name"/> under another name than its own parts
     /// ("a?b.txt" as "a_b.txt", "d./x.txt" as "d\x.txt"); a doubled separator or a "./" step is
     /// the same name.</summary>

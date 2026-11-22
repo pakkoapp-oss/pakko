@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>اس آرکائیو کے ایک اندراج کا نام یا تفصیلات اتنی لمبی ہیں کہ Pakko اسے نہیں کھولتا۔ حد: {0} بائٹس۔</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>"{0}" خراب ہے؛ اس میں سے جو پڑھا جا سکا وہ "{1}" کے طور پر محفوظ کیا گیا ہے: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>خراب فائلیں صرف ZIP آرکائیوز سے محفوظ کی جاتی ہیں؛ اس آرکائیو میں خراب فائل سے کچھ باقی نہیں رہتا۔</value>
+  </data>
 </root>

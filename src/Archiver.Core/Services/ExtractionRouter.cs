@@ -87,7 +87,7 @@ public sealed class ExtractionRouter : IExtractionRouter
             CreatedFiles = [.. zipResult.CreatedFiles, .. tarResult.CreatedFiles, .. bareResult.CreatedFiles],
             Errors = [.. zipResult.Errors, .. tarResult.Errors, .. bareResult.Errors],
             SkippedFiles = [.. zipResult.SkippedFiles, .. tarResult.SkippedFiles, .. bareResult.SkippedFiles, .. unsupported],
-            Warnings = [.. zipResult.Warnings, .. tarResult.Warnings],
+            Warnings = [.. zipResult.Warnings, .. tarResult.Warnings, .. KeepDamagedNotApplied(options, [.. tarPaths, .. barePaths])],
             KeptExistingFiles = [.. zipResult.KeptExistingFiles, .. tarResult.KeptExistingFiles],
             UserSkippedEntryCount = zipResult.UserSkippedEntryCount + tarResult.UserSkippedEntryCount + bareResult.UserSkippedEntryCount,
             // T-F260: unsupported/policy-blocked paths get no SourceResult, so they are never
@@ -102,6 +102,14 @@ public sealed class ExtractionRouter : IExtractionRouter
 
         return merged;
     }
+
+    // T-F496: tar.exe, the archive helper and a bare gzip commit nothing from a run that found
+    // damage (docs/DECISIONS.md, "Batch 7 (v1.12.0)"), so the option the user asked for is said not
+    // to apply there, once per archive.
+    private IEnumerable<ArchiveWarning> KeepDamagedNotApplied(ExtractOptions options, IReadOnlyList<string> notZipPaths) =>
+        options.KeepDamagedFiles && !_policy.DisableKeepDamagedFiles
+            ? notZipPaths.Select(path => CoreMessages.Warning(path, CoreMessages.Text(MessageCode.KeepDamagedZipOnly)))
+            : [];
 
     /// <inheritdoc/>
     public async Task<ArchiveResult> TestAsync(

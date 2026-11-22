@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>इस संग्रह की एक प्रविष्टि का नाम या विवरण इतना लंबा है कि Pakko इसे नहीं खोलता। सीमा: {0} बाइट।</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>"{0}" क्षतिग्रस्त है; इसमें से जो पढ़ा जा सका, वह "{1}" के रूप में रखा गया है: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>क्षतिग्रस्त फ़ाइलें केवल ZIP संग्रहों से रखी जाती हैं; इस संग्रह में क्षतिग्रस्त फ़ाइल से कुछ नहीं बचता।</value>
+  </data>
 </root>

@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Et element i dette arkiv har et navn eller oplysninger, der er for lange til, at Pakko kan åbne det. Grænse: {0} byte.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>„{0}“ er beskadiget; det, der kunne læses, er gemt som „{1}“: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Beskadigede filer gemmes kun fra ZIP-arkiver; en beskadiget fil i dette arkiv efterlader intet.</value>
+  </data>
 </root>

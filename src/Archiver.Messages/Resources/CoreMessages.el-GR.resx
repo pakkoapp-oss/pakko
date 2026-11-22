@@ -399,4 +399,10 @@
   <data name="ListingLineTooLong" xml:space="preserve">
     <value>Μια καταχώρηση σε αυτό το αρχείο συμπίεσης έχει όνομα ή στοιχεία πολύ μεγάλα για να το ανοίξει το Pakko. Όριο: {0} byte.</value>
   </data>
+  <data name="EntryKeptDamaged" xml:space="preserve">
+    <value>Το «{0}» είναι κατεστραμμένο· ό,τι μπόρεσε να διαβαστεί διατηρήθηκε ως «{1}»: {2}</value>
+  </data>
+  <data name="KeepDamagedZipOnly" xml:space="preserve">
+    <value>Τα κατεστραμμένα αρχεία διατηρούνται μόνο από αρχεία συμπίεσης ZIP· από ένα κατεστραμμένο αρχείο σε αυτό το αρχείο συμπίεσης δεν μένει τίποτα.</value>
+  </data>
 </root>

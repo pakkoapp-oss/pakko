@@ -1147,7 +1147,10 @@ public sealed class ZipArchiveService : IArchiveService
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
                 sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings, options.OnItemExtracted, options.EntryFilter,
-                options.DuplicateRootName, sink.Names);
+                options.DuplicateRootName, sink.Names)
+            {
+                KeepDamaged = options.KeepDamagedFiles && !_policy.DisableKeepDamagedFiles,
+            };
             (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1816,7 +1819,11 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F411: ExtractOptions.DuplicateRootName.
         string? DuplicateRootName = null,
         // T-F420: the operation's paths (see ExtractAsync); null for one archive on its own.
-        ExtractionNameRegistry? Names = null);
+        ExtractionNameRegistry? Names = null)
+    {
+        // T-F496: ExtractOptions.KeepDamagedFiles, unless a policy forbids it.
+        public bool KeepDamaged { get; init; }
+    }
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so
@@ -1985,6 +1992,7 @@ public sealed class ZipArchiveService : IArchiveService
         bool aliasOfAnother = !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
         bool trimmedByWindows = EntryDiskName.Renames(named.FullName) || aliasOfAnother;
         bool earlierRenamedAway = false;
+        string entryFinalPath = finalFilePath;
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath)
             || (context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
         {
@@ -2026,10 +2034,44 @@ public sealed class ZipArchiveService : IArchiveService
             return (false, named.Entry.Length);
         }
 
-        await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, plan,
-            bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
+        // T-F496: only a plain entry's damage can keep a file: an encrypted one's cannot be told
+        // from a wrong password that passed the check value.
+        VerifyingReadStream? keepFrom = context.KeepDamaged && !named.Entry.IsEncrypted ? entryStream as VerifyingReadStream : null;
+        InvalidDataException? damage = await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, plan,
+            bytesReadSoFar, context, keepFrom, cancellationToken).ConfigureAwait(false);
+        if (damage is not null)
+            KeepDamaged(named, relativePath, archivePath, destFilePath, entryFinalPath, damage, plan, context);
 
         return (true, named.Entry.Length);
+    }
+
+    // T-F496: the staged file becomes "name.damaged" (EntryDiskName.Damaged) after the entry's own
+    // name, not the one a conflict gave it, and numbered rather than over any file. The good name
+    // stays unwritten, so a file -aot was to rename away stays: the commit renames one only for a
+    // staged file of its name.
+    private static void KeepDamaged(NamedZipEntry named, string relativePath, string archivePath, string destFilePath, string finalFilePath,
+        InvalidDataException damage, ExtractionPlan plan, ZipExtractionContext context)
+    {
+        string finalFolder = Path.GetDirectoryName(finalFilePath)!;
+        HashSet<string> claimed = plan.Names.Claimed;
+        string keptName = ArchiveNaming.GetUniqueName(EntryDiskName.Damaged(Path.GetFileName(finalFilePath)), candidate =>
+        {
+            string full = Path.Combine(finalFolder, candidate);
+            return File.Exists(full) || Directory.Exists(full) || claimed.Contains(full);
+        });
+        string keptFinalPath = Path.Combine(finalFolder, keptName);
+        try
+        {
+            File.Move(destFilePath, Path.Combine(Path.GetDirectoryName(destFilePath)!, keptName));
+        }
+        catch
+        {
+            TryDeleteBestEffort(destFilePath);
+            throw;
+        }
+        plan.Names.Claim(keptFinalPath, namedDifferently: false);
+        context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryKeptDamaged,
+            named.FullName, Path.Combine(Path.GetDirectoryName(relativePath)!, keptName), CoreMessages.Detail(damage)), damage));
     }
 
     // T-F189: the encrypted-ZIP plug-in point — everything else about extraction (destination
@@ -2079,13 +2121,14 @@ public sealed class ZipArchiveService : IArchiveService
     // decrypting stream from OpenEntryContentStream — so ProgressStream/CopyToAsync wrap it
     // identically either way. This is what gives an encrypted entry real byte-accurate T-F16
     // progress with no special-casing (see docs/DECISIONS.md's T-F189 streaming design point).
-    private static async Task CopyEntryToDestinationAsync(
+    // T-F496: null when the entry was written whole; with keepFrom, the damage its kept bytes carry.
+    private static async Task<InvalidDataException?> CopyEntryToDestinationAsync(
         NamedZipEntry named, Stream entryStream, string destFilePath, ExtractionPlan plan,
-        long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
+        long bytesReadSoFar, ZipExtractionContext context, VerifyingReadStream? keepFrom, CancellationToken cancellationToken)
     {
         try
         {
-            await CopyEntryStreamAsync(named, entryStream, destFilePath, plan, bytesReadSoFar, context, cancellationToken)
+            return await CopyEntryStreamAsync(named, entryStream, destFilePath, plan, bytesReadSoFar, context, keepFrom, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch
@@ -2096,9 +2139,9 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    private static async Task CopyEntryStreamAsync(
+    private static async Task<InvalidDataException?> CopyEntryStreamAsync(
         NamedZipEntry named, Stream entryStream, string destFilePath, ExtractionPlan plan,
-        long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
+        long bytesReadSoFar, ZipExtractionContext context, VerifyingReadStream? keepFrom, CancellationToken cancellationToken)
     {
         long totalUncompressedBytes = plan.TotalUncompressedBytes;
         if (context.Progress != null && totalUncompressedBytes > 0)
@@ -2111,8 +2154,9 @@ public sealed class ZipArchiveService : IArchiveService
                 FileShare.None,
                 bufferSize: 0, // T-F505: CopyToAsync writes in its own 80 KiB chunks; a FileStream buffer was 80 KiB more per file
                 useAsync: false); // T-F505: MarkAndSetTime's Flush is synchronous; on an async handle it waits per write
-            await ps.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
+            InvalidDataException? damage = await CopyKeepingDamageAsync(ps, fileStream, keepFrom, cancellationToken).ConfigureAwait(false);
             MarkAndSetTime(fileStream, destFilePath, named.ModifiedUtc, plan.Motw, context.MotwMode);
+            return damage;
         }
         else
         {
@@ -2125,11 +2169,34 @@ public sealed class ZipArchiveService : IArchiveService
                     FileShare.None,
                     bufferSize: 0,
                     useAsync: false);
-                await entryStream.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
+                InvalidDataException? damage = await CopyKeepingDamageAsync(entryStream, fileStream, keepFrom, cancellationToken).ConfigureAwait(false);
                 MarkAndSetTime(fileStream, destFilePath, named.ModifiedUtc, plan.Motw, context.MotwMode);
+                return damage;
             }
         }
     }
+
+    // T-F496: only damage to the entry's content keeps what was written (a cancel, a full disk or a
+    // denied write still fail it), and only when something was decoded.
+    private static async Task<InvalidDataException?> CopyKeepingDamageAsync(
+        Stream source, FileStream file, VerifyingReadStream? keepFrom, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await source.CopyToAsync(file, CopyBufferSize, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+        catch (InvalidDataException ex) when (keepFrom is not null && IsContentDamage(ex)
+                                              && (file.Position > 0 || keepFrom.DamagedTail.Length > 0))
+        {
+            file.Write(keepFrom.DamagedTail);
+            return ex;
+        }
+    }
+
+    private static bool IsContentDamage(InvalidDataException exception) =>
+        CoreMessages.Detail(exception).Code is MessageCode.ContentCrcMismatch or MessageCode.ContentLargerThanDeclared
+            or MessageCode.ContentSmallerThanDeclared or MessageCode.ContentDamaged;
 
     // T-F45, T-F298: the archive's mark, then the entry's own time, as 7-Zip restores it - the
     // mark changes the time, so the time goes last; the commit's moves keep both. T-F358: both
