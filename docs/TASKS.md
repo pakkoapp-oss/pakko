@@ -1272,32 +1272,6 @@ re-measured with T-F346's script before and after.
      Measure both, and fix only what is felt.
 - **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
-### T-F566 - The file list's per-row removal cannot be seen (P3, batch 6)
-
-- [~] **Status:** fixed on `batch-6-taskbar-list` (2026-11-22): a cross (`E711`) at the end of each
-  row, always shown, no tab stop, named and tooltipped "Remove from list: <name>" (`RemoveRowName`, built
-  per locale from `RemoveMenuItem` and the locale's own ": {0}"), greyed out while `ClearCommand` cannot
-  run; a double click on it is swallowed so the list never opens the next row. Left: `APP-039` on the device.
-  Before: open. The user, 2026-11-21: in the App's list of files to archive only "Clear"
-  shows; a single file or folder seems impossible to take out. It is possible, but hidden: the
-  row's right-click menu ("Remove from list", `RemoveMenuItem`), Shift+F10 or the menu key, and
-  Delete on a focused row (`PendingList_PreviewKeyDown`, which also moves focus to the next row).
-  Next: a small trailing button on each row (`E711` or `E74D`):
-  - a sixth column in the row template's `ColumnDefinitions` and the same in the header grid
-    above it, so the headers stay aligned;
-  - one path: a thin click handler calls `RemovePath` and `FocusRowLater` as Delete does, enabled
-    only while `ClearCommand` can run (greyed out during an operation, as the menu and the key);
-  - shown always, or on pointer-over and while the row has focus (never hover alone: touch and
-    keyboard); `IsTabStop="False"` (Delete and the menu key cover the keyboard, a stop per row
-    makes a long list slow to tab through), but in UI Automation with `AutomationProperties.Name`
-    "Remove <name>" and a matching tooltip;
-  - a new string in 37 locales (`Glossary.tsv` first, `RemoveMenuItem`'s wording where it fits),
-    through a `py -3` script;
-  - a `docs/SMOKE.md` APP row: mouse, touch or pen where a device has one, Narrator, disabled
-    during an operation, focus after removing the last row.
-  Not in it: the Archive Browser's list, which has its own selection.
-- **Reported by:** the user, 2026-11-21.
-
 ### T-F565 - tar and 7z through tar.exe take 2 to 12 times 7-Zip's time (P3, next release)
 
 - [ ] **Status:** open. Measured 2026-11-20 (`docs/DECISIONS.md`, "Pakko against NanaZip and
@@ -1320,22 +1294,6 @@ re-measured with T-F346's script before and after.
 - **2026-11-21, the user, later:** Zstandard in 7z dropped after it was built ("not worth it");
   threads for xz and zstd in tar stay. Why: `docs/DECISIONS.md`, "v1.12.0 batch 3, steps 1-3".
 - **Reported by:** the agent, from the user's request for Store figures, 2026-11-20.
-### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 6)
-
-- [~] **Status:** fixed on `batch-6-taskbar-list` (2026-11-22): while yellow or red the bar fills at
-  least `MinimumVisiblePercent` (25; 10 measured as 2-3 px of yellow on a 24 px bar, too faint), in `OperationIndicator.BarPercent` (the App's button and tray
-  icon; the tooltip keeps the true percent) and `OperationWindowModel.IndicatorPercent`; green at 0
-  stays empty. Left: `APP-031`, `OPW-006` on the device.
-  Before: open. Found 2026-11-20 by `APP-031`/`OPW-006` (T-F432) on 1.10.0.40, Windows 11
-  26300. An operation that waits for a conflict answer or fails while its percent is still 0 shows
-  only the grey track: a 4 KB damaged ZIP failing at once, and a single-file extraction asking
-  "the file exists", in both the App and the operation window. Near 100 % red is full width, so the
-  state reaches the button; the value does not. `OperationIndicator.Finished` keeps `_percent` and
-  `TaskbarButton.Apply` sets the value, then the state. Next: Error and Paused shown whatever the
-  percent (for instance the value at least a small visible part, or 100 for Error), in
-  `OperationIndicator` and `OperationWindowModel.IndicatorState` alike, test first.
-- **Reported by:** the agent (batch 8), 2026-11-20.
-
 ### T-F562 - The archive helper on ARM64 (P3, batch 8)
 
 - [~] **Status:** fixed on `batch-4-arm64-helper` (2026-11-21): `ArchiveintGate` admits a native

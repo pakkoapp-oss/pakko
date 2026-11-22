@@ -16798,3 +16798,48 @@ except the next submission), T-F202 (the old UI gate, replaced by `docs/SMOKE.md
   (`docs/DECISIONS.md`, "Batch 5l").
 - **Reported by:** the agent (batch 5l), 2026-11-18.
 
+## Graduated 2026-11-22 (batch 6 of v1.12.0)
+
+On 1.11.0.8 (2026-11-22): the App's taskbar button yellow at a single-file "file exists" prompt at 0 % and red for a 4 KB damaged ZIP, both a quarter of the bar; the operation window (Shell `--extract-flat`, `--extract-here`) the same; the list's cross took out only its row, a double click took two rows and opened nothing, greyed out while the extraction ran, UI Automation names "Прибрати зі списку: <name>", the last row left the drop zone, the header columns aligned. Not run: touch or pen (no such device here), the tray icon (`APP-032`, batch 8).
+
+### T-F564 - The taskbar button shows no yellow or red at 0 % (P3, batch 6)
+
+- [x] **Status:** done 2026-11-22 (`batch-6-taskbar-list`): while yellow or red the bar fills at
+  least `MinimumVisiblePercent` (25; 10 measured as 2-3 px of yellow on a 24 px bar, too faint), in `OperationIndicator.BarPercent` (the App's button and tray
+  icon; the tooltip keeps the true percent) and `OperationWindowModel.IndicatorPercent`; green at 0
+  stays empty. `APP-031` and `OPW-006` at 0 % passed on 1.11.0.8.
+  Before: open. Found 2026-11-20 by `APP-031`/`OPW-006` (T-F432) on 1.10.0.40, Windows 11
+  26300. An operation that waits for a conflict answer or fails while its percent is still 0 shows
+  only the grey track: a 4 KB damaged ZIP failing at once, and a single-file extraction asking
+  "the file exists", in both the App and the operation window. Near 100 % red is full width, so the
+  state reaches the button; the value does not. `OperationIndicator.Finished` keeps `_percent` and
+  `TaskbarButton.Apply` sets the value, then the state. Next: Error and Paused shown whatever the
+  percent (for instance the value at least a small visible part, or 100 for Error), in
+  `OperationIndicator` and `OperationWindowModel.IndicatorState` alike, test first.
+- **Reported by:** the agent (batch 8), 2026-11-20.
+
+### T-F566 - The file list's per-row removal cannot be seen (P3, batch 6)
+
+- [x] **Status:** done 2026-11-22 (`batch-6-taskbar-list`): a cross (`E711`) at the end of each
+  row, always shown, no tab stop, named and tooltipped "Remove from list: <name>" (`RemoveRowName`, built
+  per locale from `RemoveMenuItem` and the locale's own ": {0}"), greyed out while `ClearCommand` cannot
+  run; a double click on it is swallowed so the list never opens the next row. `APP-039` passed on 1.11.0.8.
+  Before: open. The user, 2026-11-21: in the App's list of files to archive only "Clear"
+  shows; a single file or folder seems impossible to take out. It is possible, but hidden: the
+  row's right-click menu ("Remove from list", `RemoveMenuItem`), Shift+F10 or the menu key, and
+  Delete on a focused row (`PendingList_PreviewKeyDown`, which also moves focus to the next row).
+  Next: a small trailing button on each row (`E711` or `E74D`):
+  - a sixth column in the row template's `ColumnDefinitions` and the same in the header grid
+    above it, so the headers stay aligned;
+  - one path: a thin click handler calls `RemovePath` and `FocusRowLater` as Delete does, enabled
+    only while `ClearCommand` can run (greyed out during an operation, as the menu and the key);
+  - shown always, or on pointer-over and while the row has focus (never hover alone: touch and
+    keyboard); `IsTabStop="False"` (Delete and the menu key cover the keyboard, a stop per row
+    makes a long list slow to tab through), but in UI Automation with `AutomationProperties.Name`
+    "Remove <name>" and a matching tooltip;
+  - a new string in 37 locales (`Glossary.tsv` first, `RemoveMenuItem`'s wording where it fits),
+    through a `py -3` script;
+  - a `docs/SMOKE.md` APP row: mouse, touch or pen where a device has one, Narrator, disabled
+    during an operation, focus after removing the last row.
+  Not in it: the Archive Browser's list, which has its own selection.
+- **Reported by:** the user, 2026-11-21.
