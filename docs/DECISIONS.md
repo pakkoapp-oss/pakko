@@ -15064,6 +15064,38 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## Batch 7 (v1.12.0) - a damaged entry kept on request (T-F496; 2026-11-22)
+
+**7-Zip has no switch for it.** The switch table in 7-Zip's `CPP/7zip/UI/Common/ArchiveCommandLine.cpp`
+(ip7z/7zip, `main`, read 2026-11-22) has no switch starting with `k`; 7-Zip leaves a file whose CRC
+fails where it is and has no option to change that. WinRAR's switch for the same is `-kb` ("keep
+broken extracted files"). Pakko takes `-kb` as its own switch, as it took `-rr`: no 7-Zip script
+breaks on it, and its meaning is WinRAR's.
+
+**Guard 7 measured: what the sandboxed formats leave today** (an archive of `big.bin`, 2,000,000
+random bytes, and `ok.txt`; one byte in the middle of the file inverted; `pakko` 1.11.0.8):
+
+| Archive | bsdtar 3.8.9 alone | Pakko on 3.8.9 | bsdtar 3.5.2 alone (PakkoW10) | Pakko on 3.5.2 |
+|---|---|---|---|---|
+| tar.gz | exit 0, both files, `big.bin` damaged | exit 0, both files, `big.bin` damaged | the same | the same |
+| tar.xz, tar.bz2, tar.zst | error | exit 2, nothing | no filter | exit 1, skipped (format) |
+| 7z | exit 1, `big.bin` 2,000,000 bytes, damaged | exit 2, nothing | no LZMA | exit 1, skipped (format) |
+| CAB | - | exit 2, nothing (`Checksum error CFDATA`) | - | - |
+
+The tar.gz row is the known one: tar.exe never compares gzip's CRC-32 ("`pakko t` of the
+tar.exe formats", 2026-10-12, where checking it in Pakko's own process was declined). Everywhere
+tar.exe reports the damage, Pakko commits nothing from the run, by design of the quarantine.
+Keeping what tar.exe wrote would mean committing from a failed run, a second commit path through
+the sandbox boundary; not for this task. **So the option is ZIP-only and says so**: `-kb` on a
+tar-family archive is a warning and nothing is kept, and the App's checkbox names ZIP.
+
+**Encrypted entries keep nothing.** The task's guard 5 keeps a file only when the password was
+verified. ZipCrypto's check value is one byte and WinZip AES's two, so a wrong password passes them
+once in 256 and once in 65,536 times, and then fails the CRC-32 or the HMAC exactly as damage does:
+the two cannot be told apart from one entry. Keeping only plain entries (stored, deflate,
+deflate64) holds guard 5 by construction. AES keeping, when another entry of the same run passed
+its HMAC with the same password, is T-F568.
+
 ## Batch 5 (v1.12.0) - names (T-F556, T-F563, T-F559; 2026-11-22)
 
 **T-F556 - a name Windows trims, archived as Explorer lists it.** Explorer hands the Shell
