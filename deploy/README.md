@@ -1,7 +1,8 @@
 # deploy/ — Group Policy ADMX/ADML Templates
 
-This folder contains the Group Policy administrative template for Pakko's four policy keys
-(`EnforceMOTW`, `AllowedFormats`, `BlockedFormats`, `DisableTarExtraction`), read from
+This folder contains the Group Policy administrative template for Pakko's policy keys
+(`EnforceMOTW`, `AllowedFormats`, `BlockedFormats`, `DisableTarExtraction`, `DisableRecoveryData`,
+`DisableKeepDamagedFiles`), read from
 `HKLM\Software\Policies\Pakko\`. See [`POLICIES.md`](../docs/POLICIES.md) for what
 each key does and why; this file only covers installing the templates themselves.
 

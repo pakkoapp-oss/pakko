@@ -268,6 +268,30 @@ public sealed class ZipArchiveServiceKeepDamagedTests : IDisposable
         File.ReadAllText(Path.Combine(Dest, "doc.txt (1).damaged")).Should().Be(Flipped(LongContent, 5));
     }
 
+    // A later entry named like the kept file never writes over it: the kept bytes stay and the
+    // archive's own "doc.txt.damaged" takes a name of its own or is reported, never silently lost.
+    [Theory]
+    [InlineData(ConflictBehavior.Skip)]
+    [InlineData(ConflictBehavior.Overwrite)]
+    [InlineData(ConflictBehavior.Rename)]
+    public async Task LaterEntryNamedLikeTheKeptFile_NeverReplacesIt(ConflictBehavior onConflict)
+    {
+        string zip = CreateZip("named.zip", CompressionLevel.NoCompression);
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Update))
+        using (var later = new StreamWriter(archive.CreateEntry("doc.txt" + EntryDiskName.DamagedSuffix, CompressionLevel.NoCompression).Open()))
+            later.Write("the archive's own");
+        FlipByteOf(zip, LongContent, 5);
+
+        ArchiveResult result = await ExtractAsync(zip, onConflict: onConflict);
+
+        File.ReadAllText(Kept).Should().Be(Flipped(LongContent, 5));
+        result.Errors.Should().Contain(e => e.Text!.Code == MessageCode.EntryKeptDamaged);
+        result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
+        bool ownLanded = Directory.EnumerateFiles(Dest).Any(f => File.ReadAllText(f) == "the archive's own");
+        bool ownReported = result.Errors.Count > 1 || result.SkippedFiles.Count > 0 || result.Warnings.Count > 0;
+        (ownLanded || ownReported).Should().BeTrue("the archive's own entry is extracted under another name or reported");
+    }
+
     // Only damage keeps a file: a cancel in the middle of the entry leaves nothing behind.
     [Fact]
     public async Task CancelledInsideTheEntry_KeepsNothing()
