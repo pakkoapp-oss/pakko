@@ -107,13 +107,14 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         // return "", falling the archive's name back to the generic "archive" instead of the real
         // folder name. The routers normalize this internally too, but this destFolder/archiveName
         // computation happens here, before any of that code runs.
-        sourcePaths = [.. sourcePaths.Select(Path.TrimEndingDirectorySeparator)];
+        // T-F556: Explorer lists "b.txt " as spelled; by its plain path it is the twin "b.txt".
+        sourcePaths = [.. sourcePaths.Select(InputPaths.Listed).Select(Path.TrimEndingDirectorySeparator)];
         string firstPath = sourcePaths[0];
         // T-F99: Path.GetDirectoryName returns null when firstPath is itself a root (e.g. "Z:\") —
         // a root has no parent to place the archive next to. Falls back to Desktop, the same default
         // destination MainViewModel.cs already uses, rather than "." (the process's own working
         // directory, which is unpredictable for a COM-surrogate-launched process).
-        string destFolder = Path.GetDirectoryName(firstPath)
+        string destFolder = InputPaths.PlainParent(firstPath)
             ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         // T-F264: the same rule the App and the Explorer menu title use.

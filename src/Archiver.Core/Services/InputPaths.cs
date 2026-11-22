@@ -76,6 +76,29 @@ public static class InputPaths
         return @"\\?\" + fullPath;
     }
 
+    /// <summary>T-F556: a path read from a listing (Explorer's selection, a drop, a picker) names the file as
+    /// spelled, but by its plain form a name Windows trims ("b.txt ") opens the twin ("b.txt"). Such a full
+    /// path comes back as its <c>\\?\</c> form, made without <see cref="Path.GetFullPath(string)"/> (which
+    /// would trim it); a <c>\\?\</c> path, a path with no part Windows trims, and one a listing never gives
+    /// (relative, with <c>/</c>, <c>.</c> or <c>..</c> parts) come back as they are, for
+    /// <see cref="Problem"/> to judge. Never for a path a person typed: there Win32's reading is theirs (T-F509).</summary>
+    public static string Listed(string path)
+    {
+        if (path.StartsWith(@"\\?\", StringComparison.Ordinal) || path.StartsWith(@"\\.\", StringComparison.Ordinal)
+            || path.StartsWith(@"\??\", StringComparison.Ordinal))
+            return path;
+        if (!Path.IsPathFullyQualified(path) || path.Contains('/') || !NameTrimmed(path))
+            return path;
+        string[] parts = path[(Path.GetPathRoot(path) ?? "").Length..].Split('\\');
+        return Array.Exists(parts, part => part is "." or "..") ? path : Literal(path);
+    }
+
+    /// <summary>T-F556: the folder <paramref name="path"/> lies in, plain where the plain path names it
+    /// (<see cref="SamePlainPath"/>): a listed <c>\\?\C:\x\b.txt </c> lies in <c>C:\x</c>, which the user
+    /// sees and Explorer opens. Null for a root, or a path with no folder.</summary>
+    public static string? PlainParent(string path) =>
+        Path.GetDirectoryName(path) is { Length: > 0 } parent ? SamePlainPath(parent) : null;
+
     /// <summary>T-F531: <paramref name="path"/> without its <c>\\?\</c> prefix where the plain path names
     /// the same file - a drive or a share after the prefix, and no part Windows would trim; otherwise
     /// as it is. A final path read from a handle ("a.txt ") would otherwise come back as its twin's.</summary>
