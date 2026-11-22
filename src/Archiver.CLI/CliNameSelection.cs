@@ -22,6 +22,10 @@ public static class CliNameSelection
     /// Windows lists another folder ("d") or none.</summary>
     public const string FolderNameTrimmed = "Windows reads this folder's name as another one, so it cannot be searched";
 
+    /// <summary>T-F559: why a search stops at, or warns of, a folder whose plain path Windows opens as a
+    /// device ("NUL"): the walk never enters it.</summary>
+    public const string FolderNamesADevice = "Windows opens this folder's name as a device, so it cannot be searched";
+
     /// <summary>The entry filter for x and l, or null when nothing filters (every entry).</summary>
     public static (CliNameFilter? Filter, string? Error) BuildEntryFilter(ParsedCliCommand command)
     {
@@ -206,10 +210,11 @@ public static class CliNameSelection
                     unreadable = entry.Info.FullName + ": " + entry.Error?.Message;
                     return null;
                 case WalkEntryKind.TrimmedName when entry.Info is DirectoryInfo:
-                // T-F559: a folder "NUL" is the device by its plain path; the same text holds.
-                case WalkEntryKind.DeviceName when entry.Info is DirectoryInfo:
                     // T-F510: the walk never enters it, so its archives would be skipped in silence.
                     unreadable = entry.Info.FullName + ": " + FolderNameTrimmed;
+                    return null;
+                case WalkEntryKind.DeviceName when entry.Info is DirectoryInfo:
+                    unreadable = entry.Info.FullName + ": " + FolderNamesADevice;
                     return null;
                 case WalkEntryKind.File:
                 case WalkEntryKind.ReparsePoint when entry.Info is FileInfo:

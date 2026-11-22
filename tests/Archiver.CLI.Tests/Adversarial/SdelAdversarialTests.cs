@@ -124,6 +124,30 @@ public sealed class SdelAdversarialTests : IDisposable
         File.Delete(@"\\?\" + Path.Combine(folder, "nul"));
     }
 
+    // T-F559 review: a mask search never enters a folder "NUL" (the device by its plain path); before
+    // T-F559 its listing failed and was warned of, then it was dropped in silence with exit 0.
+    [Fact]
+    public void Sdel_MaskSearchOverADeviceNamedFolder_WarnsAndKeepsItsFiles()
+    {
+        string device = Path.Combine(_scratch.Inside("mv"), "NUL");
+        Directory.CreateDirectory(@"\\?\" + device);
+        File.WriteAllText(@"\\?\" + Path.Combine(device, "secret.txt"), "SECRET");
+        File.WriteAllText(Path.Combine(_scratch.Inside("mv"), "a.txt"), "A");
+        try
+        {
+            (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-r", "-sdel", "mv.zip", @"mv\*.txt");
+
+            exitCode.Should().Be(1, stdErr);
+            stdErr.Should().Contain("pakko: warning: " + device + ": " + CliNameSelection.FolderNamesADevice);
+            File.ReadAllText(@"\\?\" + Path.Combine(device, "secret.txt")).Should().Be("SECRET");
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(device, "secret.txt"));
+            Directory.Delete(@"\\?\" + device);
+        }
+    }
+
     // T-F531 review (P1): a folder "d " or "d.." in the middle of a path is opened as spelled, but
     // extracting trims every part ("d /f.txt" lands in "d"): a file the search found below one is
     // archived and kept, never deleted.

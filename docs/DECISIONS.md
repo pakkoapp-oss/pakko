@@ -15139,6 +15139,17 @@ new `DirectoryWalkerTests` and both `Sdel_FolderHoldingADeviceName_DeletesNothin
 literal-root row passed, as it should. `CLI-074` passed on the AOT build; the same commands on PakkoW10
 by PowerShell Direct (its smoke runner needs pwsh 7).
 
+**Closing review (fresh opus reviewer, 2026-11-22).** `pakko a -r "*.txt"` over a tree holding a folder
+`NUL` exited 0 and left out everything below it without a word: `pakko a`'s mask search took
+`DeviceName` as a no-op, which holds only for an entry its filter took. Before T-F559 listing that folder
+failed ("Incorrect function") and was warned of, exit 1. Now such a folder is a source problem like a
+folder it cannot list (`pakko: warning: <folder>: Windows opens this folder's name as a device, so it
+cannot be searched`, exit 1), and the archive-name search of `x`/`l`/`t` says the same instead of the
+text for a name Windows trims. `Sdel_MaskSearchOverADeviceNamedFolder_WarnsAndKeepsItsFiles` and
+`ResolveArchives_RecursiveSearchMeetsADeviceNamedFolder_StopsWithItsReason` failed before the fix. Its
+open question, a leading space, measured on PakkoW10: `GetFullPath` keeps " CON.txt", " CON", "  nul"
+and " COM1.log" as files ("CON .txt" is `\\.\CON`), so the prefilter, which rejects them, misses nothing.
+
 ## T-F562 - the archive helper on ARM64 (2026-11-21)
 
 **Measured before (2026-11-20, run 44640387699):** Windows on ARM64 ships its own

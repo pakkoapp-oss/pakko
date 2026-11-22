@@ -264,6 +264,30 @@ public sealed class CliNameSelectionTests
         }
     }
 
+    // T-F559: a folder "NUL" is the device by its plain path; the walk never enters it, so the search
+    // stops with that reason, not the one for a name Windows trims.
+    [Fact]
+    public void ResolveArchives_RecursiveSearchMeetsADeviceNamedFolder_StopsWithItsReason()
+    {
+        Archives();
+        string device = Path.Combine(_dir, "arcs", "NUL");
+        Directory.CreateDirectory(@"\\?\" + device);
+        File.WriteAllText(@"\\?\" + Path.Combine(device, "inside.zip"), "x");
+        try
+        {
+            (IReadOnlyList<string> paths, string? error, bool cannotList) = Resolve("x", "-an", @"-air!arcs\*.zip");
+
+            paths.Should().BeEmpty();
+            error.Should().Be(device + ": " + CliNameSelection.FolderNamesADevice);
+            cannotList.Should().BeTrue();
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(device, "inside.zip"));
+            Directory.Delete(@"\\?\" + device);
+        }
+    }
+
     [Fact]
     public void ResolveArchives_SearchThatDoesNotEnterAFolderWindowsTrims_FindsAsBefore()
     {

@@ -228,8 +228,12 @@ public static class CliArchiveSources
                     case WalkEntryKind.UnreadableDirectory:
                         _problems.Add(new CliSourceProblem(entry.Info.FullName, entry.Error?.Message ?? ""));
                         break;
+                    // T-F559: a folder the walk does not enter, as one it cannot list.
+                    case WalkEntryKind.DeviceName when entry.Info is DirectoryInfo:
+                        _problems.Add(new CliSourceProblem(entry.Info.FullName, CliNameSelection.FolderNamesADevice));
+                        break;
                     // Taken or skipped in LeaveOut; a link is not entered; never TrimmedName in a spelled walk.
-                    // T-F559: a device-named one LeaveOut took goes to Core, which refuses it as not found.
+                    // T-F559: a device-named file goes to Core, which refuses it as not found.
                     case WalkEntryKind.Directory:
                     case WalkEntryKind.File:
                     case WalkEntryKind.LeftOut:
