@@ -30,6 +30,29 @@ public sealed class FileItemTests : IDisposable
         item.Crc32Display.Should().Be("CBF53A1C");
     }
 
+    // T-F563: a dropped "b.txt " was left out with only a log line: its plain path names the twin, or
+    // nothing. Through PendingPaths it is listed by its literal path, with its own size and CRC, and the
+    // twin beside it is never read in its place.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TryCreate_ANameWindowsTrims_AsTheDropGivesIt_IsListedWithItsOwnBytes(bool twin)
+    {
+        string dropped = Path.Combine(_dir, "b.txt ");
+        File.WriteAllText(@"\\?\" + dropped, "12345");
+        if (twin)
+            File.WriteAllText(Path.Combine(_dir, "b.txt"), "twin's longer content");
+
+        string path = PendingPaths.Split([], [dropped]).Added.Should().ContainSingle().Subject;
+        var item = FileItem.TryCreate(path);
+
+        item.Should().NotBeNull();
+        item!.Name.Should().Be("b.txt ");
+        item.SizeBytes.Should().Be(5);
+        await item.Crc32Ready;
+        item.Crc32Display.Should().Be("CBF53A1C");
+    }
+
     [Fact]
     public void TryCreate_ExistingFolder_ReturnsFolderItem()
     {
