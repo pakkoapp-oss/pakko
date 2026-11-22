@@ -1223,7 +1223,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F496 - Keep a damaged file on request: what is left of an entry whose data or CRC-32 is bad (P3, user-requested, after v1.11.0)
 
-- [ ] **Status:** open, not before v1.11.0 ships. The user, 2026-11-11: an archive with one bad block
+- [ ] **Status:** in progress, batch 7 (2026-11-22): ZIP-only and plain entries only, measured and decided in `docs/DECISIONS.md`, "Batch 7 (v1.12.0)"; AES split off as T-F568. The user, 2026-11-11: an archive with one bad block
   still holds data someone may need at any cost. Today a ZIP entry that fails its CRC-32 (T-F246),
   runs longer than declared (T-F231) or has a damaged deflate stream fails alone, the other entries
   are extracted, and its half-written file is deleted (`CopyEntryToDestinationAsync`, T-F230). .NET 11
@@ -1257,6 +1257,16 @@ re-measured with T-F346's script before and after.
   Before code: plan mode + advisor (irreversible writes from untrusted input), tests of every guard
   seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
 - **Reported by:** the user, 2026-11-11.
+
+### T-F568 - Keep a damaged AES entry when the run proved the password (P4, from T-F496)
+
+- [ ] **Status:** open. T-F496 keeps only plain entries: AES's two-byte check value passes a wrong
+  password once in 65,536 times, and its HMAC then fails exactly as damage does. A damaged AES
+  entry could be kept when another entry of the same archive passed its HMAC with the same
+  password in the same run; that needs a decrypting path that does not stop at the HMAC
+  (`EncryptedZipEntryReader` checks it before any byte today). ZipCrypto's one-byte check and no
+  MAC leave no such proof short of a good CRC-32 on another entry; decide here whether that counts.
+- **Reported by:** the agent (T-F496's plan), 2026-11-22.
 
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)
 
