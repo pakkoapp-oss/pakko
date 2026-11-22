@@ -2034,13 +2034,14 @@ public sealed class ZipArchiveService : IArchiveService
             return (false, named.Entry.Length);
         }
 
-        // T-F496: only a plain entry's damage can keep a file: an encrypted one's cannot be told
-        // from a wrong password that passed the check value.
-        VerifyingReadStream? keepFrom = context.KeepDamaged && !named.Entry.IsEncrypted ? entryStream as VerifyingReadStream : null;
         InvalidDataException? damage = await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, plan,
-            bytesReadSoFar, context, keepFrom, cancellationToken).ConfigureAwait(false);
+            bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
         if (damage is not null)
-            KeepDamaged(named, relativePath, archivePath, destFilePath, entryFinalPath, damage, plan, context);
+        {
+            string keptName = KeepDamaged(destFilePath, entryFinalPath, plan);
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryKeptDamaged,
+                named.FullName, Path.Combine(Path.GetDirectoryName(relativePath)!, keptName), CoreMessages.Detail(damage)), damage));
+        }
 
         return (true, named.Entry.Length);
     }
@@ -2049,8 +2050,7 @@ public sealed class ZipArchiveService : IArchiveService
     // name, not the one a conflict gave it, and numbered rather than over any file. The good name
     // stays unwritten, so a file -aot was to rename away stays: the commit renames one only for a
     // staged file of its name.
-    private static void KeepDamaged(NamedZipEntry named, string relativePath, string archivePath, string destFilePath, string finalFilePath,
-        InvalidDataException damage, ExtractionPlan plan, ZipExtractionContext context)
+    private static string KeepDamaged(string destFilePath, string finalFilePath, ExtractionPlan plan)
     {
         string finalFolder = Path.GetDirectoryName(finalFilePath)!;
         HashSet<string> claimed = plan.Names.Claimed;
@@ -2069,9 +2069,9 @@ public sealed class ZipArchiveService : IArchiveService
             TryDeleteBestEffort(destFilePath);
             throw;
         }
-        plan.Names.Claim(keptFinalPath, namedDifferently: false);
-        context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryKeptDamaged,
-            named.FullName, Path.Combine(Path.GetDirectoryName(relativePath)!, keptName), CoreMessages.Detail(damage)), damage));
+        // Named apart from its entry, so a later entry of this name is renamed, never written over it.
+        plan.Names.Claim(keptFinalPath, namedDifferently: true);
+        return keptName;
     }
 
     // T-F189: the encrypted-ZIP plug-in point — everything else about extraction (destination
@@ -2124,11 +2124,11 @@ public sealed class ZipArchiveService : IArchiveService
     // T-F496: null when the entry was written whole; with keepFrom, the damage its kept bytes carry.
     private static async Task<InvalidDataException?> CopyEntryToDestinationAsync(
         NamedZipEntry named, Stream entryStream, string destFilePath, ExtractionPlan plan,
-        long bytesReadSoFar, ZipExtractionContext context, VerifyingReadStream? keepFrom, CancellationToken cancellationToken)
+        long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
     {
         try
         {
-            return await CopyEntryStreamAsync(named, entryStream, destFilePath, plan, bytesReadSoFar, context, keepFrom, cancellationToken)
+            return await CopyEntryStreamAsync(named, entryStream, destFilePath, plan, bytesReadSoFar, context, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch
@@ -2141,8 +2141,11 @@ public sealed class ZipArchiveService : IArchiveService
 
     private static async Task<InvalidDataException?> CopyEntryStreamAsync(
         NamedZipEntry named, Stream entryStream, string destFilePath, ExtractionPlan plan,
-        long bytesReadSoFar, ZipExtractionContext context, VerifyingReadStream? keepFrom, CancellationToken cancellationToken)
+        long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
     {
+        // T-F496: only a plain entry's damage can keep a file: an encrypted one's cannot be told
+        // from a wrong password that passed the check value.
+        VerifyingReadStream? keepFrom = context.KeepDamaged && !named.Entry.IsEncrypted ? entryStream as VerifyingReadStream : null;
         long totalUncompressedBytes = plan.TotalUncompressedBytes;
         if (context.Progress != null && totalUncompressedBytes > 0)
         {

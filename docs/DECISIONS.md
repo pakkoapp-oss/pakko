@@ -15118,6 +15118,10 @@ its HMAC with the same password, is T-F568.
   (`ContentCrcMismatch`, `ContentLargerThanDeclared`, `ContentSmallerThanDeclared`,
   `ContentDamaged`): a cancel, an `IOException` or anything else still deletes the file.
 - *`-kb` with `-so` is refused,* exit 7: standard output has no name to mark the bytes as damaged.
+- *A later entry named like the kept file is renamed* (`a.txt (1).damaged`), never written over it
+  under any conflict mode: the kept file is claimed as named apart from its entry (T-F419's rule),
+  found by the closing review; under Overwrite the kept bytes had been replaced while the error line
+  still named them.
 - *Explorer never keeps* (no Shell option); the App's box hides under the policy and for the one
   file the unsafe-type warning extracts to open.
 
