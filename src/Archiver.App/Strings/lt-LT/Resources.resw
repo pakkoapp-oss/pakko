@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>Kuriami atkūrimo duomenys...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>Pašalinti iš sąrašo: {0}</value>
+  </data>
 </root>

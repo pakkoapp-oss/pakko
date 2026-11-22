@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>بازیابی ڈیٹا بنایا جا رہا ہے...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>فہرست سے ہٹائیں: {0}</value>
+  </data>
 </root>

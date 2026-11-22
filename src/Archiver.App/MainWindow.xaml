@@ -139,7 +139,7 @@
                     Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1">
-                    <Grid ColumnDefinitions="*,80,100,90,140" Margin="12,0,12,0">
+                    <Grid ColumnDefinitions="*,80,100,90,140,32" Margin="12,0,12,0">
                         <Button Grid.Column="0" x:Uid="NameColumnHeader"
                                 Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                                 CommandParameter="Name"
@@ -210,7 +210,7 @@
                         </ListView.ItemContainerStyle>
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="appcore:FileItem">
-                                <Grid ColumnDefinitions="*,80,100,90,140">
+                                <Grid ColumnDefinitions="*,80,100,90,140,32">
                                     <Grid.ContextFlyout>
                                         <MenuFlyout>
                                             <MenuFlyoutItem x:Uid="RemoveMenuItem" Click="RemoveItem_Click"/>
@@ -241,6 +241,20 @@
                                         Text="{x:Bind ModifiedDisplay}"
                                         TextTrimming="CharacterEllipsis"
                                         Opacity="0.7"/>
+                                    <!-- T-F566: Delete and the menu key cover the keyboard, so no tab stop per row. -->
+                                    <Button
+                                        Grid.Column="5"
+                                        IsTabStop="False"
+                                        HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        Padding="6,4,6,4" Background="Transparent" BorderThickness="0"
+                                        Click="RemoveRowButton_Click"
+                                        DoubleTapped="RemoveRowButton_DoubleTapped"
+                                        Loaded="RemoveRowButton_Loaded"
+                                        Unloaded="RemoveRowButton_Unloaded"
+                                        AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.RemoveRowName(Name)}"
+                                        ToolTipService.ToolTip="{x:Bind viewmodels:MainViewModel.RemoveRowName(Name)}">
+                                        <FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12" Opacity="0.7"/>
+                                    </Button>
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>

@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>Wiederherstellungsdaten werden erstellt...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>Aus der Liste entfernen: {0}</value>
+  </data>
 </root>

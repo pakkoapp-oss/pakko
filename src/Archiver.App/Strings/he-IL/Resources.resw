@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>יוצר נתוני שחזור...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>הסר מהרשימה: {0}</value>
+  </data>
 </root>

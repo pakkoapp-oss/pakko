@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>Kurtarma verisi oluşturuluyor...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>Listeden kaldır: {0}</value>
+  </data>
 </root>

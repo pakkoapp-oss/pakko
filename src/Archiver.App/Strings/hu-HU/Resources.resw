@@ -644,4 +644,7 @@
   <data name="StatusCreatingRecoveryData" xml:space="preserve">
     <value>Helyreállítási adatok létrehozása...</value>
   </data>
+  <data name="RemoveRowName" xml:space="preserve">
+    <value>Eltávolítás a listából: {0}</value>
+  </data>
 </root>
