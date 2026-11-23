@@ -46,13 +46,17 @@ public static class EntryDiskName
     // NTFS's limit for one name, in UTF-16 units.
     private const int MaxNameLength = 255;
 
+    // Room for the " (99999)" a taken kept name is numbered with (ArchiveNaming.GetUniqueName).
+    private const int NumberRoom = 8;
+
     /// <summary>T-F496: the name a damaged entry's kept bytes get, from the name its file would have
     /// had (one part, as Pakko writes it): <see cref="DamagedSuffix"/> after the whole name
     /// ("a.txt" as "a.txt.damaged"), so no program opens it by the extension it had and an ".exe"
-    /// does not run. A name that would pass NTFS's 255 units loses the end of its own part first.</summary>
+    /// does not run. A name that would pass NTFS's 255 units once numbered loses the end of its own
+    /// part first.</summary>
     public static string Damaged(string fileName)
     {
-        int keep = Math.Min(fileName.Length, MaxNameLength - DamagedSuffix.Length);
+        int keep = Math.Min(fileName.Length, MaxNameLength - NumberRoom - DamagedSuffix.Length);
         if (keep < fileName.Length && keep > 0 && char.IsHighSurrogate(fileName[keep - 1]))
             keep--;
         return fileName[..keep] + DamagedSuffix;
