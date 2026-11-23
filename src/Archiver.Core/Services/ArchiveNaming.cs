@@ -95,9 +95,23 @@ public static class ArchiveNaming
     {
         int i = 1;
         string candidate;
-        do { candidate = $"{stem} ({i++}){extension}"; }
+        do { candidate = WithinOneName(stem, $" ({i++})", extension); }
         while (isTaken(candidate));
         return candidate;
+    }
+
+    // T-F573: a numbered name stays within NTFS's limit for one name; the stem gives way first,
+    // then the end of the extension (".<254 units>" is all extension), which never ends in a dot or
+    // a space Windows would drop.
+    private static string WithinOneName(string stem, string number, string extension)
+    {
+        int over = stem.Length + number.Length + extension.Length - EntryDiskName.MaxNameLength;
+        if (over <= 0)
+            return stem + number + extension;
+        int fromStem = Math.Min(over, stem.Length);
+        string keptStem = EntryDiskName.Prefix(stem, stem.Length - fromStem);
+        string keptExtension = EntryDiskName.EndingPrefix(extension, extension.Length - (over - fromStem));
+        return keptStem + number + keptExtension;
     }
 
     /// <summary>
