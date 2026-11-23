@@ -1140,6 +1140,28 @@ Add-SmokeStep 'CLI-075' {
     'zip: kept as doc.txt.damaged with its mark, exit 2; without -kb nothing left; tar.gz: warning, exit 1'
 }
 
+Add-SmokeStep 'CLI-076' {
+    $folder = Get-StepFolder 'cli076'
+    $zip = Join-Path $folder 'damaged.zip'
+    $length = Write-DamagedStoredZip -Path $zip
+    $gz = Join-Path $folder 'doc.txt.damaged.gz'
+    $gzipBytes = [System.Text.Encoding]::UTF8.GetBytes('from the gzip')
+    $output = [System.IO.File]::Create($gz)
+    try {
+        $gzip = [System.IO.Compression.GZipStream]::new($output, [System.IO.Compression.CompressionLevel]::Optimal)
+        try { $gzip.Write($gzipBytes) } finally { $gzip.Dispose() }
+    } finally { $output.Dispose() }
+
+    $out = Join-Path $folder 'out'
+    $run = Invoke-Pakko @('x', '-kb', '-y', "-o$out", $zip, $gz)
+    $own = Join-Path $out 'doc.txt.damaged'
+    $kept = Join-Path $out 'doc.txt (1).damaged'
+    Assert-Smoke ($run.ExitCode -eq 2) "x -kb -y: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke ((Test-Path -LiteralPath $own) -and [System.IO.File]::ReadAllText($own) -eq 'from the gzip') 'the gzip''s output is missing or not its bytes'
+    Assert-Smoke ((Test-Path -LiteralPath $kept) -and [System.IO.File]::ReadAllBytes($kept).Length -eq $length) 'the kept file is missing or not the entry''s length'
+    'gzip kept its name, the kept file was numbered, exit 2'
+}
+
 Add-SmokeStep 'CLI-057' {
     $folder = Get-StepFolder 'cli057'
     $source = Join-Path $folder 'cs'

@@ -15064,6 +15064,61 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## Batch 9 (v1.12.0) - owners where fixes were patches (T-F570 to T-F574; 2026-11-23)
+
+Why: "Defect sources (2026-11-23)" below. One branch, one commit per task, every test seen red
+first, each owner with its Single Owners row and guard test (`docs/ARCHITECTURE.md`).
+
+**T-F573, numbered names.** `ArchiveNaming` bounds the length for every caller, so T-F496's
+`EntryDiskName.NumberRoom` (8 units, the kept name only; " (100000)" is 9) is gone.
+
+**T-F574, failure kinds.** The inventory of Core's `catch ... when` filters (2026-11-23, by
+script): 44 `IOException or UnauthorizedAccessException`, 12 that add `ArgumentException or
+NotSupportedException`, and about 30 other shapes once or twice each; one `HResult` constant outside
+`CoreMessages` (`AppContainerProfile`, `ERROR_ALREADY_EXISTS` from `CreateAppContainerProfile`'s own
+return). A filter by type is the BCL's primitive and repeats no rule, so those stay. Only decisions
+by code moved: `IsContentDamage` and `IsUncoded`.
+
+**T-F572, walk kinds.** Changed from the plan: no table of what each kind means per job. Different
+consumers deciding differently is correct (hash, archive and delete need different answers); the
+defects (T-F557, T-F559, the mask search) were a consumer that decided nothing for a new kind. IDE0010
+for the whole repo gave 82 hits over unrelated enums, so the rule is a guard test over
+`WalkEntryKind` only.
+
+**T-F571, two headers.** 7-Zip, `CPP/7zip/Archive/Zip/ZipIn.cpp` (ip7z/7zip, main):
+`FlagsAreSame` requires the same method and compares the flags (Deflate masks `0x7FF9`, up to
+Implode `0x7FFF`; the UTF-8 bit and the descriptor bit are allowed to differ); `AreItemsEqual` adds,
+without a data descriptor, the packed and unpacked sizes and the CRC (a central CRC of 0 passes) and
+the name. `Read_LocalItem_After_CdItem` returns `S_FALSE` when they differ, and `ZipHandler.cpp`'s
+extraction reports `kHeadersError` and skips the item.
+- Pakko refuses only bits 0 and 6 and the method: those change what is decoded. Name, CRC and sizes
+  stay T-F280's warning, the user's choice (2026-11-23); .NET checks CRC and size itself.
+- Changed from the plan (a bit array before the write): the compare runs inline per batch in
+  `ZipCatalog.Entries`, so no index has to line up with another walk. Walks that read no content
+  opt out: the list, the counts, `Check`, the planning walk.
+- A central "encrypted" over a plain local header used to fail the whole archive as
+  password-protected; `NeedsPassword` now asks the probe, which skips such an entry. Cost: two
+  local-header seeks per entry of an encrypted archive, not measured; measure if a large encrypted
+  archive feels slow. The scan's compare is one 30-byte read per entry.
+- An unresolvable Zip64 offset or an unreadable local header is not judged here: .NET fails the
+  entry as before.
+
+**T-F570, one placement owner.**
+- The kept damaged file is named after the archive's last entry, before the commit and the outcome.
+  A later entry named `doc.txt.damaged` now keeps that name and the kept bytes take
+  `doc.txt (1).damaged`; the T-F496 test that expected the reverse was changed with it.
+- Folders are claimed, but only `IsTaken` sees them: a new name avoids them, while a file meeting a
+  folder is reported at the commit as before. The conflict trigger is unchanged, so every existing
+  conflict, -aot and Skip test passed untouched.
+- The bare gzip engine writes straight to the destination: a folder there is an error unless -aot;
+  -aot's name for the moved file comes from the registry. `BareGzip.OutputName` already makes the
+  name usable, so a gzip never reaches a trimmed name; only an 8.3 alias names another file.
+- T-F569 item 3 stays: `_notWhollyOnDisk` is a set of archives, not of (archive, path), so releasing
+  a claim could clear the mark a real replacement set, and that archive would be Completed and
+  deletable after extraction - a safe P3 turned into data loss. The task said "only if cheap".
+- T-F453 is the root shape of a tar listed by one best-fit name, decided before any placement; it
+  stays P4 in batch 10.
+
 ## Batch 7 (v1.12.0) - a damaged entry kept on request (T-F496; 2026-11-22)
 
 **7-Zip has no switch for it.** The switch table in 7-Zip's `CPP/7zip/UI/Common/ArchiveCommandLine.cpp`
