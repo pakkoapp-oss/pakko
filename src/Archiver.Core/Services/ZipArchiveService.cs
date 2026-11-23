@@ -1425,18 +1425,18 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F410: asked first, folders too, so a filter counts what it let through as on extraction.
             if (FilteredOut(entryFilter, named.FullName, isFolder))
                 continue;
+            // T-F571: a folder too, as extraction reports it (7-Zip's Test reports one as well).
+            if (named.HeadersDisagree)
+            {
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryHeadersDisagree, named.FullName)));
+                continue;
+            }
             if (isFolder)
                 continue; // directory entry — no data to verify
 
             if (named.CollidesAfterDecoding)
             {
                 errors.Add(CoreMessages.Error(archivePath, CollisionMessage(named.FullName)));
-                continue;
-            }
-
-            if (named.HeadersDisagree)
-            {
-                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryHeadersDisagree, named.FullName)));
                 continue;
             }
 

@@ -187,6 +187,22 @@ public sealed class ZipHeadersDisagreeTests : IDisposable
         scanner.Calls.Select(c => c.ContentName).Should().BeEquivalentTo(["a.txt", "c.txt"]);
     }
 
+    // A folder entry too: extraction and Test both report it.
+    [Fact]
+    public async Task FolderEntry_HeadersDisagree_ExtractAndTestBothReportIt()
+    {
+        string archive = Path.Combine(_temp.Path, "folder.zip");
+        using (ZipArchive zip = ZipFile.Open(archive, ZipArchiveMode.Create))
+            zip.CreateEntry("dir/");
+        Patch(archive, "dir/", central: false, (bytes, _, flags, _) => bytes[flags] |= 0x01);
+
+        (ArchiveResult extracted, _) = await ExtractAsync(archive);
+        ArchiveResult tested = await _sut.TestAsync([archive]);
+
+        extracted.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.EntryHeadersDisagree);
+        tested.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.EntryHeadersDisagree);
+    }
+
     [Fact]
     public void Entries_TheFlagFollowsItsEntryAcrossBatches()
     {
