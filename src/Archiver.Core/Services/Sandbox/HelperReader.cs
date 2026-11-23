@@ -589,12 +589,12 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             }
         }
 
-        public void CreateFolderEntriesIn(FolderPlacement placement)
+        public IEnumerable<string> FolderEntryPaths(FolderPlacement placement)
         {
             foreach (Entry folder in folders.Select(i => entries[i]))
             {
                 if (Placed(folder.Name, placement.StripRootPrefix) is { Length: > 0 } relative)
-                    Directory.CreateDirectory(Path.Combine(placement.Staging.Path, relative));
+                    yield return relative;
             }
         }
 

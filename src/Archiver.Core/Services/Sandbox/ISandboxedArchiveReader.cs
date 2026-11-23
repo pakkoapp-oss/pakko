@@ -118,8 +118,9 @@ internal interface IQuarantinedEntries
     /// <summary>T-F298: records each folder entry's time before the move phase changes it.</summary>
     void RecordFolderTimesInto(FolderPlacement placement);
 
-    /// <summary>T-F197: creates the folder entries in the staging folder after the files moved.</summary>
-    void CreateFolderEntriesIn(FolderPlacement placement);
+    /// <summary>T-F197, T-F575: each folder entry's path relative to the destination, never the
+    /// stripped root; claimed before the files are placed and created in staging after they moved.</summary>
+    IEnumerable<string> FolderEntryPaths(FolderPlacement placement);
 }
 
 /// <summary>What the main pass of an extraction for the antivirus scan left in the quarantine.</summary>
