@@ -499,7 +499,9 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock x:Uid="ModeLabel" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                        <!-- Batch 11: a Grid, not a horizontal StackPanel, so the second label wraps inside
+                             the card; es-ES and el-GR cut it at the default window size. -->
+                        <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="16">
                             <RadioButton
                                 x:Uid="OneArchiveRadio"
                                 GroupName="ArchiveMode"
@@ -507,10 +509,11 @@
                                 IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                             <RadioButton
                                 x:Uid="SeparateArchivesRadio"
+                                Grid.Column="1"
                                 GroupName="ArchiveMode"
                                 IsChecked="{x:Bind ViewModel.IsSeparateArchives, Mode=TwoWay}"
                                 IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
-                        </StackPanel>
+                        </Grid>
 
                         <TextBlock x:Name="ArchiveNameLabelText" x:Uid="ArchiveNameLabel" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                         <!-- T-F264: the placeholder is the name Core writes when the box is blank. -->
