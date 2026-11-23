@@ -2036,12 +2036,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         InvalidDataException? damage = await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, plan,
             bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
-        if (damage is not null)
-        {
-            string keptName = KeepDamaged(destFilePath, entryFinalPath, plan);
-            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryKeptDamaged,
-                named.FullName, Path.Combine(Path.GetDirectoryName(relativePath)!, keptName), CoreMessages.Detail(damage)), damage));
-        }
+        KeepIfDamaged(damage, named, relativePath, destFilePath, entryFinalPath, plan, context);
 
         return (true, named.Entry.Length);
     }
@@ -2050,7 +2045,17 @@ public sealed class ZipArchiveService : IArchiveService
     // name, not the one a conflict gave it, and numbered rather than over any file. The good name
     // stays unwritten, so a file -aot was to rename away stays: the commit renames one only for a
     // staged file of its name.
-    private static string KeepDamaged(string destFilePath, string finalFilePath, ExtractionPlan plan)
+    private static void KeepIfDamaged(InvalidDataException? damage, NamedZipEntry named, string relativePath,
+        string destFilePath, string finalFilePath, ExtractionPlan plan, ZipExtractionContext context)
+    {
+        if (damage is null)
+            return;
+        string keptName = RenameAsDamaged(destFilePath, finalFilePath, plan);
+        context.Errors.Add(CoreMessages.Error(plan.Names.CurrentArchive, CoreMessages.Text(MessageCode.EntryKeptDamaged,
+            named.FullName, Path.Combine(Path.GetDirectoryName(relativePath)!, keptName), CoreMessages.Detail(damage)), damage));
+    }
+
+    private static string RenameAsDamaged(string destFilePath, string finalFilePath, ExtractionPlan plan)
     {
         string finalFolder = Path.GetDirectoryName(finalFilePath)!;
         HashSet<string> claimed = plan.Names.Claimed;
@@ -2192,7 +2197,7 @@ public sealed class ZipArchiveService : IArchiveService
         catch (InvalidDataException ex) when (keepFrom is not null && IsContentDamage(ex)
                                               && (file.Position > 0 || keepFrom.DamagedTail.Length > 0))
         {
-            file.Write(keepFrom.DamagedTail);
+            await file.WriteAsync(keepFrom.DamagedTail, CancellationToken.None).ConfigureAwait(false);
             return ex;
         }
     }

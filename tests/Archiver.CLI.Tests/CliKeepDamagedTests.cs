@@ -67,6 +67,23 @@ public sealed class CliKeepDamagedTests
             .Should().Contain("DisableKeepDamagedFiles");
     }
 
+    [Fact]
+    public void ExtractPolicyWarnings_BothOverridden_NamesBothPolicies()
+    {
+        var policy = new GroupPolicyOptions { DisableKeepDamagedFiles = true, MotwMode = MotwMode.AllFiles, MotwModeSetByPolicy = true };
+
+        string[] warnings = [.. CliDownloadMark.ExtractPolicyWarnings(applyDownloadMark: false, keepDamaged: true, policy)];
+
+        warnings.Should().HaveCount(2);
+        warnings[1].Should().Contain("DisableKeepDamagedFiles");
+    }
+
+    [Fact]
+    public void ExtractPolicyWarnings_NothingOverridden_None()
+    {
+        CliDownloadMark.ExtractPolicyWarnings(null, keepDamaged: false, new GroupPolicyOptions()).Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
