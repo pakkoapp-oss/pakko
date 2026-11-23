@@ -80,16 +80,16 @@ reviewer at the batch's close, with the user's OK.
 | 6 | Taskbar, the file list | T-F564, T-F566 | `APP-031`, `OPW-006` and T-F566's new APP row on the device |
 | 7 | A damaged entry kept | T-F496 | The failure matrix (CRC, length, deflate) at every test level, one deploy |
 | 9 | Owners where fixes were patches (the defect review, 2026-11-23) | T-F570 (with T-F569), T-F571, T-F572, T-F573, T-F574 | Each owner with its Single Owners row and guard test; every fix it absorbs keeps its test green; an opus reviewer for T-F570 and T-F571 (they decide what is written from untrusted input) |
-| 10 | The tar.exe fallback and the engine backlog | T-F453 (not a placement defect, batch 9), T-F575, T-F445, T-F461, T-F464, T-F469, T-F568, T-F121, T-F132 (T-F359 moved to batch 8, 2026-11-23) (each: done, or closed by a measurement or a decision recorded in DECISIONS) | Both tar builds; measured before and after where it is a speed task |
+| 10 | The tar.exe fallback and the engine backlog | T-F453 (not a placement defect, batch 9), T-F575, T-F445, T-F461, T-F464, T-F469, T-F568, T-F121, T-F132 (T-F359 moved to batch 8, then out of the release with the other older tasks, 2026-11-23) (each: done, or closed by a measurement or a decision recorded in DECISIONS) | Both tar builds; measured before and after where it is a speed task |
 | 11 | App, localization, UI | T-F02, T-F91, T-F202, T-F328, T-F329, T-F393 (done 2026-11-23: T-F91, T-F328 on the device; T-F202 to the smoke catalogue; T-F393 closed by measurement; T-F02 closed by decision; T-F329's screenshots moved to batch 8) | One deploy; the APP rows each one names |
 | 12 | Distribution and the user's own steps | T-F10, T-F119, T-F127, T-F144, T-F152 (close or rescope), T-F331, T-F332 (done 2026-11-23, the user left each to the agent: T-F119, T-F127, T-F152, T-F332 closed; T-F10 and T-F144 open past the wave; T-F331 to batch 8) | Only with the user's OK, item by item: T-F127 and T-F144 are the user's own posts, T-F10 waits on a signing provider |
-| 8 | Device, user, release | T-F359 (is a spinning disk at hand? if not, closed by decision), T-F329 part 5 (the Store screenshots, retaken with English first in the language list), T-F331 (sv-SE's features and search terms by hand in Partner Center, the user; 1.12.0's "What's new"), T-F432 (`APP-032` by eye), `POL-011` (T-F496's policy, elevated), T-F494, T-F444, T-F446, T-F447, T-F254, T-F508, T-F317 (only with the user's OK); `STO-005`, `STO-006`, `STO-008` for 1.11.0 after certification; the release tier; the tag after the user's OK | As batch 8 of v1.11.0 |
+| 8 | Release | Only this wave's own checks: `POL-011` (T-F496's policy, elevated), T-F561's error in the App and in Explorer, T-F562's `STO-008` if an ARM64 machine is at hand, the release tier of `docs/SMOKE.md`, `Category=Slow` (green 2026-11-23 on `wave-v1.12-rest`); `CHANGELOG.md` and the Store listing's "What's new" for 1.12.0; the tag after the user's OK. Older tasks are not part of this release (the user, 2026-11-23) and stay open in this file: T-F254, T-F317, T-F329 part 5, T-F331's sv-SE fields, T-F359, T-F432, T-F444, T-F446, T-F447, T-F494, T-F508, and 1.11.0's `STO-005`, `STO-006` and `STO-008` | As batch 8 of v1.11.0 |
 
 Order: this plan, then batch 1, then 2 and 3; 4 to 7 between them while no long series runs; then
 9, 10 and 11; 12 alongside, as the user decides; 8 last.
 
 Every open task is in this wave (the user, 2026-11-23): the former "not in this wave" list is now
-batches 10 to 12. T-F10 and T-F144 stay open past it (batch 12: a signing provider, the user's own post). Why batch 9 exists: `docs/DECISIONS.md`, "Defect sources (2026-11-23)".
+batches 10 to 12. T-F10 and T-F144 stay open past it (batch 12: a signing provider, the user's own post), and the older tasks batch 8 held are not part of the release (the user, 2026-11-23). Why batch 9 exists: `docs/DECISIONS.md`, "Defect sources (2026-11-23)".
 ---
 
 ## Future Tasks
@@ -484,7 +484,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F329 — Localization process: glossary, one home for shared strings, counts, translator context (P2)
 
-- [~] **Status:** done except the screenshots (Part 5), which wait for the next retake (batch 8 of v1.12.0, 2026-11-23);
+- [~] **Status:** done except the screenshots (Part 5), which wait for the next retake (not part of the v1.12.0 release, the user, 2026-11-23);
   the five "{0} bytes" messages were done 2026-10-06.
   T-F328 fixed about 600 translated values; nearly all came from four gaps around the loading
   mechanisms, not from the mechanisms themselves. The three mechanisms stay as they are (`.resw`
@@ -559,7 +559,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F331 — Store listing text: errors in the published text, v1.7.0 features, a copy in the repo (P2)
 
-- **Batch 12 (2026-11-23):** the public catalog (market SE, sv-SE) has the file's description and short description, but 9 of its 13 features (the four format lines are missing) and the older search terms; en-US and cs-CZ equal their files. In batch 8, with the 1.12.0 submission: the user enters sv-SE's features and search terms by hand in Partner Center's form, which names a refused field; the agent writes 1.12.0's "What's new" (`docs/DECISIONS.md`, "Batch 12 (v1.12.0)")
+- **Batch 12 (2026-11-23):** the public catalog (market SE, sv-SE) has the file's description and short description, but 9 of its 13 features (the four format lines are missing) and the older search terms; en-US and cs-CZ equal their files. Next, with a Store submission but not as part of the v1.12.0 release (the user, 2026-11-23): the user enters sv-SE's features and search terms by hand in Partner Center's form, which names a refused field (`docs/DECISIONS.md`, "Batch 12 (v1.12.0)")
 - [~] **Status:** text done 2026-10-05 and imported into Partner Center submission 6 from the
   listing CSV the same day: 36 of 37 languages equal the files, the five missing languages were
   added. Swedish was refused with no reason given; the user imported it later, with the v1.7.1

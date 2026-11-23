@@ -15064,6 +15064,21 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## Batch 8 (v1.12.0) - the release holds only this wave's own checks (2026-11-23)
+
+The user, 2026-11-23: the older tasks came into the release batch without a reason, so they are taken
+out. They stay open in `docs/TASKS.md`; none of them gates 1.12.0:
+T-F254, T-F317, T-F329 part 5, T-F331's sv-SE fields, T-F359, T-F432, T-F444, T-F446, T-F447, T-F494, T-F508, and 1.11.0's `STO-005`, `STO-006` and `STO-008`.
+
+Batch 8 keeps what 1.12.0 itself needs:
+- `POL-011`: T-F496's policy, run elevated.
+- T-F561's error as the App and Explorer show it.
+- T-F562's `STO-008`, if an ARM64 machine is at hand.
+- The release tier of `docs/SMOKE.md`.
+- `Category=Slow`: green on `wave-v1.12-rest` the same day, 48 tests.
+- `CHANGELOG.md` and the Store listing's "What's new" for 1.12.0.
+- The tag, after the user's OK.
+
 ## Batch 12 (v1.12.0) - distribution and the user's own steps (2026-11-23)
 
 The user left every item to the agent ("На твій вибір", 2026-11-23).
