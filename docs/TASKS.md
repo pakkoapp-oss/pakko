@@ -733,7 +733,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F565 - tar and 7z through tar.exe take 2 to 12 times 7-Zip's time (P3, next release)
 
-- [ ] **Status:** open. Measured 2026-11-20 (`docs/DECISIONS.md`, "Pakko against NanaZip and
+- [~] **Status:** partly done in the v1.12.0 wave (2026-11-20 to 11-21); open past it for the per-file move out of the quarantine. Done: the commit moves new folders whole (3,619 files on C:, medians: tar 15.4 s to 9.9 s, 7z 22.6 s to 16.4 s, ZIP 11.4 s to 7.1 s; `docs/DECISIONS.md`, "v1.12.0 batch 2, step 1"); xz and zstd in tar written on libarchive's threads ("batch 3, steps 1-3"). Measured and rejected: the move out of the quarantine on threads, the helper writing a tree, Zstandard in 7z, `TarWriter` (T-F514). Left: that move, 3.3-5.2 s of 8.4-11.3 s on PakkoW10 ("batch 2, closing").
+  Before: open. Measured 2026-11-20 (`docs/DECISIONS.md`, "Pakko against NanaZip and
   7-Zip"): extracting a tar of the 3,619-file .NET SDK took Pakko 14.8 s against NanaZip's 2.0 s
   and 7za's 7.7 s, a 7z of it 17 s against 2.6-4.5 s, one large file in a 7z 7 s against 1-2 s;
   a ZIP of the same files extracts in NanaZip's time. Creating a 7z is slower still (3 to 12
