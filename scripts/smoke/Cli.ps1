@@ -1153,13 +1153,14 @@ Add-SmokeStep 'CLI-076' {
     } finally { $output.Dispose() }
 
     $out = Join-Path $folder 'out'
-    $run = Invoke-Pakko @('x', '-kb', '-y', "-o$out", $zip, $gz)
-    $own = Join-Path $out 'doc.txt.damaged'
-    $kept = Join-Path $out 'doc.txt (1).damaged'
+    # One run, by a mask: a second archive named on its own would be a name filter, as in 7-Zip.
+    $run = Invoke-Pakko @('x', '-kb', '-y', "-o$out", (Join-Path $folder 'd*'))
+    $kept = Join-Path $out 'doc.txt.damaged'
+    $own = Join-Path $out 'doc.txt (1).damaged'
     Assert-Smoke ($run.ExitCode -eq 2) "x -kb -y: exit $($run.ExitCode) $($run.Text)"
     Assert-Smoke ((Test-Path -LiteralPath $own) -and [System.IO.File]::ReadAllText($own) -eq 'from the gzip') 'the gzip''s output is missing or not its bytes'
     Assert-Smoke ((Test-Path -LiteralPath $kept) -and [System.IO.File]::ReadAllBytes($kept).Length -eq $length) 'the kept file is missing or not the entry''s length'
-    'gzip kept its name, the kept file was numbered, exit 2'
+    'the kept file stayed whole, the gzip''s output was numbered, exit 2'
 }
 
 Add-SmokeStep 'CLI-057' {

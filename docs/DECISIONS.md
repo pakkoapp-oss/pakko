@@ -15118,6 +15118,16 @@ extraction reports `kHeadersError` and skips the item.
   deletable after extraction - a safe P3 turned into data loss. The task said "only if cheap".
 - T-F453 is the root shape of a tar listed by one best-fit name, decided before any placement; it
   stays P4 in batch 10.
+- Both tar builds: 16 placement cases (two entries of one name under -y, -aou, -aos and -aot; trimmed
+  twins; a folder entry; a file there and a folder there under each mode; a ZIP and a tar into one
+  folder) through a Native AOT `pakko` built from `main` and one from T-F570, each with the archive
+  helper and alone (the tar.exe reader). Identical on Windows 11 (bsdtar 3.8.9) and PakkoW10 (bsdtar
+  3.5.2), and identical before and after: the tar engine's behaviour did not change.
+- On the device (1.11.0.10): CLI-036 to CLI-076's tar and conflict rows OK. CLI-076 showed the
+  rule across archives: the kept file of the first archive keeps `doc.txt.damaged`, and a later
+  archive's item of that name is numbered; "the later item keeps the name" holds within one archive.
+  APP-040 OK (kept and reported, the box unticked after, Extract here keeps nothing, Delete after
+  leaves the archive), and Extract here on a tar with trimmed twins keeps both.
 
 ## Batch 7 (v1.12.0) - a damaged entry kept on request (T-F496; 2026-11-22)
 
