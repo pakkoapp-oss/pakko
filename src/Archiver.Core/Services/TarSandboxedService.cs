@@ -782,38 +782,18 @@ public sealed class TarSandboxedService : ITarService
         }
     }
 
-    // Conflicts are decided against the destination plus every path already claimed in this run
-    // (T-F30, as in ZIP's WriteEntryAsync). Null when the entry is skipped.
-    private static async Task<(string? Path, bool EarlierRenamedAway)> ResolveConflictAsync(
+    // T-F570: placed by the run's ExtractionNameRegistry, as ZIP's entries. Null when the entry is skipped.
+    private static async Task<string?> PlaceAsync(
         string finalFilePath, string file, string relativePath, (bool Renamed, bool Trimmed) named, TarCommitPlan plan, TarExtractionContext context)
     {
-        if (!File.Exists(finalFilePath) && !plan.Names.Claimed.Contains(finalFilePath)
-            && !(context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
-            return (finalFilePath, false);
-        // T-F419: copies of one name only through Windows' trimming are kept apart (as in ZIP);
-        // T-F420 review: so is a file already on disk that a trimmed name does not name.
-        if (plan.Names.MustKeepApart(finalFilePath, named.Renamed)
-            || (named.Trimmed && !plan.Names.Claimed.Contains(finalFilePath)))
-            return (ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed), false);
-        (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(file);
-        int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
-        ConflictBehavior resolvedConflict = await context.ConflictResolver
-            .ResolveAsync(finalFilePath, incomingSize, incomingModified).ConfigureAwait(false);
-        if (resolvedConflict == ConflictBehavior.Skip)
-        {
-            // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
-            // T-F415: a path this run already wrote (a skip never claims one) is not a file that was there.
-            if (context.ConflictResolver.UserSkipCount == userSkipsSoFar)
-                context.SkippedFiles.Add(CoreMessages.Skip(relativePath, plan.Names.Claimed.Contains(finalFilePath)
-                    ? MessageCode.FileWrittenEarlierInThisRun : MessageCode.FileExistsAtDestination));
-            return (null, false);
-        }
-        // T-F411: -aot, the rule ZipArchiveService shares.
-        if (resolvedConflict == ConflictBehavior.RenameExisting)
-            resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.Names);
-        return resolvedConflict == ConflictBehavior.Rename
-            ? (ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed), false)
-            : (finalFilePath, resolvedConflict == ConflictBehavior.RenameExisting);
+        Placement placement = await plan.Names.PlaceAsync(
+            new PlaceRequest(finalFilePath, named.Renamed, named.Trimmed, () => DescribeIncoming(file)),
+            context.ConflictResolver, plan.Staging).ConfigureAwait(false);
+        // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
+        if (placement.Path is null && !placement.SkippedByUser)
+            context.SkippedFiles.Add(CoreMessages.Skip(relativePath, placement.SkippedInRun
+                ? MessageCode.FileWrittenEarlierInThisRun : MessageCode.FileExistsAtDestination));
+        return placement.Path;
     }
 
     private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
@@ -848,11 +828,11 @@ public sealed class TarSandboxedService : ITarService
         // 8.3 alias GetFullPath expands, is not the name of the file it lands on.
         bool trimmedHere = !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
         (bool Renamed, bool Trimmed) named = (entry.Renamed || trimmedHere, entry.Trimmed || trimmedHere);
-        (string? resolvedFilePath, bool earlierRenamedAway) = await ResolveConflictAsync(finalFilePath, file, relativePath, named, plan, context).ConfigureAwait(false);
-        if (resolvedFilePath is null)
+        string? placedFilePath = await PlaceAsync(finalFilePath, file, relativePath, named, plan, context).ConfigureAwait(false);
+        if (placedFilePath is null)
             return (false, relativePath);
-        finalFilePath = resolvedFilePath;
-        plan.Names.Claim(finalFilePath, named.Renamed, earlierRenamedAway);
+        finalFilePath = placedFilePath;
+        plan.Names.ClaimParents(finalFilePath, actualDest);
 
         // T-F263: staged under the path it will have in actualDest; the commit moves it there.
         string stagedFilePath = Path.Combine(plan.Staging.Path, Path.GetRelativePath(actualDest, finalFilePath));

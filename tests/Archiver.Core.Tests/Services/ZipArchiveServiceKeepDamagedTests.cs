@@ -268,8 +268,9 @@ public sealed class ZipArchiveServiceKeepDamagedTests : IDisposable
         File.ReadAllText(Path.Combine(Dest, "doc.txt (1).damaged")).Should().Be(Flipped(LongContent, 5));
     }
 
-    // A later entry named like the kept file never writes over it: the kept bytes stay and the
-    // archive's own "doc.txt.damaged" takes a name of its own or is reported, never silently lost.
+    // A later entry named like the kept file never writes over it. T-F570: the kept file is placed
+    // after the archive's every entry, so the archive's own "doc.txt.damaged" keeps its name and the
+    // kept bytes take a numbered one, whatever the conflict mode.
     [Theory]
     [InlineData(ConflictBehavior.Skip)]
     [InlineData(ConflictBehavior.Overwrite)]
@@ -284,12 +285,10 @@ public sealed class ZipArchiveServiceKeepDamagedTests : IDisposable
 
         ArchiveResult result = await ExtractAsync(zip, onConflict: onConflict);
 
-        File.ReadAllText(Kept).Should().Be(Flipped(LongContent, 5));
-        result.Errors.Should().Contain(e => e.Text!.Code == MessageCode.EntryKeptDamaged);
+        File.ReadAllText(Path.Combine(Dest, "doc.txt (1)" + EntryDiskName.DamagedSuffix)).Should().Be(Flipped(LongContent, 5));
+        File.ReadAllText(Kept).Should().Be("the archive's own");
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.EntryKeptDamaged);
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
-        bool ownLanded = Directory.EnumerateFiles(Dest).Any(f => File.ReadAllText(f) == "the archive's own");
-        bool ownReported = result.Errors.Count > 1 || result.SkippedFiles.Count > 0 || result.Warnings.Count > 0;
-        (ownLanded || ownReported).Should().BeTrue("the archive's own entry is extracted under another name or reported");
     }
 
     // T-F496 review: an earlier entry's folder of the kept name is staged, not yet at the

@@ -201,48 +201,30 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
         List<ArchiveError> errors, List<SkippedFile> skipped)
     {
         (string archivePath, string finalPath, string name) = landing;
-        bool inRun = names.Claimed.Contains(finalPath);
-        bool fileThere = File.Exists(finalPath);
-        bool folderThere = Directory.Exists(finalPath);
-        if (!fileThere && !inRun && !(folderThere && conflictResolver.RenamesExisting))
+        // Written straight to the destination, so a folder there is an error (-aot moves it aside).
+        if (Directory.Exists(finalPath) && !conflictResolver.RenamesExisting)
         {
-            if (folderThere)
-            {
-                errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationIsAFolder, name));
-                return null;
-            }
-            names.Claim(finalPath, namedDifferently: false);
-            return new Plan(finalPath, Replace: false, RenameExistingTo: null);
+            errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationIsAFolder, name));
+            return null;
         }
 
-        int userSkipsSoFar = conflictResolver.UserSkipCount;
+        // T-F570: placed by the run's ExtractionNameRegistry, as ZIP's and tar's files - so a name a
+        // kept file or a trimmed name took is renamed apart here too (T-F569 item 1).
+        bool aliasOfAnother = !string.Equals(name, Path.GetFileName(finalPath), StringComparison.OrdinalIgnoreCase);
         DateTimeOffset? modified = measured.ModifiedUtc is { } utc ? new DateTimeOffset(utc).ToLocalTime() : null;
-        ConflictBehavior decision = await conflictResolver.ResolveAsync(finalPath, measured.Length, modified).ConfigureAwait(false);
-        switch (decision)
+        Placement placement = await names.PlaceAsync(
+            new PlaceRequest(finalPath, EntryDiskName.Renames(name) || aliasOfAnother, EntryDiskName.Trims(name) || aliasOfAnother,
+                () => (measured.Length, modified)),
+            conflictResolver, staging: null).ConfigureAwait(false);
+        if (placement.Path is null)
         {
-            case ConflictBehavior.Skip:
-                // T-F216: the user's own Skip answer is not listed; T-F415: this run's path is not one that was there.
-                if (conflictResolver.UserSkipCount == userSkipsSoFar)
-                    skipped.Add(CoreMessages.Skip(name, inRun ? MessageCode.FileWrittenEarlierInThisRun : MessageCode.FileExistsAtDestination));
-                return null;
-            case ConflictBehavior.Rename:
-                string unique = ArchiveNaming.GetUniqueFilePath(finalPath, names.Claimed);
-                names.Claim(unique, namedDifferently: false);
-                return new Plan(unique, Replace: false, RenameExistingTo: null);
-            case ConflictBehavior.RenameExisting:
-                string aside = ArchiveNaming.GetUniqueFilePath(finalPath, names.Claimed);
-                names.Claim(aside, namedDifferently: false);
-                names.Claim(finalPath, namedDifferently: false, earlierRenamedAway: true);
-                return new Plan(finalPath, Replace: false, RenameExistingTo: aside);
-            default:
-                if (folderThere)
-                {
-                    errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationIsAFolder, name));
-                    return null;
-                }
-                names.Claim(finalPath, namedDifferently: false);
-                return new Plan(finalPath, Replace: true, RenameExistingTo: null);
+            // T-F216: the user's own Skip answer is not listed; T-F415: this run's path is not one that was there.
+            if (!placement.SkippedByUser)
+                skipped.Add(CoreMessages.Skip(name, placement.SkippedInRun ? MessageCode.FileWrittenEarlierInThisRun : MessageCode.FileExistsAtDestination));
+            return null;
         }
+        bool replace = placement.Path == finalPath && placement.MovedAsideTo is null && File.Exists(finalPath);
+        return new Plan(placement.Path, Replace: replace, RenameExistingTo: placement.MovedAsideTo);
     }
 
     // -aot: what is there - a file or a folder - keeps its content under the new name (T-F411, T-F419).
