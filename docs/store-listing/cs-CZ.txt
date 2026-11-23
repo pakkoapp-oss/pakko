@@ -35,11 +35,10 @@ ZIP s heslem
 ZIP kompresní nástroj
 
 [What's new in this version]
-• Pakko nyní běží na .NET 11.
-• Velké archivy se otevírají s mnohem menší spotřebou paměti.
-• Archivace mnoha malých souborů je rychlejší a potřebuje mnohem méně paměti.
-• Extrahování mnoha malých souborů trvá zhruba poloviční dobu.
-• Každá operace běží ve vlastním izolovaném prostoru a její dočasné soubory leží vedle cíle.
-• Opraveno: soubor, jehož název končí mezerou nebo tečkou, se již neukládá do archivu s obsahem jiného souboru ani se neodstraní místo něj.
-• Opraveno: poškozený šifrovaný archiv je hlášen jako poškozený, nikoli jako chráněný heslem.
-• Opraveno: příkazy Průzkumníka se opět zobrazují ve vašem jazyce a Enter otevře vybranou položku.
+• Extrahování je rychlejší: nové složky se do cíle dostanou jediným krokem.
+• Archivy TAR.XZ a TAR.ZST se vytvářejí několikrát rychleji, na více jádrech procesoru.
+• Nová volba „Uchovat obsah poškozeného souboru (ZIP)“: soubor, který neprojde kontrolou, se uloží s bajty, které se podařilo přečíst.
+• Opraveno: archiv, který uvádí menší velikost, už při extrahování nemůže zaplnit disk.
+• Opraveno: archiv ZIP, jehož hlavičky položek si odporují, je odmítnut, stejně jako v 7-Zip.
+• Opraveno: hlavní panel ukazuje žlutou a červenou i při 0 % a každý řádek seznamu souborů má vlastní tlačítko pro odebrání.
+• Opraveno: oříznutý text ve španělštině a řečtině.

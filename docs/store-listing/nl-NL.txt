@@ -35,11 +35,10 @@ tar gz
 zip met wachtwoord
 
 [What's new in this version]
-• Pakko draait nu op .NET 11.
-• Grote archieven openen met veel minder geheugen.
-• Het archiveren van veel kleine bestanden gaat sneller en gebruikt veel minder geheugen.
-• Het uitpakken van veel kleine bestanden duurt ongeveer half zo lang.
-• Elke bewerking draait in een eigen sandbox, en de tijdelijke bestanden staan naast de bestemming.
-• Opgelost: een bestand waarvan de naam eindigt op een spatie of een punt wordt niet meer gearchiveerd met de inhoud van een ander bestand of in plaats daarvan verwijderd.
-• Opgelost: een beschadigd versleuteld archief wordt gemeld als beschadigd, niet als beveiligd met een wachtwoord.
-• Opgelost: de Verkenner-opdrachten staan weer in uw taal, en Enter opent het geselecteerde item.
+• Uitpakken is sneller: nieuwe mappen komen in één stap op hun bestemming.
+• TAR.XZ- en TAR.ZST-archieven worden meerdere keren sneller gemaakt, op meerdere processorkernen.
+• Nieuwe optie ‘Inhoud van een beschadigd bestand bewaren (ZIP)’: een bestand dat de controle niet doorstaat, wordt opgeslagen met de bytes die gelezen konden worden.
+• Opgelost: een archief dat een te kleine grootte opgeeft, kan bij het uitpakken de schijf niet meer vullen.
+• Opgelost: een ZIP-archief waarvan de itemkoppen elkaar tegenspreken, wordt geweigerd, zoals 7-Zip doet.
+• Opgelost: de taakbalk toont geel en rood ook bij 0 %, en elke rij van de bestandslijst heeft een eigen verwijderknop.
+• Opgelost: afgekapte tekst in het Spaans en Grieks.

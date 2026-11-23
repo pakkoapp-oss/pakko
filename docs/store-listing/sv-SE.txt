@@ -35,11 +35,10 @@ zip med lösenord
 7zip-alternativ
 
 [What's new in this version]
-• Pakko körs nu på .NET 11.
-• Stora arkiv öppnas med mycket mindre minne.
-• Att arkivera många små filer går snabbare och kräver mycket mindre minne.
-• Att extrahera många små filer tar ungefär halva tiden.
-• Varje åtgärd körs i en egen sandlåda, och dess tillfälliga filer ligger bredvid målet.
-• Åtgärdat: en fil vars namn slutar med ett blanksteg eller en punkt arkiveras inte längre med en annan fils innehåll och tas inte bort i dess ställe.
-• Åtgärdat: ett skadat krypterat arkiv rapporteras som skadat, inte som lösenordsskyddat.
-• Åtgärdat: Utforskarens kommandon visas åter på ditt språk, och Retur öppnar det markerade objektet.
+• Extrahering går snabbare: nya mappar når sitt mål i ett enda steg.
+• TAR.XZ- och TAR.ZST-arkiv skapas flera gånger snabbare, på flera processorkärnor.
+• Nytt alternativ ”Behåll innehållet i en skadad fil (ZIP)”: en fil som inte klarar kontrollen sparas med de byte som kunde läsas.
+• Åtgärdat: ett arkiv som anger en för liten storlek kan inte längre fylla disken vid extrahering.
+• Åtgärdat: ett ZIP-arkiv vars posthuvuden motsäger varandra avvisas, som 7-Zip gör.
+• Åtgärdat: aktivitetsfältet visar gult och rött även vid 0 %, och varje rad i fillistan har en egen ta bort-knapp.
+• Åtgärdat: avklippt text på spanska och grekiska.

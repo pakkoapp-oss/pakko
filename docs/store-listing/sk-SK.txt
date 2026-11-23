@@ -35,11 +35,10 @@ ZIP s heslom
 alternatíva 7-zip
 
 [What's new in this version]
-• Pakko teraz beží na .NET 11.
-• Veľké archívy sa otvárajú s oveľa menšou spotrebou pamäte.
-• Archivácia mnohých malých súborov je rýchlejšia a potrebuje oveľa menej pamäte.
-• Extrahovanie mnohých malých súborov trvá zhruba polovičný čas.
-• Každá operácia beží vo vlastnom izolovanom priestore a jej dočasné súbory sú uložené vedľa cieľa.
-• Opravené: súbor, ktorého názov končí medzerou alebo bodkou, sa už neukladá do archívu s obsahom iného súboru ani sa neodstráni namiesto neho.
-• Opravené: poškodený šifrovaný archív sa hlási ako poškodený, nie ako chránený heslom.
-• Opravené: príkazy Prieskumníka sa opäť zobrazujú vo vašom jazyku a Enter otvorí vybratú položku.
+• Extrahovanie je rýchlejšie: nové priečinky sa do cieľa dostanú jediným krokom.
+• Archívy TAR.XZ a TAR.ZST sa vytvárajú niekoľkokrát rýchlejšie, na viacerých jadrách procesora.
+• Nová možnosť „Uchovať obsah poškodeného súboru (ZIP)“: súbor, ktorý neprejde kontrolou, sa uloží s bajtmi, ktoré sa podarilo prečítať.
+• Opravené: archív, ktorý uvádza menšiu veľkosť, už pri extrahovaní nemôže zaplniť disk.
+• Opravené: archív ZIP, ktorého hlavičky položiek si odporujú, sa odmietne, rovnako ako v 7-Zip.
+• Opravené: panel úloh zobrazuje žltú a červenú aj pri 0 % a každý riadok zoznamu súborov má vlastné tlačidlo na odstránenie.
+• Opravené: orezaný text v španielčine a gréčtine.

@@ -35,11 +35,10 @@ tar gz
 jelszavas zip
 
 [What's new in this version]
-• A Pakko mostantól .NET 11 alatt fut.
-• A nagy archívumok sokkal kevesebb memóriával nyílnak meg.
-• Sok kis fájl archiválása gyorsabb, és sokkal kevesebb memóriát használ.
-• Sok kis fájl kibontása nagyjából feleannyi ideig tart.
-• Minden művelet a saját elkülönített környezetében fut, ideiglenes fájljai pedig a cél mellett vannak.
-• Javítva: a szóközre vagy pontra végződő nevű fájl már nem egy másik fájl tartalmával kerül az archívumba, és nem is törlődik helyette.
-• Javítva: a sérült titkosított archívumot sérültként jelzi, nem jelszóval védettként.
-• Javítva: az Intéző parancsai ismét az Ön nyelvén jelennek meg, és az Enter megnyitja a kijelölt elemet.
+• A kibontás gyorsabb: az új mappák egyetlen lépésben jutnak a céljukba.
+• A TAR.XZ és TAR.ZST archívumok többszörösen gyorsabban készülnek, több processzormagon.
+• Új beállítás: „Sérült fájl tartalmának megtartása (ZIP)” – az ellenőrzésen elbukó fájl a beolvasható bájtokkal együtt mentésre kerül.
+• Javítva: a méretét kisebbnek feltüntető archívum kibontáskor már nem töltheti meg a lemezt.
+• Javítva: az olyan ZIP-archívumot, amelynek elemfejlécei ellentmondanak egymásnak, a 7-Ziphez hasonlóan elutasítja.
+• Javítva: a tálca 0 %-nál is sárgát és pirosat mutat, és a fájllista minden sorának saját eltávolítás gombja van.
+• Javítva: levágott szöveg spanyol és görög nyelven.

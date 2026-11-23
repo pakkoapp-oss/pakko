@@ -35,11 +35,10 @@ tar gz
 zip med passord
 
 [What's new in this version]
-• Pakko kjører nå på .NET 11.
-• Store arkiver åpnes med langt mindre minne.
-• Arkivering av mange små filer går raskere og bruker langt mindre minne.
-• Utpakking av mange små filer tar omtrent halve tiden.
-• Hver operasjon kjører i sin egen sandkasse, og de midlertidige filene ligger ved siden av målet.
-• Rettet: En fil der navnet slutter med et mellomrom eller et punktum, arkiveres ikke lenger med innholdet i en annen fil eller slettes i stedet for den.
-• Rettet: Et skadet kryptert arkiv rapporteres som skadet, ikke som passordbeskyttet.
-• Rettet: Filutforsker-kommandoene vises igjen på ditt språk, og Enter åpner det valgte elementet.
+• Utpakking er raskere: nye mapper når målet sitt i ett trinn.
+• TAR.XZ- og TAR.ZST-arkiver opprettes flere ganger raskere, på flere prosessorkjerner.
+• Nytt alternativ «Behold innholdet i en skadet fil (ZIP)»: en fil som ikke består kontrollen, lagres med bytene som kunne leses.
+• Rettet: et arkiv som oppgir en for liten størrelse, kan ikke lenger fylle disken ved utpakking.
+• Rettet: et ZIP-arkiv der elementhodene motsier hverandre, avvises, slik 7-Zip gjør.
+• Rettet: oppgavelinjen viser gult og rødt selv ved 0 %, og hver rad i fillisten har sin egen fjern-knapp.
+• Rettet: avkuttet tekst på spansk og gresk.

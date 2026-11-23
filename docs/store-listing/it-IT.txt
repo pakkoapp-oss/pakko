@@ -35,11 +35,10 @@ zip con password
 open source
 
 [What's new in this version]
-• Pakko ora funziona su .NET 11.
-• Gli archivi di grandi dimensioni si aprono con molta meno memoria.
-• L'archiviazione di molti file piccoli è più veloce e usa molta meno memoria.
-• L'estrazione di molti file piccoli richiede circa la metà del tempo.
-• Ogni operazione viene eseguita nella propria sandbox e i suoi file temporanei restano accanto alla destinazione.
-• Corretto: un file il cui nome termina con uno spazio o un punto non viene più archiviato con il contenuto di un altro file né eliminato al suo posto.
-• Corretto: un archivio crittografato danneggiato viene segnalato come danneggiato, non come protetto da password.
-• Corretto: i comandi di Esplora file sono di nuovo nella tua lingua e Invio apre l'elemento selezionato.
+• L'estrazione è più veloce: le nuove cartelle raggiungono la destinazione in un solo passaggio.
+• Gli archivi TAR.XZ e TAR.ZST vengono creati diverse volte più velocemente, su più core del processore.
+• Nuova opzione «Conserva il contenuto di un file danneggiato (ZIP)»: un file che non supera la verifica viene salvato con i byte che è stato possibile leggere.
+• Corretto: un archivio che dichiara una dimensione inferiore non può più riempire il disco durante l'estrazione.
+• Corretto: un archivio ZIP le cui intestazioni delle voci si contraddicono viene rifiutato, come fa 7-Zip.
+• Corretto: la barra delle applicazioni mostra giallo e rosso anche allo 0 %, e ogni riga dell'elenco dei file ha il proprio pulsante di rimozione.
+• Corretto: testo tagliato in spagnolo e in greco.

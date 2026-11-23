@@ -35,11 +35,10 @@ parolalı zip
 açık kaynak
 
 [What's new in this version]
-• Pakko artık .NET 11 üzerinde çalışıyor.
-• Büyük arşivler çok daha az bellekle açılıyor.
-• Çok sayıda küçük dosyayı arşivlemek daha hızlı ve çok daha az bellek kullanıyor.
-• Çok sayıda küçük dosyayı ayıklamak yaklaşık yarı sürede tamamlanıyor.
-• Her işlem kendi korumalı alanında çalışır ve geçici dosyaları hedefin yanında tutulur.
-• Düzeltildi: adı boşluk veya noktayla biten bir dosya artık başka bir dosyanın içeriğiyle arşivlenmiyor ve onun yerine silinmiyor.
-• Düzeltildi: hasarlı şifreli bir arşiv, parola korumalı olarak değil, hasarlı olarak bildiriliyor.
-• Düzeltildi: Dosya Gezgini komutları yeniden sizin dilinizde görünüyor ve Enter seçili öğeyi açıyor.
+• Ayıklama daha hızlı: yeni klasörler hedeflerine tek adımda ulaşıyor.
+• TAR.XZ ve TAR.ZST arşivleri birden çok işlemci çekirdeğinde birkaç kat daha hızlı oluşturuluyor.
+• Yeni seçenek “Hasarlı bir dosyanın içeriğini sakla (ZIP)”: denetimden geçemeyen bir dosya, okunabilen baytlarla kaydedilir.
+• Düzeltildi: boyutunu olduğundan küçük bildiren bir arşiv ayıklanırken artık diski dolduramaz.
+• Düzeltildi: öğe başlıkları birbiriyle çelişen bir ZIP arşivi, 7-Zip'te olduğu gibi reddedilir.
+• Düzeltildi: görev çubuğu %0'da bile sarı ve kırmızı gösteriyor ve dosya listesinin her satırının kendi kaldırma düğmesi var.
+• Düzeltildi: İspanyolca ve Yunancada kesilen metin.

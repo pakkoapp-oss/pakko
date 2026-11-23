@@ -155,7 +155,7 @@ PAR2), з ключами на кшталт `-p`, `-ao`, `-sdel`, `-rr`. Кома
 
 ## Стан
 
-Останній реліз: v1.11.0. Історія релізів: [`CHANGELOG.md`](CHANGELOG.md) (англійською). План
+Останній реліз: v1.12.0. Історія релізів: [`CHANGELOG.md`](CHANGELOG.md) (англійською). План
 розвитку: [`docs/SPEC.md`](docs/SPEC.md), «Future Roadmap». Відкриті задачі:
 [`docs/TASKS.md`](docs/TASKS.md).
 

@@ -35,11 +35,10 @@ zip z hasłem
 otwarty kod źródłowy
 
 [What's new in this version]
-• Pakko działa teraz na platformie .NET 11.
-• Duże archiwa otwierają się przy znacznie mniejszym zużyciu pamięci.
-• Archiwizowanie wielu małych plików jest szybsze i wymaga znacznie mniej pamięci.
-• Wypakowywanie wielu małych plików trwa mniej więcej o połowę krócej.
-• Każda operacja działa we własnej piaskownicy, a jej pliki tymczasowe są przechowywane obok miejsca docelowego.
-• Naprawiono: plik, którego nazwa kończy się spacją lub kropką, nie jest już archiwizowany z zawartością innego pliku ani usuwany zamiast niego.
-• Naprawiono: uszkodzone zaszyfrowane archiwum jest zgłaszane jako uszkodzone, a nie jako chronione hasłem.
-• Naprawiono: polecenia Eksploratora znów są wyświetlane w Twoim języku, a Enter otwiera zaznaczony element.
+• Wypakowywanie jest szybsze: nowe foldery trafiają do miejsca docelowego w jednym kroku.
+• Archiwa TAR.XZ i TAR.ZST są tworzone kilka razy szybciej, na wielu rdzeniach procesora.
+• Nowa opcja „Zachowaj zawartość uszkodzonego pliku (ZIP)”: plik, który nie przejdzie kontroli, jest zapisywany z bajtami, które udało się odczytać.
+• Naprawiono: archiwum zaniżające swój rozmiar nie może już zapełnić dysku podczas wypakowywania.
+• Naprawiono: archiwum ZIP, którego nagłówki pozycji są ze sobą sprzeczne, jest odrzucane, tak jak w 7-Zip.
+• Naprawiono: pasek zadań pokazuje kolor żółty i czerwony nawet przy 0 %, a każdy wiersz listy plików ma własny przycisk usuwania.
+• Naprawiono: obcięty tekst w języku hiszpańskim i greckim.
