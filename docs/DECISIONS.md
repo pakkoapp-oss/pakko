@@ -15064,6 +15064,49 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## Batch 11 (v1.12.0) - App, localization, UI (2026-11-23)
+
+One deploy (package 1.11.0.12, the title bar's build time two minutes old), every check by the agent.
+The user's language list was saved first (`Export-Clixml`) and put back after, keyboards included.
+
+- **T-F393 closed by measurement.** Under uk-UA, 20 cold starts of `Archiver.App.exe`, a topmost
+  window over the window's right half, About invoked through UI Automation as soon as the button
+  exists (about 0.5 s after the start). The dialog came in 33-74 ms each time; the button was
+  disabled while it was open and enabled after. With the 25 tries of 2026-10-29 that is 45 of 45
+  since the one sighting of 2026-10-12. Reopen on a repro.
+- **T-F91 and T-F328 done on the device.** One language at a time as the whole list, no sign-out,
+  the App restarted each time, and three views each: the main window, a damaged ZIP opened through
+  `Archiver.Shell.exe --open-ui --browse` (a Core error), and an ordinary ZIP's archive view.
+
+  | Language | Result |
+  |---|---|
+  | ar-SA, he-IL, ur-PK | The window and the error dialog mirrored; the title bar stays left to right on purpose |
+  | de-DE, ja-JP | Nothing cut; the PAR2 percentage box inside its card (T-F387) |
+  | es-ES, el-GR | Test and Close archive fit; the extraction note wraps and scrolls with the cards |
+  | hu-HU, vi-VN | Clear fits; the radio buttons fit |
+  | ru-RU alone | en-US throughout (no language Pakko has, so the neutral one) |
+
+  The UI Automation names of each view were compared with the ru-RU (English) run. Equal in
+  every language: the caption buttons (WinAppSDK names them, T-F268 (g)), `CRC-32`, file names,
+  sizes and dates. Equal in some, and right there: "Hash" in de, es and hu (the glossary's word),
+  "OK", "Error", "Name", "Format:". The Core error is translated in every language. Explorer's
+  Pakko submenu came up in Spanish under es-ES while Windows' own items stayed Ukrainian: the menu
+  reads the user language list (`HKCU\Control Panel\International\User Profile`) at each call,
+  so it needs no sign-out either. A sign-out and a regional variant stay `APP-021` (batch 8).
+- **T-F328's left-out style points closed by decision.** These are the quote, dash and apostrophe
+  forms, one button form in bg and he, the el junction word, zh-Hans full-width punctuation and
+  hu "hibák". None changes a meaning, each touches many strings, and no native reviewer is
+  available (the user, 2026-10-05).
+- **T-F202 closed: its coverage is now the smoke catalogue's.** Its open items are rows, run in
+  batch 8: the light theme `APP-013`, keyboard only `APP-012`, the tray `APP-020`, and en-US with a
+  regional variant `APP-021`. The diagram gap it carried from T-F193 is closed by diagram 9 and
+  diagram 3's encrypted-entry nodes.
+- **T-F02 closed by decision (the user's OK in the batch plan).** A one-line "dedicated archive
+  window" with no criteria, named nowhere else; the App's option cards hold those settings.
+  Reopen when the user describes the window.
+- **T-F329 part 5 moved to batch 8.** The Store screenshots are retaken with English first in the
+  language list, next to that release's Store assets.
+
 ## Batch 10 (v1.12.0) - the tar.exe fallback and the engine backlog (2026-11-23)
 
 Ten tasks, each done or closed by a decision recorded here (the wave's rule). From this batch on the
