@@ -29,10 +29,10 @@ internal static class NewestSourceTime
                     newest = Later(newest, File.GetLastWriteTimeUtc(source));
                 continue;
             }
-            foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name), spelledBelow: true))
+            foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name), spelledBelow: true)
+                .Where(entry => IsArchivedContent(entry.Kind)))
             {
-                if (IsArchivedContent(entry.Kind))
-                    newest = Later(newest, entry.Info.LastWriteTimeUtc);
+                newest = Later(newest, entry.Info.LastWriteTimeUtc);
             }
         }
         return newest;
