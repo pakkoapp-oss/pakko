@@ -17194,3 +17194,245 @@ more to the delta than the sandbox primitives themselves in 3 of 4 scenarios. St
 CVE, so the "no confirmed exploit to close" reasoning above is unchanged and this stays deferred —
 but if ever revisited, `PublishReadyToRun`/a persistent pre-warmed worker is now a known real
 question, not just AppContainer/Job-Object setup cost (which this spike shows is already cheap).
+
+### T-F02 — Dedicated Archive Window
+- [x] **Status:** closed 2026-11-23 by decision (batch 11, the user's OK in the batch plan): one line, no criteria, named nowhere else; the App's option cards already hold the archive settings. Reopen when the user describes what the window should hold (`docs/DECISIONS.md`, "Batch 11 (v1.12.0)")
+- [ ] **Status:** future
+
+Separate window for archive configuration instead of inline controls.
+
+### T-F91 — Multi-Language Localization (OS-Language Auto-Match, English Fallback)
+- [x] **Status:** done 2026-11-23 (batch 11, package 1.11.0.12, agent-driven): the user's language list set to one language at a time, no sign-out, the App restarted each time. ar-SA, he-IL and ur-PK lay out right to left (the title bar stays left to right on purpose; the "never sets `FlowDirection`" note below predates T-F386); de-DE, ja-JP, es-ES, el-GR, hu-HU and vi-VN cut no label, the archive view included; a Core error (a damaged ZIP) is translated in each; ru-RU alone falls back to en-US. Only English left: the caption buttons (WinAppSDK, T-F268 (g) closed upstream). The native-speaker review is closed by the user's decision (2026-10-05: no native reviewers); a sign-out and a regional variant stay `APP-021` (batch 8) (`docs/DECISIONS.md`, "Batch 11 (v1.12.0)")
+- [~] **Status:** (2026-10-03) all 37 locales ship in every localized frontend (the CLI stays English by design, T-F209): the App's `.resw`, Shell's `OperationText.resx`, the Explorer menu table and `Archiver.Messages` (App and Messages key parity are test-enforced). Left for the release: a native-speaker review and an on-screen layout check per language, RTL (he/ar/ur) included, plus T-F268 (g)'s caption-button tooltips. Earlier status: partial — first batch (all 24 European locales) implemented 2026-07-07;
+      Arabic/Japanese/Chinese/etc. (the non-European half of the target list) not started;
+      on-device verification, layout-corruption check, and native-speaker translation review
+      still outstanding for the European batch. See `DECISIONS.md`'s T-F91 entry.
+      **Parity gap found and fixed 2026-07-14:** every string key added by later features
+      (T-F05's browse-mode columns/buttons/tray menu/archive-option items, T-F06's conflict
+      dialog) had only ever been added to `en-US` and `uk-UA` — the other 22 European locales
+      were silently 37 keys behind (31/68 real keys), falling back to English for a large
+      fraction of the UI. Found by diffing `<data name=` counts across all 25 `Resources.resw`
+      files rather than trusting this doc. Translated the missing 37 keys into all 22 locales
+      (bg/cs/da/de/el/es/et/fi/fr/hr/hu/it/lt/lv/nb/nl/pl/pt/ro/sk/sl/sr-Latn/sv), matching each
+      locale's existing established terminology; all 25 locale files now carry the same 68 real
+      keys (`en-US` stays at 70 — its 2 non-translatable URL keys are deliberately absent from
+      every other locale, per this task's own design). `dotnet build src/Archiver.App.csproj`
+      confirmed 0 errors with the expanded resources.
+      **Non-European batch AI-translated 2026-07-15** (user-directed — see below on why this is
+      AI translation, not native-speaker review): all 12 previously-unstarted locales now have a
+      full `Resources.resw` with the same 68 real keys — `ar-SA` (Arabic), `ja-JP` (Japanese),
+      `zh-Hans` (Chinese, Simplified — no region/dialect specified by the user, chose the
+      Simplified/mainland default per Windows' own MUI convention), `id-ID` (Indonesian), `hi-IN`
+      (Hindi), `vi-VN` (Vietnamese), `tr-TR` (Turkish), `ko-KR` (Korean), `ur-PK` (Urdu), `th-TH`
+      (Thai), `he-IL` (Hebrew), `sw-KE` (Swahili). `dotnet build src/Archiver.App/Archiver.App.csproj
+      /p:Platform=x64` confirmed 0 errors/warnings and the generated `AppxManifest.xml` lists all
+      37 `<Resource Language>` entries (was 25) with no manual manifest edit — `x-generate` picked
+      up all 12 new folders automatically, as designed. **Known limitation, not fixed by this
+      batch:** Arabic/Urdu/Hebrew text is translated into the correct RTL script and will shape
+      correctly character-by-character (Windows' own text renderer handles that), but Pakko's XAML
+      never sets `FlowDirection` — the overall UI layout (button order, alignment) stays
+      left-to-right rather than mirroring, which is its own separate scope this task's acceptance
+      criteria never asked for (only "layout corruption" — clipping/truncation — was in scope, not
+      full RTL mirroring). Worth a follow-up task if true RTL mirroring is ever wanted.
+      Native-speaker review pass for all 36 non-English locales remains outstanding — text is
+      AI-translated to a professional-UI standard throughout, consistent with this task's own
+      "don't ship an unreviewed MT dump" caution; see the criterion below for why this batch could
+      only close the missing-language gap, not the review requirement itself.
+- **Priority:** low ("nice to have" bonus, per user)
+- **Depends on:** none
+
+**What:** `src/Archiver.App/Strings/` currently has only `en-US/Resources.resw` — the app is
+English-only. WinUI 3 + MSIX already auto-select the UI language from the OS display language
+via resource qualifiers (folder name = BCP-47 locale, declared in `Package.appxmanifest`'s
+`<Resources>` element) — no app code is needed for the matching itself, only the translated
+`Resources.resw` per locale plus the manifest declarations.
+
+**Explicitly out of scope (confirmed with user):**
+- No installer-time language picker — MSIX has no install-time UI to add one to.
+- No install-location picker — MSIX always installs to the sandboxed `WindowsApps` path;
+  there is no user-choosable install directory on this platform. Document as a non-goal in
+  `DECISIONS.md` rather than revisiting.
+- No in-app manual language override — OS-language auto-match only, per user's stated scope.
+
+**Target language list (confirm before starting translation work — large scope, deliver
+incrementally per locale rather than all at once):**
+- European, human-quality translation, **excluding Russian and Belarusian**: Ukrainian, German,
+  French, Spanish, Italian, Polish, Portuguese, Dutch, Romanian, Czech, Slovak, Hungarian, Greek,
+  Swedish, Danish, Finnish, Norwegian, Bulgarian, Croatian, Serbian, Slovenian, Estonian, Latvian,
+  Lithuanian
+- Additional (user-requested, beyond Europe): Arabic, Japanese, Chinese, Indonesian, Hindi,
+  Vietnamese, Turkish, Korean, Urdu, Thai, Hebrew, Swahili
+- **Explicitly excluded:** Persian/Farsi (per user — Iran)
+- Any OS language not on this list falls back to `en-US` — WinUI 3's `ResourceManager` does this
+  automatically as long as `en-US` stays the manifest's neutral/default language.
+
+**Note on translation quality:** user asked for "human" quality, not raw machine translation —
+each locale needs a native-speaker pass or at minimum a correctness review before shipping;
+don't ship an unreviewed MT dump under a locale folder.
+
+**Acceptance criteria:**
+- [x] Final language list confirmed with user before translation work begins — European batch
+      (all 24 locales) confirmed 2026-07-07; non-European batch (Arabic, Japanese, Chinese,
+      Indonesian, Hindi, Vietnamese, Turkish, Korean, Urdu, Thai, Hebrew, Swahili) confirmed
+      2026-07-15
+- [x] `Resources.resw` created under `Strings/<locale>/` for each confirmed locale, translating
+      every key already in `en-US/Resources.resw` — all 36 non-English locales (24 European +
+      12 non-European) now carry the same 68 real keys (2 URL keys deliberately omitted
+      everywhere except `en-US`, see `DECISIONS.md`)
+- [x] `Package.appxmanifest`'s `<Resources>` element declares every shipped locale — confirmed
+      automatic via the existing `<Resource Language="x-generate"/>`; generated `AppxManifest.xml`
+      lists all 37 locales after a `dotnet build`, no manual manifest edit needed (was 25 before
+      this round's 12 non-European additions)
+- [x] OS display language automatically selects the matching `Resources.resw` with no app code
+      change — verified on-device for `uk-UA` 2026-07-15 via a direct screenshot of the installed,
+      packaged app (Windows UI-automation MCP wasn't loaded this session — used a self-contained
+      PowerShell `GetWindowRect`/`CopyFromScreen` capture instead, see `.claude.local.md`). This
+      pass is also what found and fixed **T-F104** — the Archive/Extract buttons never actually
+      respected any locale (dead resw keys), and the empty-state hint text was clipped — both real
+      bugs unrelated to this criterion itself but caught while verifying it
+- [ ] An excluded/unsupported OS language (e.g. `ru-RU`) falls back to `en-US` text, not a
+      blank string or resource-load crash — **not verified this round.** The only way to exercise
+      this without an in-app language override (a confirmed non-goal above) is to reorder the
+      Windows display-language list, which is a system-settings change outside what an agent should
+      do unattended — needs either the user doing it themselves, or the Windows MCP automation tool
+      (not loaded this session) if it has its own mechanism
+- [x] No installer-time language picker or install-location picker added (confirmed non-goal)
+- [~] Max text-length budget determined per UI string (buttons, labels, dialog titles) — not
+      systematically done across all 36 locales, but the one real overflow this round's on-device
+      pass surfaced (the empty-state hint text, locale-independent — see T-F104) was found and
+      fixed. No locale-specific "this translation is too long for its control" case confirmed yet
+- [~] Manual on-device check for layout corruption (clipped/overlapping/truncated text, buttons
+      that no longer fit their label) on at least one long-text locale (e.g. German) and one
+      wide-glyph/RTL locale (e.g. Arabic or Hebrew) — done for `uk-UA` only (found and fixed a real
+      clipping bug, T-F104); German/Arabic/Hebrew specifically still need either the user's own
+      on-device pass with the display language changed, or the Windows MCP tool
+- [x] `dotnet build src/Archiver.App` succeeds with all new resources — 0 warnings, 0 errors
+- [x] `DECISIONS.md` entry: MSIX install-location non-goal + language auto-match mechanism
+- [ ] Native-speaker/correctness review pass on all 36 non-English translations before shipping —
+      current text (including the 12 non-European locales added 2026-07-15) is AI-translated to a
+      professional-UI standard but unreviewed, per this task's own "don't ship an unreviewed MT
+      dump" requirement. An AI agent cannot substitute for this — genuinely needs a human native
+      speaker per locale
+
+### T-F202 — Full UI smoke test: every feature, every menu and submenu (batch gate)
+
+- [x] **Status:** closed 2026-11-23 (batch 11): the open items moved to the smoke catalogue, not verified here: the light theme `APP-013`, keyboard only `APP-012`, the tray `APP-020`, en-US and a regional variant `APP-021`, all in batch 8; the real-console CLI was done 2026-10-29; the diagram gap from T-F193 is closed by diagram 9 (creation routing) and diagram 3's encrypted-entry nodes. Its findings (T-F204 onward) stay in `docs/TASKS.md` under their own heading
+- [~] **Progress 2026-09-24 (discovery pass run against CI build 1.4.12.9):** covered — Explorer
+  menu in all 9 selection contexts plus the classic menu, every Explorer command via
+  `Archiver.Shell.exe` (incl. conflict, password, bomb dialogs), both App modes control by control,
+  `.7z` cold/warm activation, every CLI command and most switches, and heavy scenarios on
+  multi-GB real data (3.4 GB ZIP test/extract, 5.1 GB ZIP and TAR create + round trip, all
+  byte-identical to the source). Findings filed as T-F204-T-F225 (plus additions to T-F197,
+  T-F198, T-F199, T-F201). **Still open:** light theme and en-US (need a system setting change),
+  keyboard-only pass (focus not reliably visible to automation), tray icon, the CLI in a real
+  console (masked `-p`, Y/N/A/S/U/Q, Ctrl+C, PowerShell 5.1). Caveat: the test machine's ANSI code
+  page is 65001, so code-page bugs 1251/1252 users would hit are invisible here. (Correction
+  2026-09-25: `GetACP()`/registry now report ACP 1251, OEMCP 866 — see T-F204.) Coverage table,
+  results and the N-number-to-task mapping: batch plan section 5.
+- [~] **Progress 2026-10-29 (v1.9.0, package 1.8.1.22, a real `conhost` console driven through the `windows`
+  MCP server, the screen buffer read back with `ReadConsoleOutputCharacter`):** `pakko x enc.zip -p` prompts
+  "Password for enc.zip:", echoes `*` per key, extracts with the typed password (`CLI-013`); the overwrite
+  prompt shows both sizes and times, asks again after an unknown answer, `u` renames both (`a (1).txt`),
+  `q` stops with "operation stopped by user", exit 255; Ctrl+C at the prompt exits 255 and writes
+  nothing. Windows PowerShell 5.1 is `CLI-009`; the keyboard-only pass is `APP-012`.
+- [ ] **Status:** open — a required gate for closing this batch (user instruction 2026-09-24: the
+  app is live on the Microsoft Store and earlier self-testing missed real defects). Agent-driven via
+  `windows` MCP against the freshly deployed MSIX, with a written checklist and a pass/fail per item:
+  every button and option of the main window in both modes; every Explorer context-menu command
+  and submenu (Pakko root, Extract Here/to folder/Open, Add to X.zip/.tar, Test, Scan for threats,
+  Hash) on files, folders, multi-selection and a drive root; every dialog (conflict,
+  password decrypt/encrypt, summary, bomb warning, About); the CLI commands including the real-
+  console prompts; ZIP and tar-family formats; Ukrainian and English UI. **Discovery only (user
+  decision 2026-09-24):** every defect found, however small, becomes its own task with repro steps
+  and priority; fixes go to a separate follow-up batch (with T-F198-T-F201), tests first. **Method (user instruction 2026-09-24):** before the first click,
+  build a coverage table — one row per action or menu item, including every Explorer context-menu
+  dropdown submenu and the classic "Show more options" menu: surface, menu path, selection context,
+  expected behavior, visual check (icon, text, locale, order, separators, enabled state,
+  light/dark theme), result, UX notes. The tester acts as QA + UI/UX reviewer: judge the app's
+  overall behavior while testing (feedback, consistency, dangerous actions, stray windows, focus,
+  accessibility), not just pass/fail. **CLI:** a smoke test of every command/switch plus a deep
+  usability review of `pakko.exe` against real `7z` and CLI best practice (ripgrep/fd/bat/gh/tar/
+  curl: help and error text, switch consistency, TTY/color/`NO_COLOR`, progress, quiet/verbose,
+  scripting stability, exit codes, Unicode/long paths); every divergence from 7z is either
+  documented as deliberate in `docs/CLI.md` or filed as a defect. Also carries the diagram gap from DECISIONS' T-F193 entry (no
+  diagram models `ArchiveAsync` routing; diagram 3 has no encrypted-entry branch).
+- **Reported by:** user instruction, 2026-09-24.
+
+### T-F328 — Localization audit fixes: wrong meanings and one term per action in 36 locales (P2)
+
+- [x] **Status:** done 2026-11-23 (batch 11, package 1.11.0.12): the on-device look under a non-English language list: the main window and the archive view in es, el, hu, vi, de, ja, ar, he and ur cut nothing (es and el Test and Close archive, the radio buttons, hu and vi Clear included), a Core error in each, and Explorer's Pakko submenu in es-ES (it reads the user language list at each call; no sign-out). The left-out style points are closed by decision: none changes a meaning and each touches many strings (`docs/DECISIONS.md`, "Batch 11 (v1.12.0)")
+- [~] **Status:** in progress. A read-through of every translated string (339 keys, 36 locales,
+  2026-10-05) found 10 strings with a wrong meaning, 68 with a wrong or inconsistent term and
+  ~226 style points. Root cause of most: `CoreMessages` was translated apart from the App and the
+  Explorer menu, with no glossary, so one action has two or three words depending on the surface.
+  The full per-locale list (key, current text, problem, proposed text) is outside the repo, next
+  to the v1.7.0 plan (`pakko-localization-audit-2026-10-05.md`).
+- **Phase 1 — wrong meaning (10):**
+  - [x] es-ES, el-GR: "one archive / separate archives / new archive" read as "one file / new file"
+  - [x] it-IT, sv-SE, hi-IN: `NewArchiveCollapsedReason` says "compressed", not "collapsed"
+  - [x] et-EE, lv-LV: menu `Add to "{0}"` lost the "to" (`archiveNamedTemplate`)
+  - [x] ar-SA: `AboutTagline` calls the app an archive, not an archiver
+  - [x] sw-KE: one word for archive, drive, Save and Keep
+  - [x] ur-PK: "inconsistent" translated as "temporary" (`TarListingInconsistent`, `ListingInconsistent`)
+- **Phase 2 — one term per action inside each locale (B items):**
+  - [x] extract: pl, cs, sk, bg, lv, et, tr; compress: hr, sr-Latn, lt; password: de
+  - [x] archive: es, el, ko, vi, ja, zh-Hans, hi, th, sw
+  - [x] Test must not read as Scan: uk, lv, el, hi (Core), it, lt (buttons)
+  - [x] Clear / Remove from list must not use the word for Delete: hu, vi, sw, id, sk
+  - [x] the single-string B items: fi tray menu and MiB unit, hash naming (pl, ro, lv, hr, sl, fi, vi), de/sv/sl
+    "cannot be browsed", sk tar.exe word order, es/it/pt `TarListingInconsistent`, he and bg taglines, he
+    and sr-Latn list gender, he format term, hu sandbox, ja punctuation word, id Recycle Bin, ur spelling
+- **Phase 4 — the audit's concrete style points (96 values):**
+  - [x] the compression-level list and its summary line use one word (fr, es, it, pt, ro, el, ko, hi, lt,
+    lv, zh-Hans); the decompression-bomb term matches Core (nb, tr, ko, ar, he); grammar and agreement
+    fixes (it, sv, cs, sl, ro, nb, fi, et, he, pl, nl); single words that differed between surfaces
+    (pt, da, bg, hr, sr-Latn, hu, id, vi, sw, th, hi, uk, ja)
+  - [ ] left out: quote, dash and apostrophe normalisation; one grammatical form on buttons in bg and
+    he; el junction word; zh-Hans full-width punctuation; hu "hibák" for "issues". None changes a
+    meaning; each touches many strings
+- **Phase 3 — dropped:** the audit proposed lower-casing the word in brackets of `extractHereIntelligent`.
+  That capital is deliberate: the item copies NanaZip's own text (see T-F115's entry and
+  `LocalizationTests.cpp`), so nothing changes there.
+- **Tie-break for "one term":** the variant the Explorer menu and the main window already share
+  wins; where they differ, the more frequent one. Choices: `docs/DECISIONS.md`'s T-F328 entry.
+- **Done (2026-10-05):** 609 values in all 36 locales, all through a script that checks the
+  current value before it writes.
+- **No native review:** none is available for this many languages (user, 2026-10-05), so the
+  translations stand on this audit alone; sw-KE, ur-PK and th-TH are the least certain.
+- **Out of scope:** `LocalHeaderMismatch` (T-F323 rewrites it in all locales); any change to the
+  English source text (it mirrors `MessageTemplates.cs`, the CLI's output); quote, dash and
+  apostrophe normalisation and the other style points (a later pass); the file-type names in
+  `Package.appxmanifest`, which are not localized at all (own task when wanted).
+- **Acceptance:**
+  - [x] every edit applied by a script that asserts the current value first
+  - [x] `dotnet test` default filter green; `Archiver.ShellExtension.Tests.exe` green; the
+    ShellExtension DLL builds
+  - [ ] one on-device look at a non-English locale (menu, main window, one Core error)
+    — needs a non-English Windows session; put in the backlog with no date (user, 2026-10-05), not
+    a release gate. Look for
+    cut-off labels where the text grew: es and el Test/Close archive buttons, radio buttons and
+    the menu's "Add to archive…", hu and vi Clear
+  - [x] `Archiver.App` builds with the changed `.resw` files
+- **Reported by:** localization audit, 2026-10-05.
+
+### T-F393 — The About button went disabled once and no dialog came (P3)
+
+- [x] **Status:** closed 2026-11-23 by measurement (batch 11, package 1.11.0.12, uk-UA): 20 more cold starts under the original conditions (a topmost window over the right half, About invoked through UI Automation as soon as the button exists, about 0.5 s after the start): the dialog in 33-74 ms each time, the button disabled while it is open and enabled after; 45 of 45 since the one sighting. Reopen on a repro; the next step stays a second dialog in the stuck window
+- [ ] **Status:** deferred past 1.9.0 (2026-10-29, agent: P3, no repro). Package 1.8.1.19, uk-UA: About opened
+  25 times out of 25 - 15 in one window through UI Automation's Invoke (the dialog in ~140 ms, the button
+  disabled while it is open, enabled after), and 10 cold starts of `Archiver.App.exe` with a topmost window
+  over the window's right half, About invoked as soon as the window had a handle (dialog in 139-159 ms).
+  Earlier: package 1.8.1.5 (`b146f3b`), uk-UA, 2026-10-12. The App was started with
+  `Start-Process` on `Archiver.App.exe` in the install folder; a topmost Windows Terminal window
+  covered the right half of its window, the About button included. One UI Automation click on
+  About: the button reads disabled from then on, no dialog is in the UI Automation tree or on a
+  picture of the window taken after the terminal was minimized, `pakko.log` has "Pakko started"
+  only, the Application event log has nothing. The window was closed after about two minutes.
+  Three more tries (one under the same topmost window) opened the dialog. So `ShowAboutAsync`
+  was entered and never finished, without a dialog on screen. `DialogService` has no gate of
+  its own: every dialog calls `ContentDialog.ShowAsync` directly, and WinUI allows one open
+  dialog per window. Not tried in that window: whether a second dialog (a name conflict, a
+  password prompt) would still open; if WinUI counted the About dialog as open, it would not.
+  Next: reproduce, then try a second dialog in the stuck window. Does not hold the v1.8.1 tag:
+  seen once in five tries, with no known trigger.
+- **Reported by:** the release-tier smoke run of v1.8.1 (`APP-001`), 2026-10-12.
