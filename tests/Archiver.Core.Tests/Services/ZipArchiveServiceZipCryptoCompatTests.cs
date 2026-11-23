@@ -180,6 +180,30 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         Directory.EnumerateFiles(_temp.Path, "*.damaged*", SearchOption.AllDirectories).Should().BeEmpty();
     }
 
+    // T-F496 review: decryption follows the local header; a central directory that says "plain"
+    // must not make the wrong password's output keepable.
+    [Fact]
+    public async Task ExtractAsync_KeepDamaged_CentralDirectorySaysPlain_KeepsNothing()
+    {
+        (string? zip, string? colliding) = LargeZipCryptoWithCollidingPassword();
+        byte[] bytes = File.ReadAllBytes(zip);
+        int central = ZipArchiveServiceExtractIntegrityTests.FindHeaders(bytes, "big.bin").Central;
+        bytes[central + 8] &= 0xFE;
+        File.WriteAllBytes(zip, bytes);
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = Path.Combine(_temp.Path, "keep"),
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = Fixed(colliding),
+            KeepDamagedFiles = true,
+        });
+
+        result.Success.Should().BeFalse();
+        Directory.EnumerateFiles(_temp.Path, "*.damaged*", SearchOption.AllDirectories).Should().BeEmpty();
+    }
+
     // T-F244 item 3: a non-ASCII ZipCrypto password's bytes depend on the tool that made the
     // archive — Windows tools use the ANSI code page (7-Zip/NanaZip decode with CP_ACP), Linux ones
     // UTF-8. Pakko tried UTF-8 only, so a Cyrillic password from a Windows tool never matched.

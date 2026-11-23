@@ -2058,16 +2058,19 @@ public sealed class ZipArchiveService : IArchiveService
     private static string RenameAsDamaged(string destFilePath, string finalFilePath, ExtractionPlan plan)
     {
         string finalFolder = Path.GetDirectoryName(finalFilePath)!;
+        string stagedFolder = Path.GetDirectoryName(destFilePath)!;
         HashSet<string> claimed = plan.Names.Claimed;
         string keptName = ArchiveNaming.GetUniqueName(EntryDiskName.Damaged(Path.GetFileName(finalFilePath)), candidate =>
         {
             string full = Path.Combine(finalFolder, candidate);
-            return File.Exists(full) || Directory.Exists(full) || claimed.Contains(full);
+            string staged = Path.Combine(stagedFolder, candidate);
+            return File.Exists(full) || Directory.Exists(full) || claimed.Contains(full)
+                || File.Exists(staged) || Directory.Exists(staged);
         });
         string keptFinalPath = Path.Combine(finalFolder, keptName);
         try
         {
-            File.Move(destFilePath, Path.Combine(Path.GetDirectoryName(destFilePath)!, keptName));
+            File.Move(destFilePath, Path.Combine(stagedFolder, keptName));
         }
         catch
         {
@@ -2150,7 +2153,9 @@ public sealed class ZipArchiveService : IArchiveService
     {
         // T-F496: only a plain entry's damage can keep a file: an encrypted one's cannot be told
         // from a wrong password that passed the check value.
-        VerifyingReadStream? keepFrom = context.KeepDamaged && !named.Entry.IsEncrypted ? entryStream as VerifyingReadStream : null;
+        // The local header picks decryption (OpenEntryContentStream), so both headers must say plain.
+        bool plain = named.Located is not { GeneralPurposeEncryptedBit: true } && !named.Entry.IsEncrypted;
+        VerifyingReadStream? keepFrom = context.KeepDamaged && plain ? entryStream as VerifyingReadStream : null;
         long totalUncompressedBytes = plan.TotalUncompressedBytes;
         if (context.Progress != null && totalUncompressedBytes > 0)
         {

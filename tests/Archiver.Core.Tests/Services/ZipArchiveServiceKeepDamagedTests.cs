@@ -292,6 +292,44 @@ public sealed class ZipArchiveServiceKeepDamagedTests : IDisposable
         (ownLanded || ownReported).Should().BeTrue("the archive's own entry is extracted under another name or reported");
     }
 
+    // T-F496 review: an earlier entry's folder of the kept name is staged, not yet at the
+    // destination; the kept file takes a numbered name instead of losing its bytes.
+    [Fact]
+    public async Task EarlierFolderNamedLikeTheKeptFile_KeptFileIsNumbered()
+    {
+        string zip = Path.Combine(_temp.Path, "folder.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        {
+            using (var inner = new StreamWriter(archive.CreateEntry("doc.txt" + EntryDiskName.DamagedSuffix + "/x.bin", CompressionLevel.NoCompression).Open()))
+                inner.Write("inner");
+            using var doc = new StreamWriter(archive.CreateEntry("doc.txt", CompressionLevel.NoCompression).Open());
+            doc.Write(LongContent);
+        }
+        FlipByteOf(zip, LongContent, 5);
+
+        ArchiveResult result = await ExtractAsync(zip);
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.EntryKeptDamaged);
+        File.ReadAllText(Path.Combine(Dest, "doc.txt (1).damaged")).Should().Be(Flipped(LongContent, 5));
+        File.ReadAllText(Path.Combine(Dest, "doc.txt.damaged", "x.bin")).Should().Be("inner");
+    }
+
+    // T-F496 review: a name at the limit, kept twice, still fits once numbered.
+    [Fact]
+    public async Task LongNameKeptTwice_NumberedNameStillFits()
+    {
+        string longName = new string('n', 247) + ".txt";
+        string zip = CreateZip("long.zip", CompressionLevel.NoCompression, longName);
+        FlipByteOf(zip, LongContent, 5);
+
+        await ExtractAsync(zip);
+        ArchiveResult second = await ExtractAsync(zip);
+
+        second.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.EntryKeptDamaged);
+        Directory.EnumerateFiles(Dest, "*" + EntryDiskName.DamagedSuffix).Should().HaveCount(2)
+            .And.AllSatisfy(f => Path.GetFileName(f).Length.Should().BeLessThanOrEqualTo(255));
+    }
+
     // Only damage keeps a file: a cancel in the middle of the entry leaves nothing behind.
     [Fact]
     public async Task CancelledInsideTheEntry_KeepsNothing()

@@ -1231,6 +1231,19 @@ re-measured with T-F346's script before and after.
   MAC leave no such proof short of a good CRC-32 on another entry; decide here whether that counts.
 - **Reported by:** the agent (T-F496's plan), 2026-11-22.
 
+### T-F569 - T-F496's kept file against the other engines and folders (P3, from the T-F496 review)
+
+- [ ] **Status:** open. Found by the opus review of PR #281 (`docs/DECISIONS.md`, "Batch 7 (v1.12.0)"):
+  1. `BareGzipEngine.PlanAsync` never asks `ExtractionNameRegistry.MustKeepApart`, so
+     `pakko x -kb -y data.zip data.txt.damaged.gz` (a damaged `data.txt`) writes the gzip's output
+     over the kept file. The ZIP and tar engines rename apart; route the gzip engine through the
+     same rule, with a test.
+  2. A good entry `a.txt.damaged/x.bin` after a damaged `a.txt` fails at `CreateDirectory`, since
+     the staged kept file holds the name: with `-kb` a good entry fails that extracts without it.
+  3. SingleFolder: when `a2.zip` keeps a file under a name `a1.zip` wrote, `a1.zip` is counted
+     Partial and is not deleted after, though its file is untouched. Safe side; fix only if cheap.
+- **Reported by:** the agent (opus review), 2026-11-23.
+
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)
 
 - [~] **Status:** step 1 done 2026-11-12 (`LitmusPaperTests`, Slow, in the canary; `docs/DECISIONS.md`, "T-F508 step 1"). Left: five canary nights, then a gate; the two device checks, batched with stream E's on-device checks (one Deploy.ps1 for both, the agent's decision 2026-11-12).

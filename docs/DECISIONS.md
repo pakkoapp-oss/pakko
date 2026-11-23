@@ -15124,6 +15124,14 @@ its HMAC with the same password, is T-F568.
   still named them.
 - *Explorer never keeps* (no Shell option); the App's box hides under the policy and for the one
   file the unsafe-type warning extracts to open.
+- *The opus review (2026-11-23) found five P3s, no P1/P2.* Fixed here, each test seen red first:
+  plainness is decided from the local header too, which is what picks decryption (a central
+  directory saying "plain" over a ZipCrypto local header kept a wrong password's output); the kept
+  name is numbered past a staged file or folder of that name (an earlier `a.txt.damaged/` folder
+  made the rename fail and lose the bytes); `EntryDiskName.Damaged` leaves room for `" (99999)"`,
+  so a numbered kept name stays within 255 units. Left to T-F569: a bare `.gz` later in the run
+  does not honour the claimed-apart rule; a later folder named like a kept file fails; an earlier
+  archive can be counted Partial when a later one keeps a file under its name (the safe side).
 
 ## Batch 5 (v1.12.0) - names (T-F556, T-F563, T-F559; 2026-11-22)
 
