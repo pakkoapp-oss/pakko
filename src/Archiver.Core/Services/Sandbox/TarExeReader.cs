@@ -321,6 +321,16 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             }
         }
 
+        // A faithful listing (no folders taken from the disk) decided the root on true names; else
+        // the quarantine's top level decides it (T-F453), first copies included.
+        public bool HoldsOneRoot() =>
+            foldersFromDisk is null
+            || QuarantineFiles.Walk(outDir).Select(item => QuarantineFiles.Relative(outDir, item.Path))
+                .Select(relative => relative.Split(Path.DirectorySeparatorChar)[0])
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(2)
+                .Count() == 1;
+
         public void EnsureNoneMissing()
         {
             // T-F462: nothing is committed unless every file entry reached the quarantine or was reported

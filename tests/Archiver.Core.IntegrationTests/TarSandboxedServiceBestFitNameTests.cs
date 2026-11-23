@@ -212,6 +212,33 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         Everything(dest).Should().BeEquivalentTo(["x.txt", "empty"], TarCodePage.Describe());
     }
 
+    // T-F453: two true roots the listing shows as one ("caf<accent>" and the plain name) are not one
+    // root: neither is dropped, so their files do not merge.
+    [Integration]
+    public async Task Extract_TwoTrueRootsListedAsOne_RootKept_NothingMerged()
+    {
+        if (await BestFitFolderArchiveAsync("tworoots", f =>
+            [
+                TarBuilder.PaxPath(f + "/x.txt"),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("X") },
+                new TarBuilder.Entry { Name = PlainOf(f) + "/y.txt", Content = Encoding.ASCII.GetBytes("Y") },
+            ]) is not { } fixture)
+            return;
+        string named = Path.Combine(_temp.Path, fixture.ListedFolder + ".tar");
+        File.Copy(fixture.Path, named);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [named], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            EliminateDuplicateRootFolder = true,
+        });
+
+        result.Errors.Should().BeEmpty(TarCodePage.Describe());
+        File.ReadAllText(Path.Combine(dest, fixture.Folder, "x.txt")).Should().Be("X", TarCodePage.Describe());
+        File.ReadAllText(Path.Combine(dest, fixture.ListedFolder, "y.txt")).Should().Be("Y", TarCodePage.Describe());
+    }
+
     // T-F461 item 5: "d./" then "d./x.txt" lands in "d", whose "x.txt" is already at the destination:
     // a name Windows trims never replaces a file, under Overwrite too (as ZIP).
     [Integration]
@@ -237,6 +264,8 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         File.ReadAllText(Path.Combine(dest, "d", "x.txt")).Should().Be("mine");
         File.ReadAllText(Path.Combine(dest, "d", "x (1).txt")).Should().Be("new");
     }
+
+    private static string PlainOf(string accented) => accented[..^1] + (accented[^1] == (char)0xE9 ? 'e' : 'a');
 
     // A filter decides on folder names too; a folder listed by best fit makes them untrustworthy.
     [Integration]

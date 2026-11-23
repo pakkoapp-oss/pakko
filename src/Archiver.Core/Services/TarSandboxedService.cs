@@ -583,6 +583,8 @@ public sealed class TarSandboxedService : ITarService
             progress != null && progressTotalBytes > 0 ? new ExtractionPoll(progress, progressTotalBytes, split.ExtractionEnd) : null,
             skippedFiles, cancellationToken)
             .ConfigureAwait(false);
+        // T-F453: two true roots listed by one best-fit name are two roots: neither is dropped.
+        stripRootPrefix = stripRootPrefix && quarantine.HoldsOneRoot();
 
         // T-F263: the same staging + commit as ZIP extraction (ExtractionStaging) — files move from
         // the quarantine into a staging folder on the destination's volume, and only a finished
