@@ -2023,24 +2023,30 @@ public sealed class TarSandboxedService : ITarService
         long totalBytes = 0;
         foreach (WalkEntry entry in DirectoryWalker.Walk(sourcePath, leaveOut))
         {
-            if (entry.Kind == WalkEntryKind.LeftOut)
+            switch (entry.Kind)
             {
-                leftOut?.Add(entry.Info);
-                continue;
+                case WalkEntryKind.LeftOut:
+                    leftOut?.Add(entry.Info);
+                    continue;
+                case WalkEntryKind.TrimmedName:
+                case WalkEntryKind.DeviceName:
+                    unopened?.Add(entry);
+                    break;
+                case WalkEntryKind.File:
+                    totalBytes += FileLengthOrZero((FileInfo)entry.Info);
+                    files?.Add(entry.Info.FullName);
+                    break;
+                case WalkEntryKind.ReparsePoint:
+                    links?.Add(entry.Info);
+                    break;
+                case WalkEntryKind.Directory:
+                case WalkEntryKind.UnreadableDirectory:
+                    break;
             }
-            if (entry.Kind is WalkEntryKind.TrimmedName or WalkEntryKind.DeviceName)
-                unopened?.Add(entry);
             bool isRoot = count == 0; // the walk always starts with the root itself
             count++;
             if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name, commandLinePage))
                 unrepresentable = entry.Info.FullName;
-            if (entry.Kind == WalkEntryKind.File)
-            {
-                totalBytes += FileLengthOrZero((FileInfo)entry.Info);
-                files?.Add(entry.Info.FullName);
-            }
-            else if (entry.Kind == WalkEntryKind.ReparsePoint)
-                links?.Add(entry.Info);
         }
 
         return (count, totalBytes, unrepresentable);

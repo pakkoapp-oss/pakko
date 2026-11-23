@@ -217,6 +217,8 @@ public static class FileHashService
                 case WalkEntryKind.DeviceName:
                     entries.Add(CoreMessages.HashError(entry.Info.FullName, CoreMessages.Text(MessageCode.SourceNotFound, entry.Info.FullName)));
                     break;
+                case WalkEntryKind.LeftOut: // the hash walk gives no filter
+                    break;
             }
         }
         return files;

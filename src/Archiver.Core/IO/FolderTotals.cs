@@ -18,7 +18,7 @@ public readonly record struct FolderTotals(long Bytes, int Files)
         foreach (WalkEntry entry in DirectoryWalker.Walk(folder, spelledBelow: true))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (entry.Kind != WalkEntryKind.File)
+            if (!IsCountedFile(entry.Kind))
                 continue;
             try
             {
@@ -31,5 +31,24 @@ public readonly record struct FolderTotals(long Bytes, int Files)
             }
         }
         return new FolderTotals(bytes, files);
+    }
+
+    /// <summary>T-F572: whether a walked entry counts as a file this total holds: what ZIP archives.</summary>
+    internal static bool IsCountedFile(WalkEntryKind kind)
+    {
+        switch (kind)
+        {
+            case WalkEntryKind.File:
+                return true;
+            // Not archived: ZIP refuses a device name (T-F559) and skips a link; no filter is given.
+            case WalkEntryKind.Directory:
+            case WalkEntryKind.ReparsePoint:
+            case WalkEntryKind.UnreadableDirectory:
+            case WalkEntryKind.LeftOut:
+            case WalkEntryKind.TrimmedName:
+            case WalkEntryKind.DeviceName:
+                return false;
+        }
+        throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
     }
 }

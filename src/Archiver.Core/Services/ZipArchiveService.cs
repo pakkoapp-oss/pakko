@@ -2491,7 +2491,7 @@ public sealed class ZipArchiveService : IArchiveService
         long largest = 0;
         foreach (WalkEntry entry in DirectoryWalker.Walk(dir, spelledBelow: true))
         {
-            if (entry.Kind != WalkEntryKind.File)
+            if (!FolderTotals.IsCountedFile(entry.Kind))
                 continue;
             try
             {

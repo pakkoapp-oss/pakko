@@ -273,16 +273,26 @@ public static class TempOwner
 
         foreach (WalkEntry walked in DirectoryWalker.WalkAsSpelled(literal))
         {
-            if (walked.Kind == WalkEntryKind.ReparsePoint)
+            switch (walked.Kind)
             {
-                if (walked.Info is DirectoryInfo)
-                    Directory.Delete(walked.Info.FullName, recursive: false);
-                else
-                    File.Delete(walked.Info.FullName);
-            }
-            else if (walked.Kind == WalkEntryKind.File && (walked.Info.Attributes & FileAttributes.ReadOnly) != 0)
-            {
-                walked.Info.Attributes &= ~FileAttributes.ReadOnly;
+                case WalkEntryKind.ReparsePoint:
+                    if (walked.Info is DirectoryInfo)
+                        Directory.Delete(walked.Info.FullName, recursive: false);
+                    else
+                        File.Delete(walked.Info.FullName);
+                    break;
+                case WalkEntryKind.File when (walked.Info.Attributes & FileAttributes.ReadOnly) != 0:
+                    walked.Info.Attributes &= ~FileAttributes.ReadOnly;
+                    break;
+                // Walked as spelled, so no name is trimmed or a device; the recursive delete below
+                // removes the rest, and reports what it cannot.
+                case WalkEntryKind.File:
+                case WalkEntryKind.Directory:
+                case WalkEntryKind.UnreadableDirectory:
+                case WalkEntryKind.LeftOut:
+                case WalkEntryKind.TrimmedName:
+                case WalkEntryKind.DeviceName:
+                    break;
             }
         }
         Directory.Delete(literal, recursive: true);
