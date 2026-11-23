@@ -150,7 +150,7 @@ public sealed class EntryDiskNameTests
         names.Claim(@"C:\o\a.txt", namedDifferently: false);
         names.CurrentArchive = @"C:\a2.tar";
 
-        bool renamedAsInThisArchive = names.ClaimedInThisArchive.Contains(@"C:\o\a.txt");
+        bool renamedAsInThisArchive = names.WrittenByCurrentArchive(@"C:\o\a.txt");
         names.Claim(@"C:\o\a.txt", namedDifferently: false);
 
         renamedAsInThisArchive.Should().BeFalse("-aot renames the earlier archive's file, which is on disk");

@@ -40,6 +40,7 @@ public sealed partial class DestinationFolderOwnerTests
         ("Archiver.Core/Services/ZipArchiveService.cs", "Directory.CreateDirectory(destDir)", 1, "the destination after TryCreate, or its subfolder named by ArchiveNaming.GetFolderName"),
         ("Archiver.Core/Services/ZipArchiveService.cs", "Directory.CreateDirectory(folder)", 1, "an entry's folder in the staging, named by EntryDiskName"),
         ("Archiver.Core/Services/ZipArchiveService.cs", "Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!)", 1, "an entry's folder in the staging, named by EntryDiskName"),
+        ("Archiver.Core/Services/ZipArchiveService.cs", "Directory.CreateDirectory(kept.StagedFolder)", 1, "a kept damaged file's folder in the staging, the one its entry was written in (T-F570)"),
     ];
 
     [Fact]

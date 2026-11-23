@@ -30,7 +30,7 @@ internal sealed class ExtractionStaging : IDisposable
     private readonly Dictionary<string, DateTime> _folderTimes = [with(StringComparer.OrdinalIgnoreCase)];
 
     private readonly HashSet<string> _renameExisting = [with(StringComparer.OrdinalIgnoreCase)];
-    private HashSet<string>? _claimedFinalPaths;
+    private ExtractionNameRegistry? _names;
     private readonly List<string> _leftOutThroughLink = [];
 
     /// <summary>T-F419: what <see cref="CommitInto"/> left out because its path in the destination
@@ -58,25 +58,22 @@ internal sealed class ExtractionStaging : IDisposable
 
     /// <summary>T-F411: <see cref="Models.ConflictBehavior.RenameExisting"/> - the file at
     /// <paramref name="finalPath"/> is renamed in the commit, just before the staged one takes its
-    /// name. <paramref name="claimedFinalPaths"/> is every path this run writes, so the new name is
-    /// never one the archive is still to write.</summary>
-    public void RenameExistingOnCommit(string finalPath, HashSet<string> claimedFinalPaths)
+    /// name. <paramref name="names"/> holds every path this run writes, so the new name is never one
+    /// the archive is still to write (T-F570: its <see cref="ExtractionNameRegistry.IsTaken"/>).</summary>
+    public void RenameExistingOnCommit(string finalPath, ExtractionNameRegistry names)
     {
         _renameExisting.Add(System.IO.Path.GetFullPath(finalPath));
-        _claimedFinalPaths = claimedFinalPaths;
+        _names = names;
     }
 
-    /// <summary>T-F411: both engines' -aot rule for one conflict. Against an earlier entry of this
-    /// archive (nothing on disk to rename yet) the new file is renamed instead - <see
-    /// cref="Models.ConflictBehavior.Rename"/>; against a file on disk - an earlier archive's of the
-    /// same extraction too (T-F420) - it is planned for the commit and the entry keeps its name.
-    /// Never the overwrite every other value of the callers' chain falls into.</summary>
-    internal Models.ConflictBehavior PlanRenameOfExisting(string finalPath, ExtractionNameRegistry names)
+    /// <summary>T-F570: moves <paramref name="stagedFile"/> out of the staging tree into the work root
+    /// (role "k", the same volume), where no entry's name can meet it; returns where it is. It goes
+    /// with the work root when the run ends before it is placed.</summary>
+    public string HoldAside(string stagedFile)
     {
-        if (names.ClaimedInThisArchive.Contains(finalPath))
-            return Models.ConflictBehavior.Rename;
-        RenameExistingOnCommit(finalPath, names.Claimed);
-        return Models.ConflictBehavior.RenameExisting;
+        string held = _work.NewFile("k", string.Empty);
+        File.Move(stagedFile, held);
+        return held;
     }
 
     /// <summary>T-F298: the time a folder entry gets at the destination, by its path relative to
@@ -461,7 +458,7 @@ internal sealed class ExtractionStaging : IDisposable
         {
             string path = System.IO.Path.Combine(folder, candidate);
             return path.Equals(full, StringComparison.OrdinalIgnoreCase) || File.Exists(path) || Directory.Exists(path)
-                || (_claimedFinalPaths?.Contains(path) ?? false);
+                || (_names?.IsTaken(path) ?? false);
         });
         return System.IO.Path.Combine(folder, name);
     }

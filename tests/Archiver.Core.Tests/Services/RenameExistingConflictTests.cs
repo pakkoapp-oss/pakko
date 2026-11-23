@@ -254,7 +254,7 @@ public sealed class RenameExistingConflictTests : IDisposable
         using var staging = ExtractionStaging.Create(_temp.Path);
         string staged = Path.Combine(staging.Path, "a.txt");
         File.WriteAllText(staged, "new");
-        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.Combine(dest, "a.txt") };
+        ExtractionNameRegistry claimed = Claiming(Path.Combine(dest, "a.txt"));
         staging.RenameExistingOnCommit(Path.Combine(dest, "a.txt"), claimed);
 
         IReadOnlyList<string> locked;
@@ -274,7 +274,7 @@ public sealed class RenameExistingConflictTests : IDisposable
         Directory.CreateDirectory(Path.Combine(dest, "a (1).txt"));
         using var staging = ExtractionStaging.Create(_temp.Path);
         File.WriteAllText(Path.Combine(staging.Path, "a.txt"), "new");
-        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.Combine(dest, "a.txt") };
+        ExtractionNameRegistry claimed = Claiming(Path.Combine(dest, "a.txt"));
         staging.RenameExistingOnCommit(Path.Combine(dest, "a.txt"), claimed);
 
         staging.CommitInto(dest).Should().BeEmpty();
@@ -291,8 +291,7 @@ public sealed class RenameExistingConflictTests : IDisposable
         using var staging = ExtractionStaging.Create(_temp.Path);
         File.WriteAllText(Path.Combine(staging.Path, "readme"), "new");
         File.WriteAllText(Path.Combine(staging.Path, "readme (1)"), "from archive");
-        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { Path.Combine(dest, "readme"), Path.Combine(dest, "readme (1)") };
+        ExtractionNameRegistry claimed = Claiming(Path.Combine(dest, "readme"), Path.Combine(dest, "readme (1)"));
         staging.RenameExistingOnCommit(Path.Combine(dest, "readme"), claimed);
         string nonCanonical = dest.Replace('\\', '/') + "/./";
 
@@ -309,12 +308,20 @@ public sealed class RenameExistingConflictTests : IDisposable
         string dest = CreateDest(("other.txt", "x"));
         using var staging = ExtractionStaging.Create(_temp.Path);
         File.WriteAllText(Path.Combine(staging.Path, "a.txt"), "new");
-        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.Combine(dest, "a.txt") };
+        ExtractionNameRegistry claimed = Claiming(Path.Combine(dest, "a.txt"));
         staging.RenameExistingOnCommit(Path.Combine(dest, "a.txt"), claimed);
 
         staging.CommitInto(dest).Should().BeEmpty();
 
         Read(dest, "a.txt").Should().Be("new");
         Directory.GetFiles(dest).Should().HaveCount(2);
+    }
+
+    private static ExtractionNameRegistry Claiming(params string[] paths)
+    {
+        var names = new ExtractionNameRegistry();
+        foreach (string path in paths)
+            names.Claim(path, namedDifferently: false);
+        return names;
     }
 }

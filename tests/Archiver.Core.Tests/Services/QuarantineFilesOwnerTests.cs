@@ -29,8 +29,6 @@ public sealed partial class QuarantineFilesOwnerTests
         ("Sandbox/TarExeReader.cs", "Path.GetFullPath(Path.Combine(plan.ActualDest, relative))", 1, "the destination, a path Pakko chose"),
         ("Sandbox/TarExeReader.cs", "Directory.CreateDirectory(Path.Combine(plan.Staging.Path, relative))", 1, "the staging folder, Pakko's names"),
         ("Sandbox/HelperReader.cs", "Directory.CreateDirectory(Path.Combine(placement.Staging.Path, relative))", 1, "the staging folder, Pakko's names"),
-        ("TarSandboxedService.cs", "File.Exists(finalFilePath)", 1, "the destination, a path Pakko chose"),
-        ("TarSandboxedService.cs", "Directory.Exists(finalFilePath)", 1, "the destination, a path Pakko chose"),
         ("TarSandboxedService.cs", "Path.GetFullPath(Path.Combine(actualDest, relativePath))", 1, "the destination, a path Pakko chose; the trim it makes is detected right after (trimmedHere)"),
         ("TarSandboxedService.cs", "Path.GetRelativePath(actualDest, finalFilePath)", 1, "the destination, a path Pakko chose"),
         ("TarSandboxedService.cs", "Directory.CreateDirectory(Path.GetDirectoryName(stagedFilePath)!)", 1, "the staging folder, Pakko's names"),

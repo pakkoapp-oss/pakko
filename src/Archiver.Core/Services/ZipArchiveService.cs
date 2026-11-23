@@ -1713,6 +1713,7 @@ public sealed class ZipArchiveService : IArchiveService
                 extractedCount++;
             bytesRead += bytesConsumed;
         }
+        PlaceKeptFiles(plan, context, archivePath);
 
         foreach (string relativePath in staging.CommitInto(actualDest, committed: context.OnItemExtracted))
         {
@@ -1847,6 +1848,9 @@ public sealed class ZipArchiveService : IArchiveService
     {
         // T-F358: the archive's Zone.Identifier, read once; null when there is none to write.
         public byte[]? Motw { get; init; }
+
+        // T-F570: this archive's damaged entries held for PlaceKeptFiles.
+        public List<KeptDamaged> Kept { get; } = [];
     }
 
     // One entry of ExtractWithSmartFolderingAsync's loop — every one of the 6 skip-gates below is
@@ -1935,13 +1939,6 @@ public sealed class ZipArchiveService : IArchiveService
         return below.Length > 0 ? below : null;
     }
 
-    // T-F419: "a.txt." and "a.txt" are two entries Windows writes under one name; neither may
-    // overwrite the other, -y or not (7-Zip keeps both, as "a.txt_"). T-F420 review: nor a file
-    // already on disk, which a trimmed name or an 8.3 alias does not name.
-    private static bool KeptApart(ExtractionNameRegistry names, string finalFilePath, string entryName, bool namedDifferently, bool aliasOfAnother) =>
-        names.MustKeepApart(finalFilePath, namedDifferently)
-        || ((EntryDiskName.Trims(entryName) || aliasOfAnother) && !names.Claimed.Contains(finalFilePath));
-
     // T-F197: a folder entry gets the same containment and reparse-point checks as a file entry,
     // then is created in staging; the commit carries it across even when it stays empty. Counts
     // as extracted only when the folder is new at the destination — otherwise re-extracting with
@@ -1961,6 +1958,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Directory.CreateDirectory(folder);
+        plan.Names.ClaimFolder(Path.GetFullPath(Path.Combine(plan.ActualDest, relativePath)));
         plan.Staging.RecordFolderTime(relativePath, named.ModifiedUtc);
         return !Directory.Exists(Path.Combine(plan.ActualDest, relativePath));
     }
@@ -1974,7 +1972,6 @@ public sealed class ZipArchiveService : IArchiveService
         string fullTempDest = plan.FullTempDest;
         string actualDest = plan.ActualDest;
         ExtractionNameRegistry names = plan.Names;
-        HashSet<string> claimedFinalPaths = names.Claimed;
 
         string destFilePath = Path.GetFullPath(Path.Combine(plan.TempDest, relativePath));
 
@@ -2004,36 +2001,26 @@ public sealed class ZipArchiveService : IArchiveService
         // an 8.3 alias ("LONGFI~1.TXT") that resolves to an earlier entry's long name.
         bool aliasOfAnother = !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
         bool trimmedByWindows = EntryDiskName.Renames(named.FullName) || aliasOfAnother;
-        bool earlierRenamedAway = false;
         string entryFinalPath = finalFilePath;
-        if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath)
-            || (context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
+        // T-F419: "a.txt." and "a.txt" are two entries Windows writes under one name; neither may
+        // overwrite the other, -y or not (7-Zip keeps both, as "a.txt_"). T-F420 review: nor a file
+        // already on disk, which a trimmed name or an 8.3 alias does not name.
+        Placement placement = await names.PlaceAsync(
+            new PlaceRequest(finalFilePath, trimmedByWindows, EntryDiskName.Trims(named.FullName) || aliasOfAnother,
+                () => (named.Entry.Length, new DateTimeOffset(named.ModifiedUtc).ToLocalTime())),
+            context.ConflictResolver, plan.Staging).ConfigureAwait(false);
+        if (placement.Path is null)
         {
-            int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
-            ConflictBehavior resolvedConflict = KeptApart(names, finalFilePath, named.FullName, trimmedByWindows, aliasOfAnother)
-                ? ConflictBehavior.Rename
-                : await context.ConflictResolver
-                    .ResolveAsync(finalFilePath, named.Entry.Length, new DateTimeOffset(named.ModifiedUtc).ToLocalTime()).ConfigureAwait(false);
-            if (resolvedConflict == ConflictBehavior.Skip)
-            {
-                // T-F216: the user's own Skip answer is not reported back; only an automatic one (T-F313).
-                // T-F415: a path this run already wrote (a skip never claims one) is not a file that was there.
-                context.ConflictSkippedEntries.Add((relativePath, ByUser: context.ConflictResolver.UserSkipCount != userSkipsSoFar,
-                    InRun: claimedFinalPaths.Contains(finalFilePath)));
-                return (false, named.Entry.Length);
-            }
-            // T-F411: -aot.
-            if (resolvedConflict == ConflictBehavior.RenameExisting)
-                resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, names);
-            earlierRenamedAway = resolvedConflict == ConflictBehavior.RenameExisting;
-            if (resolvedConflict == ConflictBehavior.Rename)
-            {
-                string uniqueFinal = ArchiveNaming.GetUniqueFilePath(finalFilePath, claimedFinalPaths);
-                destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));
-                finalFilePath = uniqueFinal;
-            }
+            // T-F216: the user's own Skip answer is not reported back; only an automatic one (T-F313).
+            context.ConflictSkippedEntries.Add((relativePath, placement.SkippedByUser, placement.SkippedInRun));
+            return (false, named.Entry.Length);
         }
-        names.Claim(finalFilePath, trimmedByWindows, earlierRenamedAway);
+        if (!placement.Path.Equals(finalFilePath, StringComparison.Ordinal))
+        {
+            destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(placement.Path));
+            finalFilePath = placement.Path;
+        }
+        names.ClaimParents(finalFilePath, actualDest);
 
         // T-F189: entry names are never encrypted by the ZIP format itself, so every check above
         // (ADS/reserved-name, traversal, reparse-point, conflict) already ran unmodified before
@@ -2049,50 +2036,62 @@ public sealed class ZipArchiveService : IArchiveService
 
         InvalidDataException? damage = await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, plan,
             bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
-        KeepIfDamaged(damage, named, relativePath, destFilePath, entryFinalPath, plan, context);
+        KeepIfDamaged(damage, named, relativePath, destFilePath, entryFinalPath, plan);
 
         return (true, named.Entry.Length);
     }
 
-    // T-F496: the staged file becomes "name.damaged" (EntryDiskName.Damaged) after the entry's own
-    // name, not the one a conflict gave it, and numbered rather than over any file. The good name
-    // stays unwritten, so a file -aot was to rename away stays: the commit renames one only for a
-    // staged file of its name.
+    // T-F496: what a damaged entry decoded is held out of staging (T-F570) until every entry of the
+    // archive is placed; it then becomes "name.damaged" after the entry's own name, not the one a
+    // conflict gave it (PlaceKeptFiles). The good name stays unwritten, so a file -aot was to rename
+    // away stays: the commit renames one only for a staged file of its name.
     private static void KeepIfDamaged(InvalidDataException? damage, NamedZipEntry named, string relativePath,
-        string destFilePath, string finalFilePath, ExtractionPlan plan, ZipExtractionContext context)
+        string destFilePath, string finalFilePath, ExtractionPlan plan)
     {
         if (damage is null)
             return;
-        string keptName = RenameAsDamaged(destFilePath, finalFilePath, plan);
-        context.Errors.Add(CoreMessages.Error(plan.Names.CurrentArchive, CoreMessages.Text(MessageCode.EntryKeptDamaged,
-            named.FullName, Path.Combine(Path.GetDirectoryName(relativePath)!, keptName), CoreMessages.Detail(damage)), damage));
-    }
-
-    private static string RenameAsDamaged(string destFilePath, string finalFilePath, ExtractionPlan plan)
-    {
-        string finalFolder = Path.GetDirectoryName(finalFilePath)!;
-        string stagedFolder = Path.GetDirectoryName(destFilePath)!;
-        HashSet<string> claimed = plan.Names.Claimed;
-        string keptName = ArchiveNaming.GetUniqueName(EntryDiskName.Damaged(Path.GetFileName(finalFilePath)), candidate =>
-        {
-            string full = Path.Combine(finalFolder, candidate);
-            string staged = Path.Combine(stagedFolder, candidate);
-            return File.Exists(full) || Directory.Exists(full) || claimed.Contains(full)
-                || File.Exists(staged) || Directory.Exists(staged);
-        });
-        string keptFinalPath = Path.Combine(finalFolder, keptName);
+        string held;
         try
         {
-            File.Move(destFilePath, Path.Combine(stagedFolder, keptName));
+            held = plan.Staging.HoldAside(destFilePath);
         }
         catch
         {
             TryDeleteBestEffort(destFilePath);
             throw;
         }
-        // Named apart from its entry, so a later entry of this name is renamed, never written over it.
-        plan.Names.Claim(keptFinalPath, namedDifferently: true);
-        return keptName;
+        plan.Kept.Add(new KeptDamaged(held, Path.GetDirectoryName(destFilePath)!, finalFilePath,
+            Path.GetDirectoryName(relativePath)!, named.FullName, CoreMessages.Detail(damage)));
+    }
+
+    // T-F570: one damaged entry's held bytes and where its kept file goes. Only what the message
+    // needs is kept, never the exception: the list grows with the damaged entries of one archive.
+    private sealed record KeptDamaged(string HeldPath, string StagedFolder, string FinalPath, string RelativeFolder,
+        string EntryName, CoreText Detail);
+
+    // T-F570: after the archive's last entry, before the commit and before its outcome is counted, so
+    // a later file or folder of the kept name always keeps its own name and the archive stays Partial.
+    private static void PlaceKeptFiles(ExtractionPlan plan, ZipExtractionContext context, string archivePath)
+    {
+        foreach (KeptDamaged kept in plan.Kept)
+        {
+            string keptName = plan.Names.PlaceKept(kept.FinalPath, candidate =>
+                File.Exists(Path.Combine(kept.StagedFolder, candidate)) || Directory.Exists(Path.Combine(kept.StagedFolder, candidate)));
+            try
+            {
+                Directory.CreateDirectory(kept.StagedFolder);
+                File.Move(kept.HeldPath, Path.Combine(kept.StagedFolder, keptName));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                context.Errors.Add(CoreMessages.Error(archivePath,
+                    CoreMessages.Text(MessageCode.CannotExtractEntry, kept.EntryName, CoreMessages.Detail(ex)), ex));
+                continue;
+            }
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryKeptDamaged,
+                kept.EntryName, Path.Combine(kept.RelativeFolder, keptName), kept.Detail)));
+        }
+        plan.Kept.Clear();
     }
 
     // T-F189: the encrypted-ZIP plug-in point — everything else about extraction (destination
