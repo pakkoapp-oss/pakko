@@ -15064,6 +15064,31 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## v1.12.0 - the release record (2026-11-23)
+
+- **Wave PR.** #284 (`wave-v1.12-rest`, batches 8 to 12 of the wave) merged into `main` after `test`,
+  CodeQL and lint passed; SonarCloud's gate on #284 OK with 0 open issues. `Category=Slow` green on
+  the branch the same day (48 tests). The bump commit (Identity 1.12.0.0, `CHANGELOG.md` dated
+  2026-11-23, the Store listing's "What's new" in 37 languages, README/README.uk latest release,
+  SPEC released) changes no `src` file but the manifest's Identity.
+- **"What's new":** seven lines. The new option is named in each language as the App's own
+  `KeepDamagedCheck.Content` names it, copied from the `.resw` by the script, not retyped.
+- **Smoke on the host** (Windows 11 26300, tar.exe 3.8.9), dev package 1.11.0.13 (`Deploy.ps1`,
+  built 2026-11-23 13:30 from the wave's code):
+  - `Invoke-Smoke.ps1 -Tier release`: 119 OK, 0 FAIL, 1,980 s. Skipped: `REL-002` (no canary run on
+    the commit yet) and `PKG-006..009` (they need `-PackageLifecycle`, run before the tag).
+  - `POL-011`, elevated: `pakko x -kb` under `DisableKeepDamagedFiles` = 1 exits 2 naming the
+    policy, nothing kept; the App on a ZIP while the policy was held shows no keep box (it does
+    without it). The policy key was left as it was found.
+  - T-F561 (the `CLI-073` archive, a gzip of 346 bytes holding a streamed 64 MiB ZIP entry): Explorer's
+    Extract Here and the App's Extract all each show "Content is larger than its declared size
+    (0 bytes)" with the Ukrainian text in front; nothing in the destination.
+  - `APP-028`: a ZIP holding `a.txt` twice, Overwrite, recycle on: the archive kept, the dialog names
+    the reason. `APP-029`: `a?b.txt` next to `a_b.txt` opens with its own bytes and extracts as
+    `a_b.txt`, the real `a_b.txt` numbered.
+- **Not done here:** `STO-008` on ARM64 (no ARM64 machine at hand; T-F562 stays `[~]`, the helper tested
+  on the `windows-11-arm` runner); the other `mcp` rows of the tier stay "manual", as for v1.11.0.
+
 ## Batch 8 (v1.12.0) - the release holds only this wave's own checks (2026-11-23)
 
 The user, 2026-11-23: the older tasks came into the release batch without a reason, so they are taken

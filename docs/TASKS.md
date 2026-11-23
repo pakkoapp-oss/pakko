@@ -83,7 +83,7 @@ reviewer at the batch's close, with the user's OK.
 | 10 | The tar.exe fallback and the engine backlog | T-F453 (not a placement defect, batch 9), T-F575, T-F445, T-F461, T-F464, T-F469, T-F568, T-F121, T-F132 (T-F359 moved to batch 8, then out of the release with the other older tasks, 2026-11-23) (each: done, or closed by a measurement or a decision recorded in DECISIONS) | Both tar builds; measured before and after where it is a speed task |
 | 11 | App, localization, UI | T-F02, T-F91, T-F202, T-F328, T-F329, T-F393 (done 2026-11-23: T-F91, T-F328 on the device; T-F202 to the smoke catalogue; T-F393 closed by measurement; T-F02 closed by decision; T-F329's screenshots moved to batch 8) | One deploy; the APP rows each one names |
 | 12 | Distribution and the user's own steps | T-F10, T-F119, T-F127, T-F144, T-F152 (close or rescope), T-F331, T-F332 (done 2026-11-23, the user left each to the agent: T-F119, T-F127, T-F152, T-F332 closed; T-F10 and T-F144 open past the wave; T-F331 to batch 8) | Only with the user's OK, item by item: T-F127 and T-F144 are the user's own posts, T-F10 waits on a signing provider |
-| 8 | Release | Only this wave's own checks: `POL-011` (T-F496's policy, elevated), T-F561's error in the App and in Explorer, T-F562's `STO-008` if an ARM64 machine is at hand, the release tier of `docs/SMOKE.md`, `Category=Slow` (green 2026-11-23 on `wave-v1.12-rest`); `CHANGELOG.md` and the Store listing's "What's new" for 1.12.0; the tag after the user's OK. Older tasks are not part of this release (the user, 2026-11-23) and stay open in this file: T-F254, T-F317, T-F329 part 5, T-F331's sv-SE fields, T-F359, T-F432, T-F444, T-F446, T-F447, T-F494, T-F508, and 1.11.0's `STO-005`, `STO-006` and `STO-008` | As batch 8 of v1.11.0 |
+| 8 | Release | Only this wave's own checks: `POL-011` (T-F496's policy, elevated; passed 2026-11-23), T-F561's error in the App and in Explorer (done 2026-11-23), T-F562's `STO-008` if an ARM64 machine is at hand, the release tier of `docs/SMOKE.md`, `Category=Slow` (green 2026-11-23 on `wave-v1.12-rest`); `CHANGELOG.md` and the Store listing's "What's new" for 1.12.0; the tag after the user's OK. Older tasks are not part of this release (the user, 2026-11-23) and stay open in this file: T-F254, T-F317, T-F329 part 5, T-F331's sv-SE fields, T-F359, T-F432, T-F444, T-F446, T-F447, T-F494, T-F508, and 1.11.0's `STO-005`, `STO-006` and `STO-008` | As batch 8 of v1.11.0 |
 
 Order: this plan, then batch 1, then 2 and 3; 4 to 7 between them while no long series runs; then
 9, 10 and 11; 12 alongside, as the user decides; 8 last.
@@ -767,24 +767,6 @@ re-measured with T-F346's script before and after.
   native ARM64, the MSIX carries the ARM64 helper, the helper tests run native on `canary-arm64`
   (`NativeFact`), and one run in an AppContainer on a real ARM64 machine.
 - **Reported by:** the agent (batch 8), 2026-11-20.
-
-### T-F561 - tar.exe wrote more than its listing declared: a 7 KB gzip filled 4 GiB (P2, batch 6's review)
-
-- [~] **Status:** fixed on `fix/tf561-write-cap` (2026-11-21); `CLI-073` passed on 1.11.0.4, the 4 GiB
-  file stopped in 1.1 s with nothing written; the App's and Explorer's view of the error waits for batch 8.
-  The premise "no such format is reachable" was wrong: a gzip (or any filter tar.exe reads) holding a
-  ZIP written as a stream, its sizes in data descriptors after the data, is detected as GZip and read
-  by tar.exe, whose streaming ZIP reader lists the entry as 0 bytes, so T-F94's ratio check saw 0.
-  Measured on 3.8.9 and on PakkoW10's 3.5.2: `pakko x` of a 65 KB file wrote 64 MiB, exit 0; a 6.9 KB
-  one is 4 GiB, written at about 1.3 GB/s; the job's CPU limit (an hour at least) would allow terabytes.
-  Fix: every `-x` run (extraction, the first copies, Test's `-O`, the scan's) is held by
-  `JobWriteLimit` to the declared bytes of what it extracts: the job's own `WriteTransferCount`
-  less the stderr Pakko read, over the declared bytes and 1 MiB, stops the job; the run fails with
-  `ContentLargerThanDeclared`. `docs/DECISIONS.md`, "T-F561".
-- **Before:** P3. T-F554 refuses a `-tv` line whose size does not parse, but the bomb check
-  (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) trusted the sizes libarchive prints, and
-  nothing capped what tar.exe then wrote.
-- **Reported by:** the batch 6 closing reviewer, 2026-11-18; reproduced by the agent, 2026-11-21.
 
 ### T-F447 — More AMSI providers on the PakkoW10 VM, through winget, no Russian products (P2, user-requested, stream B)
 
