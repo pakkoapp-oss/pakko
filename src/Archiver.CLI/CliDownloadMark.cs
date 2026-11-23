@@ -25,6 +25,10 @@ public static class CliDownloadMark
     }
 
     /// <summary>A stderr line when -kb was given and the DisableKeepDamagedFiles policy forbids it; otherwise null.</summary>
+    /// <summary>The warnings for `x` where Group Policy overrides what the switches asked for.</summary>
+    public static IEnumerable<string> ExtractPolicyWarnings(bool? applyDownloadMark, bool keepDamaged, GroupPolicyOptions policy) =>
+        new[] { PolicyOverrideWarning(applyDownloadMark, policy), KeepDamagedForbiddenWarning(keepDamaged, policy) }.OfType<string>();
+
     public static string? KeepDamagedForbiddenWarning(bool requested, GroupPolicyOptions policy)
     {
         ArgumentNullException.ThrowIfNull(policy);

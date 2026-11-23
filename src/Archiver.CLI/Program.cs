@@ -183,10 +183,8 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
     try
     {
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
-        if (CliDownloadMark.PolicyOverrideWarning(command.ApplyDownloadMark, services.Policy) is { } markWarning)
-            await Console.Error.WriteLineAsync(markWarning).ConfigureAwait(false);
-        if (CliDownloadMark.KeepDamagedForbiddenWarning(command.KeepDamagedFiles, services.Policy) is { } keepWarning)
-            await Console.Error.WriteLineAsync(keepWarning).ConfigureAwait(false);
+        foreach (string policyWarning in CliDownloadMark.ExtractPolicyWarnings(command.ApplyDownloadMark, command.KeepDamagedFiles, services.Policy))
+            await Console.Error.WriteLineAsync(policyWarning).ConfigureAwait(false);
 
         // T-F525: next to where the files go; -so's go to %TEMP% anyway.
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(
