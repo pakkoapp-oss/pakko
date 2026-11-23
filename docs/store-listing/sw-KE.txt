@@ -35,11 +35,10 @@ zip yenye nenosiri
 chanzo huria
 
 [What's new in this version]
-• Pakko sasa inaendeshwa kwenye .NET 11.
-• Kumbukumbu kubwa hufunguka kwa kutumia kumbukumbu ya mfumo kidogo zaidi.
-• Kuweka faili nyingi ndogo kwenye kumbukumbu ni haraka zaidi na hutumia kumbukumbu ya mfumo kidogo zaidi.
-• Kutoa faili nyingi ndogo huchukua takriban nusu ya muda.
-• Kila operesheni huendeshwa katika sanduku lake la mchanga, na faili zake za muda huwekwa kando ya mahali pa kwenda.
-• Imerekebishwa: faili ambalo jina lake linaishia kwa nafasi au nukta halihifadhiwi tena na maudhui ya faili jingine wala halifutwi badala yake.
-• Imerekebishwa: kumbukumbu iliyosimbwa iliyoharibika inaripotiwa kuwa imeharibika, si kuwa imelindwa kwa nenosiri.
-• Imerekebishwa: amri za Kichunguzi cha Faili zinaonyeshwa tena kwa lugha yako, na Enter hufungua kipengee kilichochaguliwa.
+• Kutoa ni haraka zaidi: folda mpya hufika mahali zinapoelekea kwa hatua moja.
+• Kumbukumbu za TAR.XZ na TAR.ZST huundwa mara kadhaa haraka zaidi, kwenye viini kadhaa vya kichakataji.
+• Chaguo jipya “Hifadhi kilichomo kwenye faili iliyoharibika (ZIP)”: faili linaloshindwa ukaguzi huhifadhiwa pamoja na baiti zilizoweza kusomwa.
+• Imerekebishwa: kumbukumbu inayotaja ukubwa mdogo kuliko halisi haiwezi tena kujaza diski inapotolewa.
+• Imerekebishwa: kumbukumbu ya ZIP ambayo vichwa vya vipengee vyake vinapingana hukataliwa, kama 7-Zip inavyofanya.
+• Imerekebishwa: upau wa kazi huonyesha manjano na nyekundu hata kwenye 0 %, na kila safu ya orodha ya faili ina kitufe chake cha kuondoa.
+• Imerekebishwa: maandishi yaliyokatika kwa Kihispania na Kigiriki.

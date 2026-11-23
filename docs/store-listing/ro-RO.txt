@@ -35,11 +35,10 @@ zip cu parolă
 open source
 
 [What's new in this version]
-• Pakko rulează acum pe .NET 11.
-• Arhivele mari se deschid cu mult mai puțină memorie.
-• Arhivarea multor fișiere mici este mai rapidă și folosește mult mai puțină memorie.
-• Extragerea multor fișiere mici durează cam jumătate din timp.
-• Fiecare operațiune rulează în propriul mediu izolat, iar fișierele ei temporare stau lângă destinație.
-• Remediat: un fișier al cărui nume se termină cu un spațiu sau un punct nu mai este arhivat cu conținutul altui fișier și nici șters în locul lui.
-• Remediat: o arhivă criptată deteriorată este raportată ca deteriorată, nu ca protejată prin parolă.
-• Remediat: comenzile Explorer apar din nou în limba dvs., iar Enter deschide elementul selectat.
+• Extragerea este mai rapidă: folderele noi ajung la destinație într-un singur pas.
+• Arhivele TAR.XZ și TAR.ZST se creează de câteva ori mai repede, pe mai multe nuclee ale procesorului.
+• Opțiune nouă „Păstrează conținutul unui fișier deteriorat (ZIP)”: un fișier care nu trece verificarea este salvat cu octeții care au putut fi citiți.
+• Remediat: o arhivă care își declară o dimensiune mai mică nu mai poate umple discul la extragere.
+• Remediat: o arhivă ZIP ale cărei antete de intrare se contrazic este refuzată, așa cum face 7-Zip.
+• Remediat: bara de activități arată galben și roșu chiar și la 0 %, iar fiecare rând din lista de fișiere are propriul buton de eliminare.
+• Remediat: text tăiat în spaniolă și greacă.

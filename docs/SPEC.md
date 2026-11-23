@@ -1,6 +1,6 @@
 # SPEC.md — Project Specification
 
-**Status:** released through v1.11.0 (`CHANGELOG.md` per release)  
+**Status:** released through v1.12.0 (`CHANGELOG.md` per release)  
 **License:** Apache 2.0  
 **Distribution:** GitHub source + Microsoft Store (MSIX)
 
@@ -260,7 +260,7 @@ truncated copy are the realistic damage.
 | v1.9 | Store release: `pakko` 7-Zip switches (T-F411 waves A-E, T-F410), one path pipeline (T-F420), a red-team suite (T-F419), and the v1.9.0 wave — **released as v1.9.0** |
 | v1.10 | Bug fixes after v1.9.0, one owner per name/path encoding boundary (T-F441), progress on the taskbar button and tray icon (T-F432), and the read-only formats tar.exe opens: ISO, CAB, cpio, ar, `.Z`, lzip (T-F442) — **released as v1.10.0** |
 | v1.11 | .NET 11 and C# 15 (T-F492), the deflate encoder reused per ZIP worker (T-F318), ZIP encryption measured against the BCL's, kept Pakko's, compatible both ways (T-F493), the bugs left after v1.10.0: the v1.11.0 wave of `docs/TASKS.md` — **released as v1.11.0** |
-| v1.12 | tar.exe's sandbox made fast: where the time goes measured, extraction and creation sped up, creation through .NET spiked and rejected, tar.exe stays (T-F565, T-F514), and the open tasks: the v1.12.0 wave of `docs/TASKS.md` |
+| v1.12 | tar.exe's sandbox made fast: where the time goes measured, extraction and creation sped up, creation through .NET spiked and rejected, tar.exe stays (T-F565, T-F514), and the open tasks: the v1.12.0 wave of `docs/TASKS.md` — **released as v1.12.0** |
 | v2.0 | `pakko` measured as a stand-in for 7-Zip's console program, gaps closed where they fit Pakko's rules (T-F343; T-F412, T-F413 and T-F415 moved to v1.9) |
 
 Package version (`Package.appxmanifest`'s `Identity Version`) tracks MSIX packaging, not this

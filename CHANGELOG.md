@@ -10,6 +10,59 @@ the technical account of any task named here.
 
 ---
 
+## v1.12.0 — 2026-11-23
+
+Extracting through the sandbox is faster: a new folder reaches its destination in one move, so a
+tar of 3,619 files takes about 10 s where it took 15 s. tar.xz and tar.zst are written on several
+threads. On request, a ZIP extraction keeps what a damaged file holds instead of dropping it. Each
+extracted name is placed by one owner for every engine, and a ZIP entry whose two headers disagree is
+refused. On ARM64 the archive helper reads tar-family archives, as on x64.
+
+### Added
+
+- **T-F496** - "Keep what a damaged file holds (ZIP)": a file that fails its check is saved as
+  `name.ext.damaged` with the bytes that could be read, for that extraction only; `pakko x -kb` does
+  the same. Group Policy `DisableKeepDamagedFiles` forbids it; Explorer's extraction never keeps.
+
+### Changed
+
+- **T-F565** - an extraction moves each new folder into its destination in one rename instead of
+  file by file (3,619 files on C:, medians: tar 15.4 s to 9.9 s, 7z 22.6 s to 16.4 s, ZIP 11.4 s to
+  7.1 s). tar.xz and tar.zst are compressed on libarchive's threads, bounded by memory (tar.xz at the
+  default level 115 s to 18 s on 12 cores); `-mmt=off` keeps one thread.
+- **T-F562** - on ARM64 the archive helper reads tar-family archives with Windows' own
+  `archiveint.dll`, as on x64.
+- **T-F570, T-F572, T-F573, T-F574** - one owner each for where an extracted name lands, for what a
+  folder walk meets, for numbered names and for what kind of failure an error is.
+
+### Fixed
+
+- **T-F561** - tar.exe could write far more than an archive declared: a 7 KB gzip holding a ZIP
+  written as a stream filled 4 GiB. A tar.exe extraction is now stopped past the declared size, with
+  a message, and nothing is written.
+- **T-F571** - a ZIP entry whose local header and central record disagree on encryption or method is
+  refused by Extract and Test, as 7-Zip does, and a scan reports it as not scanned.
+- **T-F575, T-F453, T-F461** - through the sandbox readers: a numbered file no longer lands on a
+  folder entry made after it; two root folders that tar.exe lists by one name keep their root; a file
+  under a folder written as `d.` no longer replaces `d\x.txt`.
+- **T-F573** - a numbered name ("name (1)") never grows past what one name may hold.
+- **T-F556, T-F563** - from Explorer, the App and a drop, a name Windows trims (`b.txt `) is
+  archived as spelled, not as Explorer lists it.
+- **T-F559** - on Windows 10, a device-named file inside a source folder (`nul`, `CON.txt`) is refused
+  instead of read as the device, and is never deleted with its folder; `CON.txt` hung before.
+- **T-F564** - at 0 % the taskbar button and tray icon still show yellow while a question waits and
+  red after a failure.
+- **T-F566** - each row of the file list has its own cross to remove it, named for Narrator.
+- **T-F328** - Spanish and Greek: the second archive-mode button wraps instead of being cut.
+
+### Known issues
+
+- **T-F565** - extracting through the sandbox still moves each file out of its quarantine one by
+  one; that move is most of what remains between Pakko and 7-Zip.
+- **T-F562** - the ARM64 helper is tested on GitHub's ARM64 runner, not yet on an ARM64 device.
+
+---
+
 ## v1.11.0 — 2026-11-20
 
 Pakko runs on .NET 11. Large archives cost far less memory: a ZIP's directory and a tar's listing

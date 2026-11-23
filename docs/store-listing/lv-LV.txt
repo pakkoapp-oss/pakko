@@ -35,11 +35,10 @@ zip ar paroli
 atvērtais pirmkods
 
 [What's new in this version]
-• Pakko tagad darbojas ar .NET 11.
-• Lieli arhīvi tiek atvērti, izmantojot daudz mazāk atmiņas.
-• Daudzu mazu failu arhivēšana ir ātrāka un izmanto daudz mazāk atmiņas.
-• Daudzu mazu failu izvilkšana aizņem aptuveni uz pusi mazāk laika.
-• Katra darbība darbojas savā smilškastē, un tās pagaidu faili atrodas blakus mērķim.
-• Labots: fails, kura nosaukums beidzas ar atstarpi vai punktu, vairs netiek arhivēts ar cita faila saturu vai izdzēsts tā vietā.
-• Labots: bojāts šifrēts arhīvs tiek norādīts kā bojāts, nevis kā aizsargāts ar paroli.
-• Labots: Explorer komandas atkal tiek rādītas jūsu valodā, un taustiņš Enter atver atlasīto vienumu.
+• Izvilkšana ir ātrāka: jaunās mapes nonāk galamērķī vienā solī.
+• TAR.XZ un TAR.ZST arhīvi tiek izveidoti vairākas reizes ātrāk, izmantojot vairākus procesora kodolus.
+• Jauna opcija „Saglabāt bojāta faila saturu (ZIP)”: fails, kas neiztur pārbaudi, tiek saglabāts ar baitiem, kurus izdevās nolasīt.
+• Labots: arhīvs, kas norāda mazāku izmēru, izvilkšanas laikā vairs nevar piepildīt disku.
+• Labots: ZIP arhīvs, kura vienumu galvenes ir pretrunā viena ar otru, tiek noraidīts, kā to dara 7-Zip.
+• Labots: uzdevumjosla rāda dzelteno un sarkano pat pie 0 %, un katrai failu saraksta rindai ir sava noņemšanas poga.
+• Labots: nogriezts teksts spāņu un grieķu valodā.

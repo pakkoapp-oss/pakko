@@ -35,11 +35,10 @@ zip s lozinkom
 otvoreni kod
 
 [What's new in this version]
-• Pakko sada radi na .NET 11.
-• Velike arhive otvaraju se uz mnogo manje memorije.
-• Arhiviranje mnogo malih datoteka brže je i troši mnogo manje memorije.
-• Raspakiravanje mnogo malih datoteka traje otprilike upola kraće.
-• Svaka operacija radi u vlastitom izoliranom okruženju, a njezine privremene datoteke nalaze se pokraj odredišta.
-• Ispravljeno: datoteka čiji naziv završava razmakom ili točkom više se ne arhivira sa sadržajem druge datoteke niti briše umjesto nje.
-• Ispravljeno: oštećena šifrirana arhiva prijavljuje se kao oštećena, a ne kao zaštićena lozinkom.
-• Ispravljeno: naredbe Eksploratora ponovno se prikazuju na vašem jeziku, a Enter otvara odabranu stavku.
+• Raspakiravanje je brže: nove mape stižu na odredište u jednom koraku.
+• Arhive TAR.XZ i TAR.ZST stvaraju se nekoliko puta brže, na više jezgri procesora.
+• Nova mogućnost „Zadrži sadržaj oštećene datoteke (ZIP)“: datoteka koja ne prođe provjeru sprema se s bajtovima koje je bilo moguće pročitati.
+• Ispravljeno: arhiva koja navodi manju veličinu više ne može napuniti disk pri raspakiravanju.
+• Ispravljeno: ZIP arhiva čija se zaglavlja stavki međusobno proturječe odbija se, kao u 7-Zipu.
+• Ispravljeno: programska traka prikazuje žutu i crvenu i pri 0 %, a svaki redak popisa datoteka ima vlastiti gumb za uklanjanje.
+• Ispravljeno: odrezani tekst na španjolskom i grčkom.

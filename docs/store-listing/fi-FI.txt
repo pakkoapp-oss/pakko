@@ -35,11 +35,10 @@ zip salasanalla
 avoin lähdekoodi
 
 [What's new in this version]
-• Pakko toimii nyt .NET 11:llä.
-• Suuret arkistot avautuvat paljon pienemmällä muistilla.
-• Monien pienten tiedostojen arkistointi on nopeampaa ja vie paljon vähemmän muistia.
-• Monien pienten tiedostojen purkaminen vie noin puolet ajasta.
-• Jokainen toiminto suoritetaan omassa eristyksessään, ja sen väliaikaiset tiedostot ovat kohteen vieressä.
-• Korjattu: tiedostoa, jonka nimi päättyy välilyöntiin tai pisteeseen, ei enää arkistoida toisen tiedoston sisällöllä eikä poisteta sen sijaan.
-• Korjattu: vahingoittunut salattu arkisto ilmoitetaan vahingoittuneeksi, ei salasanalla suojatuksi.
-• Korjattu: Resurssienhallinnan komennot näkyvät taas omalla kielelläsi, ja Enter avaa valitun kohteen.
+• Purkaminen on nopeampaa: uudet kansiot siirtyvät kohteeseensa yhdellä kertaa.
+• TAR.XZ- ja TAR.ZST-arkistot luodaan monta kertaa nopeammin, useilla suoritinytimillä.
+• Uusi asetus ”Säilytä vioittuneen tiedoston sisältö (ZIP)”: tarkistuksessa epäonnistuva tiedosto tallennetaan niillä tavuilla, jotka voitiin lukea.
+• Korjattu: arkisto, joka ilmoittaa kokonsa liian pieneksi, ei voi enää täyttää levyä purettaessa.
+• Korjattu: ZIP-arkisto, jonka kohteiden otsakkeet ovat ristiriidassa, hylätään kuten 7-Zipissä.
+• Korjattu: tehtäväpalkki näyttää keltaisen ja punaisen myös 0 %:ssa, ja tiedostoluettelon jokaisella rivillä on oma poistopainike.
+• Korjattu: katkennut teksti espanjaksi ja kreikaksi.

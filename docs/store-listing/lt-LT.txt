@@ -35,11 +35,10 @@ tar gz
 zip su slaptažodžiu
 
 [What's new in this version]
-• Pakko dabar veikia su .NET 11.
-• Dideli archyvai atidaromi naudojant daug mažiau atminties.
-• Daugelio mažų failų archyvavimas greitesnis ir naudoja daug mažiau atminties.
-• Daugelio mažų failų išskleidimas trunka maždaug perpus trumpiau.
-• Kiekviena operacija vykdoma savo smėlio dėžėje, o jos laikinieji failai laikomi šalia paskirties vietos.
-• Pataisyta: failas, kurio pavadinimas baigiasi tarpu arba tašku, nebearchyvuojamas su kito failo turiniu ir nebeištrinamas vietoj jo.
-• Pataisyta: sugadintas šifruotas archyvas nurodomas kaip sugadintas, o ne kaip apsaugotas slaptažodžiu.
-• Pataisyta: Naršyklės komandos vėl rodomos jūsų kalba, o Enter atidaro pasirinktą elementą.
+• Išskleidimas greitesnis: nauji aplankai į paskirties vietą patenka vienu žingsniu.
+• TAR.XZ ir TAR.ZST archyvai kuriami kelis kartus greičiau, keliuose procesoriaus branduoliuose.
+• Nauja parinktis „Išsaugoti sugadinto failo turinį (ZIP)“: patikros neišlaikęs failas įrašomas su baitais, kuriuos pavyko perskaityti.
+• Pataisyta: archyvas, nurodantis mažesnį dydį, išskleidžiant nebegali užpildyti disko.
+• Pataisyta: ZIP archyvas, kurio elementų antraštės prieštarauja viena kitai, atmetamas, kaip tai daro 7-Zip.
+• Pataisyta: užduočių juosta rodo geltoną ir raudoną net esant 0 %, o kiekviena failų sąrašo eilutė turi savo šalinimo mygtuką.
+• Pataisyta: nukirptas tekstas ispanų ir graikų kalbomis.

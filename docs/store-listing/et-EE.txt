@@ -35,11 +35,10 @@ parooliga zip
 avatud lähtekood
 
 [What's new in this version]
-• Pakko töötab nüüd .NET 11 peal.
-• Suured arhiivid avanevad palju väiksema mälukasutusega.
-• Paljude väikeste failide arhiveerimine on kiirem ja vajab palju vähem mälu.
-• Paljude väikeste failide lahti pakkimine võtab umbes poole vähem aega.
-• Iga toiming töötab oma liivakastis ja selle ajutised failid asuvad sihtkoha kõrval.
-• Parandatud: faili, mille nimi lõpeb tühiku või punktiga, ei arhiveerita enam teise faili sisuga ega kustutata selle asemel.
-• Parandatud: kahjustatud krüptitud arhiivist teatatakse kui kahjustatud arhiivist, mitte kui parooliga kaitstud arhiivist.
-• Parandatud: Exploreri käsud kuvatakse taas teie keeles ja Enter avab valitud üksuse.
+• Lahti pakkimine on kiirem: uued kaustad jõuavad sihtkohta ühe sammuga.
+• TAR.XZ- ja TAR.ZST-arhiivid luuakse mitu korda kiiremini, mitmel protsessorituumal.
+• Uus valik „Säilita kahjustatud faili sisu (ZIP)“: kontrolli mitte läbinud fail salvestatakse baitidega, mida õnnestus lugeda.
+• Parandatud: arhiiv, mis märgib oma suuruse väiksemaks, ei saa lahti pakkimisel enam ketast täita.
+• Parandatud: ZIP-arhiiv, mille kirjete päised on vastuolus, lükatakse tagasi, nagu teeb 7-Zip.
+• Parandatud: tegumiriba näitab kollast ja punast ka 0 % juures ning igal faililoendi real on oma eemaldamisnupp.
+• Parandatud: kärbitud tekst hispaania ja kreeka keeles.

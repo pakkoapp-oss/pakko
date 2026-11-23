@@ -35,11 +35,10 @@ zip med adgangskode
 open source
 
 [What's new in this version]
-• Pakko kører nu på .NET 11.
-• Store arkiver åbnes med langt mindre hukommelse.
-• Arkivering af mange små filer er hurtigere og bruger langt mindre hukommelse.
-• Udpakning af mange små filer tager omtrent halvt så lang tid.
-• Hver handling kører i sin egen sandkasse, og dens midlertidige filer ligger ved siden af destinationen.
-• Rettet: En fil, hvis navn slutter med et mellemrum eller et punktum, arkiveres ikke længere med en anden fils indhold eller slettes i dens sted.
-• Rettet: Et beskadiget krypteret arkiv rapporteres som beskadiget, ikke som beskyttet med adgangskode.
-• Rettet: Stifinder-kommandoerne vises igen på dit sprog, og Enter åbner det valgte element.
+• Udpakning er hurtigere: nye mapper når deres destination i ét trin.
+• TAR.XZ- og TAR.ZST-arkiver oprettes flere gange hurtigere, på flere processorkerner.
+• Ny indstilling ”Behold indholdet af en beskadiget fil (ZIP)”: en fil, der ikke består kontrollen, gemmes med de byte, der kunne læses.
+• Rettet: et arkiv, der angiver en for lille størrelse, kan ikke længere fylde disken under udpakning.
+• Rettet: et ZIP-arkiv, hvis elementoverskrifter modsiger hinanden, afvises, som 7-Zip gør.
+• Rettet: proceslinjen viser gul og rød selv ved 0 %, og hver række i fillisten har sin egen fjern-knap.
+• Rettet: afskåret tekst på spansk og græsk.

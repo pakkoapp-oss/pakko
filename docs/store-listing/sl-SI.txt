@@ -35,11 +35,10 @@ zip z geslom
 odprta koda
 
 [What's new in this version]
-• Pakko zdaj deluje na .NET 11.
-• Veliki arhivi se odprejo z veliko manj pomnilnika.
-• Arhiviranje številnih majhnih datotek je hitrejše in porabi veliko manj pomnilnika.
-• Razširjanje številnih majhnih datotek traja približno pol manj časa.
-• Vsaka operacija se izvaja v svojem peskovniku, njene začasne datoteke pa so ob cilju.
-• Popravljeno: datoteka, katere ime se konča s presledkom ali piko, se ne arhivira več z vsebino druge datoteke in se ne izbriše namesto nje.
-• Popravljeno: poškodovan šifriran arhiv je prikazan kot poškodovan, ne kot zaščiten z geslom.
-• Popravljeno: ukazi Raziskovalca so spet prikazani v vašem jeziku, Enter pa odpre izbrani element.
+• Razširjanje je hitrejše: nove mape pridejo na cilj v enem koraku.
+• Arhivi TAR.XZ in TAR.ZST se ustvarijo nekajkrat hitreje, na več jedrih procesorja.
+• Nova možnost „Ohrani vsebino poškodovane datoteke (ZIP)“: datoteka, ki ne prestane preverjanja, se shrani z bajti, ki jih je bilo mogoče prebrati.
+• Popravljeno: arhiv, ki navaja manjšo velikost, pri razširjanju ne more več napolniti diska.
+• Popravljeno: arhiv ZIP, katerega glave elementov si nasprotujejo, je zavrnjen, kot to stori 7-Zip.
+• Popravljeno: opravilna vrstica prikaže rumeno in rdečo tudi pri 0 %, vsaka vrstica seznama datotek pa ima svoj gumb za odstranitev.
+• Popravljeno: odrezano besedilo v španščini in grščini.

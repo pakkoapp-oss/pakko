@@ -35,11 +35,10 @@ zip mật khẩu
 mã nguồn mở
 
 [What's new in this version]
-• Pakko giờ chạy trên .NET 11.
-• Tệp nén lớn mở ra với ít bộ nhớ hơn nhiều.
-• Nén nhiều tệp nhỏ nhanh hơn và dùng ít bộ nhớ hơn nhiều.
-• Giải nén nhiều tệp nhỏ chỉ mất khoảng một nửa thời gian.
-• Mỗi thao tác chạy trong hộp cát riêng, và các tệp tạm của nó nằm cạnh đích.
-• Đã sửa: tệp có tên kết thúc bằng dấu cách hoặc dấu chấm không còn bị nén với nội dung của tệp khác hay bị xóa thay cho tệp đó.
-• Đã sửa: tệp nén được mã hóa bị hỏng được báo là bị hỏng, không phải là được bảo vệ bằng mật khẩu.
-• Đã sửa: các lệnh trong File Explorer lại hiển thị bằng ngôn ngữ của bạn, và Enter mở mục đã chọn.
+• Giải nén nhanh hơn: các thư mục mới đến đích chỉ trong một bước.
+• Tệp nén TAR.XZ và TAR.ZST được tạo nhanh hơn nhiều lần, trên nhiều lõi bộ xử lý.
+• Tùy chọn mới “Giữ lại nội dung của tệp bị hỏng (ZIP)”: tệp không vượt qua kiểm tra được lưu cùng các byte đọc được.
+• Đã sửa: tệp nén khai báo kích thước nhỏ hơn thực tế không còn có thể làm đầy ổ đĩa khi giải nén.
+• Đã sửa: tệp nén ZIP có tiêu đề mục mâu thuẫn với nhau sẽ bị từ chối, như 7-Zip.
+• Đã sửa: thanh tác vụ hiển thị màu vàng và đỏ ngay cả ở 0 %, và mỗi hàng của danh sách tệp có nút xóa riêng.
+• Đã sửa: văn bản bị cắt trong tiếng Tây Ban Nha và tiếng Hy Lạp.

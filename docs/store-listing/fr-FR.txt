@@ -35,11 +35,10 @@ extraction fichiers sécurisée
 open source
 
 [What's new in this version]
-• Pakko fonctionne désormais sur .NET 11.
-• Les grandes archives s'ouvrent avec beaucoup moins de mémoire.
-• L'archivage de nombreux petits fichiers est plus rapide et utilise beaucoup moins de mémoire.
-• L'extraction de nombreux petits fichiers prend environ deux fois moins de temps.
-• Chaque opération s'exécute dans son propre bac à sable, et ses fichiers temporaires sont placés à côté de la destination.
-• Corrigé : un fichier dont le nom se termine par une espace ou un point n'est plus archivé avec le contenu d'un autre fichier ni supprimé à sa place.
-• Corrigé : une archive chiffrée endommagée est signalée comme endommagée, et non comme protégée par mot de passe.
-• Corrigé : les commandes de l'Explorateur s'affichent de nouveau dans votre langue, et Entrée ouvre l'élément sélectionné.
+• L'extraction est plus rapide : les nouveaux dossiers arrivent à destination en une seule étape.
+• Les archives TAR.XZ et TAR.ZST sont créées plusieurs fois plus vite, sur plusieurs cœurs du processeur.
+• Nouvelle option « Conserver le contenu d’un fichier endommagé (ZIP) » : un fichier qui échoue à la vérification est enregistré avec les octets qui ont pu être lus.
+• Corrigé : une archive qui sous-déclare sa taille ne peut plus remplir le disque lors de l'extraction.
+• Corrigé : une archive ZIP dont les en-têtes d'entrée se contredisent est refusée, comme le fait 7-Zip.
+• Corrigé : la barre des tâches affiche le jaune et le rouge même à 0 %, et chaque ligne de la liste des fichiers a son propre bouton de retrait.
+• Corrigé : texte tronqué en espagnol et en grec.
