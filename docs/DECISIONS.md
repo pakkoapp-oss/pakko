@@ -15064,6 +15064,78 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## Batch 10 (v1.12.0) - the tar.exe fallback and the engine backlog (2026-11-23)
+
+Ten tasks, each done or closed by a decision recorded here (the wave's rule). From this batch on the
+rest of the wave is one branch (`wave-v1.12-rest`) and one pull request (the user, 2026-11-23).
+
+**Done, each test seen red first:**
+- **T-F575** (P3, from PR #283's review): tar now claims its folder entries in
+  `ExtractionNameRegistry` before any file is placed. Before the fix it created them after the move,
+  so Rename numbered a file `x` onto an empty folder entry `x (1)/`; the staged folder then made the
+  archive fail. Each reader now only names the entries (`IQuarantinedEntries.FolderEntryPaths`).
+  `TarSandboxedService` claims them before the move and creates the same paths in staging after it,
+  so the claimed set and the created set are one list. Guard: the sandbox readers create no folder
+  (`ExtractionNameOwnerTests`). Smoke `CLI-077`.
+- **T-F461 item 5**: tar.exe writes an explicit `d./` entry as `d.`, while the listing's prediction
+  keys the file as `d/x.txt`, so the trim was missed and Overwrite replaced the `d\x.txt` already at
+  the destination. ZIP keeps it apart. `TarExeReader` now also asks the quarantined name itself
+  whether it trims.
+- **T-F453**: the root is dropped on the listing's word before extraction. On the fallback, a listing
+  that took folders from the disk (T-F443's verdict) can show two true roots as one (`caf<e-acute>`
+  and `cafe` on ACP 1251), and their files merged. `IQuarantinedEntries.HoldsOneRoot` now checks the
+  quarantine's top level, where the helper's exact names always hold. With two names on disk neither
+  root is dropped: both folders arrive, as without the drop. Refusing the archive was the fallback
+  choice. Rejected: nothing is ambiguous once the disk is read.
+
+**Closed by decision:**
+- **T-F461 items 1-4**: each fails loudly on both builds and loses no file (the T-F460 and T-F454
+  record). Making every pre-created folder literal would fix 2 to 4. It would also break a file
+  followed by its own `d./` entry, unless that folder is left to tar.exe's implicit mkdir inside the
+  AppContainer, which T-F52 saw fail. That trade is not worth it on a reader that reaches few
+  machines (T-F469's scope note).
+- **T-F464**: the quarantine as the source of truth instead of predicting tar.exe's names. The
+  helper reads by index wherever `ArchiveintGate` admits it (x64 and ARM64, T-F562); the fallback
+  keeps T-F441's and T-F462's counts, which fail closed. Its research found one silent case, a
+  trimmed name replacing a file, now fixed as T-F461 item 5. A second name-matching layer would
+  add rules to the path that fewest machines take.
+- **T-F469**: a 3.8.9 listing that skips an unreadable name refuses every selection and filter from
+  that archive. It refuses and loses nothing. It is limited to the fallback, on a page where
+  libarchive reads a header name only with the default character. Accounting for the skipped
+  entries through `TextBoundaries.TarRawHeaderNames` would mean a second decoder of tar headers to
+  keep in step with libarchive's. `TarSendsAsListedExhaustiveTests` keeps asserting today's behaviour.
+- **T-F445**: measured 2026-11-08 (its table). The pool starves only when many launches run at once;
+  no code in `src` starts two. Reopen if Pakko ever runs launches in parallel.
+- **T-F568**: a damaged AES entry is not kept, even when the run proved the password on another
+  entry. It would need a decrypting path that goes past a failed HMAC. That is new code in the
+  crypto path for a P4 convenience, and it would write bytes whose authentication failed. ZipCrypto
+  never counts as proof: its check is one byte (one wrong password in 256 passes) and it has no MAC,
+  so a good CRC-32 on another entry says nothing about this one. T-F496 keeps plain entries only.
+  Reopen on a user's request.
+- **T-F121**: zero-copy `-so`. Its four open questions each answer no. Streaming breaks "never a
+  partial byte on failure" unless the bytes are held anyway. Knowing up front that the result is one
+  file needs a listing first. tar's output exists only after the sandboxed run, through the
+  quarantine, so streaming would be ZIP-only. The saving is one temporary file the size of the
+  output. The buffered design stays (`docs/CLI.md`, T-F116).
+- **T-F132**: sandboxing the ZIP path stays deferred on its own trigger, which has not fired: no CVE
+  in `System.IO.Compression`'s Deflate and no change in the threat model. The spike's numbers stay in
+  its 2026-07-24 entry. `SECURITY.md`'s "Native decompression 0-day in the ZIP path" row (Known
+  Limitations) names no task, so it is unchanged.
+
+**Both tar builds** (a Native AOT `pakko` from this branch, with the archive helper beside it and
+alone; pax fixtures written by Python's `tarfile`):
+
+| Case | Windows 11 26300, bsdtar 3.8.9 | Windows 10 19045, bsdtar 3.5.2, ACP 1252 (PakkoW10) |
+|---|---|---|
+| T-F575: `x (1)/` + `x`, `x` there, `-aou` | `x (2)` new, folder `x (1)`, `x` kept; both readers | the same |
+| T-F461 item 5: `d./` + `d./x.txt`, `d\x.txt` there, `-aoa` | `d\x (1).txt` new, `d\x.txt` kept; both readers | the same |
+| T-F453: `caf<accent>/x.txt` + plain `/y.txt`, named by the plain root, `-spe` | the tar.exe reader lists both roots as the plain one (e-acute and a-macron); the helper lists them exactly; every run keeps both folders | no helper on Windows 10; the a-macron pair is listed as one; both folders kept every run |
+
+**Moved:** **T-F359** (the parallel writer on a disk with a seek penalty) can be measured only on a
+spinning disk. Whether one is at hand is a question for the user, so it goes to batch 8's list with
+the other user checks. If no disk is at hand, it is closed by decision there; the code acts only on
+an explicit "has a penalty".
+
 ## Batch 9 (v1.12.0) - owners where fixes were patches (T-F570 to T-F574; 2026-11-23)
 
 Why: "Defect sources (2026-11-23)" below. One branch, one commit per task, every test seen red
