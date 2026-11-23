@@ -584,6 +584,15 @@ warning in `ExtractionRouterTests`; `KeepDamagedOwnerTests` (only the listed fil
 `CliKeepDamagedTests` and `CliSubprocessTests.Extract_DamagedEntry_KbKeepsItAsDamaged`;
 `KeepDamagedOptionTests` (App.Core).
 
+**Batch 9 (owners where fixes were patches, T-F570 to T-F574):** each owner's guard test -
+`ExtractionNameOwnerTests`, `ZipEncryptionOwnerTests`, `WalkKindOwnerTests`, the code guard in
+`ErrorClassificationOwnerTests` - is a text scan of `src` with a list of allowed uses, each with its
+count and why, and fails on a listed use that is gone too. `ExtractionPlacementTests` (T-F570: a
+gzip named like a kept file under every conflict mode, a later folder or file of the kept name, Ask
+with a kept file, SeparateFolders stays Partial); `ZipHeadersDisagreeTests` (T-F571: local
+encrypted, central encrypted and the method, each through extract, `-kb`, Test and Scan, a filtered
+entry, a folder entry, a batch boundary); `ArchiveNamingTests` at 255 units (T-F573).
+
 ### ZIP Names and Reader Hardening (fix phase 3, 2026-09-25)
 
 Written red first (see `docs/DECISIONS.md`'s fix-phase-3 entry). `Zip/ZipEntryNameDecoderTests`

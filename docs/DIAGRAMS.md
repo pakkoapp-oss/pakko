@@ -388,7 +388,9 @@ flowchart TD
     A4 -- "NotABomb, or UserConfirmed" --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>the x role of a hidden WorkRoot in the nearest existing folder (T-F528),<br/>which sweeps dead runs' roots and .pakko-x-* (T-F263), never reused, disposed on every exit (T-F227)"]
     ST --> A["For each entry in entries"] --> CL{"CollidesAfterDecoding: other raw bytes,<br/>same decoded name as an earlier entry? (T-F234)"}
     CL -- yes --> E0["Errors += same name once decoded, entry not extracted"]
-    CL -- no --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
+    CL -- no --> HD{"T-F571: NamedZipEntry.HeadersDisagree - the local header and the<br/>central record differ on encryption (bits 0, 6) or the method?"}
+    HD -- yes --> EH["Errors += EntryHeadersDisagree, nothing of it written,<br/>even with KeepDamagedFiles (7-Zip: Headers Error)"]
+    HD -- no --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
     U -- yes --> E1["Errors += unsafe path, entry not extracted"]
     U -- no --> C{"relativePath = EntryDiskName.AsPakkoWrites(name) (T-F420: a refused character as _,<br/>trailing dots and spaces dropped, an emptied part as _) — stripRootPrefix: strip leading segment"}
     C -- "stripped to empty" --> Z["the root itself: actualDest stands in for it<br/>(counts as extracted only for a folder entry, when actualDest is not there yet,<br/>and records its time, T-F298)"]
@@ -405,30 +407,30 @@ flowchart TD
     G -- "reparse point" --> S4
     G -- ok --> J{"file exists at finalFilePath, built from the path<br/>as resolved inside staging (T-F228), or already claimed,<br/>or a folder there under -aot (T-F411)?"}
     J -- no --> K
-    J -- yes --> JT{"T-F419/T-F420: ExtractionNameRegistry.MustKeepApart —<br/>claimed in this run and either side named differently<br/>(a.txt. and a.txt, a?b and a_b, an 8.3 alias),<br/>or a trimmed name or an 8.3 alias over a file this run did not write? Then Rename"}
+    J -- yes --> JT{"T-F570: ExtractionNameRegistry.PlaceAsync, the one rule of every engine.<br/>T-F419/T-F420: MustKeepApart - claimed in this run and either side named differently<br/>(a.txt. and a.txt, a?b and a_b, an 8.3 alias, a kept file),<br/>or a trimmed name or an 8.3 alias over a file this run did not write? Then Rename"}
     JT -- yes --> K2
     JT -- no --> J0["T-F06: conflictResolver.ResolveAsync(finalFilePath)<br/>Ask → options.ResolveConflictAsync, else configured value"]
     J0 -- "Skip" --> S6["ConflictSkippedEntries += path, by the user or automatic (T-F260: archive Partial)<br/>the automatic ones become ArchiveResult.KeptExistingFiles (T-F313), the user's are counted in UserSkippedEntryCount (T-F383)"]
-    J0 -- "Rename" --> K2["unique name via GetUniqueFilePath"]
+    J0 -- "Rename" --> K2["a numbered name from the registry, past files on disk<br/>and every file and folder this run claimed (T-F570)"]
     J0 -- "RenameExisting (T-F411, -aot)" --> J1{"finalFilePath already claimed in this run?"}
     J1 -- yes --> K2
     J1 -- "no: the file is on disk" --> J2["staging.RenameExistingOnCommit(finalFilePath, claimed):<br/>the commit renames the existing file (a name neither on disk nor claimed),<br/>moves the new one in without overwrite, gives the old name back on failure"]
     J2 --> K
     J0 -- "Overwrite" --> K
-    K0["T-F420: names.Claim(finalFilePath) — a path already claimed marks the archive<br/>that claimed it not wholly on disk (Partial after the loop, also across archives)"]
+    K0["T-F420: the registry claims finalFilePath - a path already claimed marks the archive<br/>that claimed it not wholly on disk (Partial after the loop, also across archives).<br/>T-F570: and its parent folders, which only a new name avoids, never a conflict"]
     K0 -.- K
     K2 --> K
     K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW in<br/>EffectiveMotwMode, T-F360 (keeps the file time), then the entry time: NTFS 0x000A, else<br/>Unix 0x5455, else DOS (T-F298, best-effort)"]
     K -- "CRC mismatch / longer than declared / I/O error /<br/>encrypted entry: wrong password, unsupported method, authentication failed" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
-    K -- "T-F496: content damage of a plain entry with KeepDamagedFiles,<br/>some bytes decoded (never a cancel, I/O error or encrypted entry)" --> KD["the decoded bytes, at most the declared size, renamed to<br/>EntryDiskName.Damaged(final name), numbered past files, folders and claimed names,<br/>MOTW and time like any file. Errors += EntryKeptDamaged"]
+    K -- "T-F496: content damage of a plain entry with KeepDamagedFiles,<br/>some bytes decoded (never a cancel, I/O error or encrypted entry)" --> KD["the decoded bytes, at most the declared size,<br/>held out of staging in the WorkRoot's k role until the archive's last entry (T-F570),<br/>MOTW and time like any file"]
     T -. "ERROR_DISK_FULL" .-> X["rethrown: one archive-level error"]
     K --> L["extractedCount++"]
     FK -- "folder new at the destination" --> L
     FK -- "already there (T-F87: a re-extract with Skip is still nothing extracted)" --> M
-    E0 & E1 & S1 & S4 & S6 & E2 & KD & Z --> M{"More entries?"}
+    E0 & EH & E1 & S1 & S4 & S6 & E2 & KD & Z --> M{"More entries?"}
     L --> M
     M -- yes --> A
-    M -- no --> N["staging.CommitInto(actualDest): if actualDest is new and no existing file is to be renamed (T-F411), clear Hidden<br/>then Directory.Move (T-F161). An overwrite clears a read-only target first (T-F419). Otherwise, or on IOException, merge:<br/>folders first (T-F197) - a folder not there yet moves whole by one rename<br/>when no file to rename is below it, no link is on its way and its parent passes down<br/>what its staging parent did (T-F565), else it is created -<br/>then the other files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170),<br/>a file left out through a link = SkippedFiles (EntryThroughReparsePoint),<br/>or AccessDenied under a folder whose attributes cannot be read (T-F522),<br/>a folder in a file's place = ArchiveError (DestinationIsAFolder).<br/>Last, recorded folder-entry times on the folders the commit created (T-F298).<br/>T-F408: options.OnItemExtracted gets each folder and file that arrived,<br/>after the rename or after each file's own move, never a locked one"]
+    M -- no --> PK["T-F570: PlaceKeptFiles - each held file named EntryDiskName.Damaged(entry name),<br/>numbered past files, folders, claimed names and staged names, claimed as named apart,<br/>moved into its staged folder. Errors += EntryKeptDamaged, or CannotExtractEntry if the move fails"] --> N["staging.CommitInto(actualDest): if actualDest is new and no existing file is to be renamed (T-F411), clear Hidden<br/>then Directory.Move (T-F161). An overwrite clears a read-only target first (T-F419). Otherwise, or on IOException, merge:<br/>folders first (T-F197) - a folder not there yet moves whole by one rename<br/>when no file to rename is below it, no link is on its way and its parent passes down<br/>what its staging parent did (T-F565), else it is created -<br/>then the other files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170),<br/>a file left out through a link = SkippedFiles (EntryThroughReparsePoint),<br/>or AccessDenied under a folder whose attributes cannot be read (T-F522),<br/>a folder in a file's place = ArchiveError (DestinationIsAFolder).<br/>Last, recorded folder-entry times on the folders the commit created (T-F298).<br/>T-F408: options.OnItemExtracted gets each folder and file that arrived,<br/>after the rename or after each file's own move, never a locked one"]
     N --> N2{"extractedCount == 0?"}
     N2 -- yes --> NU{"every skip in this archive was the user's own<br/>conflict answer, no other skip or error? (T-F216)"}
     NU -- yes --> N4["no warning — archive still not in CreatedFiles"]

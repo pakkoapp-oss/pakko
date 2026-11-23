@@ -16881,3 +16881,96 @@ On 1.11.0.8 (2026-11-22): the App's taskbar button yellow at a single-file "file
   Before code: plan mode + advisor (irreversible writes from untrusted input), tests of every guard
   seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
 - **Reported by:** the user, 2026-11-11.
+
+### T-F570 - One owner places every extracted name: files, folders, kept files, every engine (P2, from the defect review)
+
+- [x] **Status:** done 2026-11-23 (`batch-9-owners`, 17bcad0d): `ExtractionNameRegistry.PlaceAsync` places every file of ZIP, tar and bare gzip; its sets are private; folders are claimed for new names only. T-F496's kept file waits in the WorkRoot's `k` role and is named after the archive's last entry (`PlaceKept`), so a later file or folder of its name keeps that name. `ExtractionNameOwnerTests` guards it. T-F453 is not a placement defect (the root shape) and stays in batch 10.
+  Before: `ExtractionNameRegistry` is a bag the engines fill: it exposes `Claimed` as
+  a public mutable set, and ZIP (`ZipArchiveService` around `MustKeepApart`/`Claim`), tar
+  (`TarSandboxedService` around `ResolveFinalPath`), bare gzip (`BareGzipEngine.PlanAsync`) and
+  T-F496's `RenameAsDamaged` each decide the free name themselves. Folders are never claimed. Every
+  defect of this kind so far was fixed in one engine: T-F443, T-F453, T-F496's later entry over the
+  kept file, and the review's staged-folder clash. T-F569's three items are the same gap.
+  - One call, `Place(final path, file or folder, named differently, conflict mode)`, returns where
+    the item goes, or a skip. Every engine and the keep path use only that call. `Claimed` becomes
+    private, and folders are claimed too.
+  - Add a Single Owners row and a guard test: no engine reads `Claimed` or calls
+    `GetUniqueFilePath` for an extracted name.
+  - Absorbs T-F569, and T-F453 if the placement covers it.
+- **Reported by:** the agent (review of the last twenty defect fixes), 2026-11-23.
+
+### T-F571 - A ZIP entry's facts decided once, from both headers (P2, from the defect review)
+
+- [x] **Status:** done 2026-11-23 (`batch-9-owners`, dcc398fe, fa901c38): an entry whose local header and central record disagree on encryption (bits 0 and 6) or the method is refused by extract (also with `-kb`) and Test (`EntryHeadersDisagree`, 37 locales), and a scan reports it not scanned, as 7-Zip's `AreItemsEqual` reports a Headers Error. `ZipCatalog` decides encryption (`NamedZipEntry.Encrypted`, `IsPlain`), guarded by `ZipEncryptionOwnerTests`. Name, CRC and size mismatches stay T-F280's warning (the user's choice). `SECURITY.md` has the line (the user's OK, 2026-11-23).
+  Before: "Is this entry encrypted" is answered in four places, from different
+  headers:
+  - `OpenEntryContentStream` reads the local header's bit, which picks decryption.
+  - `EncryptionOf` reads .NET's `IsEncrypted`, from the central directory.
+  - `IsEncryptedZip` uses the first local header or the central directory.
+  - T-F496's keep check uses both.
+
+  `RawZipEntryLocator.LocalHeaderMatches` (T-F280) compares the name, CRC-32 and sizes, but not the
+  flags or the method, so a local header that says ZipCrypto under a central record that says plain
+  raises no mismatch at all. T-F538 (two central directories) and the T-F496 review's P3-1 were this
+  class.
+  - `ZipCatalog` decides each entry's encryption and method once, from both headers.
+  - An entry whose headers disagree on encryption or method is refused, as damaged. Before choosing
+    between refusing and warning, quote what 7-Zip does (its source, per the research rule).
+  - Every reader asks the catalog, and a guard test keeps it so.
+- **Reported by:** the agent (review of the last twenty defect fixes), 2026-11-23.
+
+### T-F572 - What each walk kind means, decided in one place (P3, from the defect review)
+
+- [x] **Status:** done 2026-11-23 (`batch-9-owners`, f6c98a1b): no table of meanings - each consumer's own decision is the point, a kind no consumer decided was the defect. `WalkKindOwnerTests`: a switch over `WalkEntryKind` names every kind with no default; a kind named elsewhere is listed with why. Six if-chains became full switches (`FolderTotals.IsCountedFile`, `TempOwner`, `NewestSourceTime`, tar's pre-walk), `FileHashService` gained its `LeftOut` arm; a probe kind failed it in all ten consumers. IDE0010 repo-wide was measured (82 hits) and not taken.
+  Before: `DirectoryWalker` classifies an entry (`WalkEntryKind`: plain, trimmed
+  name, device name, unreadable, ...), but each consumer decides what that kind means for it:
+  - the CLI's `CliArchiveSources` and `CliNameSelection`;
+  - `WorkItemEnumerator` and `ZipArchiveService`;
+  - `TarSandboxedService`, `FileHashService` and `SourceTree`.
+
+  Together they hold about 50 switch arms. T-F559 added the device-name kind by touching nine files,
+  and T-F557 seven; a consumer that misses a kind is the next defect, and T-F559's review found one
+  (the mask search).
+  - One table says what each kind means for each job (archive, hash, scan, delete afterwards,
+    search): include, refuse with which message, warn, or keep the source.
+  - A consumer asks that table, with an exhaustive switch and no default, so a new kind fails the
+    build until it is decided.
+- **Reported by:** the agent (review of the last twenty defect fixes), 2026-11-23.
+
+### T-F573 - "name (1)" never longer than one name may be (P3, from the defect review)
+
+- [x] **Status:** done 2026-11-23 (`batch-9-owners`, 20c3fee4): `ArchiveNaming` keeps every numbered name - files, folders (T-F264), an entry's last part (T-F414), archive outputs and repairs - within 255 units: the stem gives way first, then the end of the extension, never half of a surrogate pair, never an extension ending in a dot or a space. `EntryDiskName.NumberRoom` is gone.
+  Before: `ArchiveNaming.GetUniqueName` numbers a taken name (`Number`) with no
+  bound on its length. By reading, not yet run: a 252-to-255-unit entry name extracted twice with
+  Rename gives a numbered name past NTFS's 255, so the second write fails as an I/O error.
+  - T-F496's `EntryDiskName.NumberRoom` reserves 8 units for the kept name only. That patch does
+    not hold from its own line: " (100000)" is 9 units.
+  - Bound it in `ArchiveNaming`, the owner: cut the stem so the number fits, never splitting a
+    surrogate pair. Then remove `NumberRoom`.
+  - First a red test on the ordinary Rename path.
+- **Reported by:** the agent (review of the last twenty defect fixes), 2026-11-23.
+
+### T-F574 - What kind of failure an exception is: the owner the table still lacks (P3, from the defect review)
+
+- [x] **Status:** done 2026-11-23 (`batch-9-owners`, f3ee057f): `CoreMessages.IsContentDamage` (T-F496's codes, formerly in `ZipArchiveService`) and `IsUncoded` (the BCL's own data error, which `VerifyingReadStream` and the ZIP lister each checked) join `IsDiskFull`; `ErrorClassificationOwnerTests` fails on a code decided anywhere else. Core's other 90-odd filters choose by exception type, the BCL's own primitive, and stay (inventory: `docs/DECISIONS.md`, "Batch 9 (v1.12.0)").
+  Before: `docs/ARCHITECTURE.md`'s Single Owners row "What counts as a per-item
+  failure" still says "none yet". About 75 `catch ... when` filters decide it at their call sites,
+  and T-F496 added another: `ZipArchiveService.IsContentDamage`, the content-damage codes.
+  - Move the classifiers into `CoreMessages` beside `IsDiskFull`: content damage, cancel, I/O, and
+    access.
+  - Replace the call-site filters that repeat one of them, and add the guard test the row names.
+- **Reported by:** the agent (review of the last twenty defect fixes), 2026-11-23.
+
+### T-F569 - T-F496's kept file against the other engines and folders (P3, from the T-F496 review)
+
+- [x] **Status:** done 2026-11-23 through T-F570: items 1 and 2 fixed with tests (`ExtractionPlacementTests`); item 3 left as it is - `_notWhollyOnDisk` is per archive, so releasing a claim could clear a real replacement's mark and make an archive deletable (`docs/DECISIONS.md`, "Batch 9 (v1.12.0)").
+  Before: Found by the opus review of PR #281 (`docs/DECISIONS.md`, "Batch 7 (v1.12.0)"):
+  1. `BareGzipEngine.PlanAsync` never asks `ExtractionNameRegistry.MustKeepApart`, so
+     `pakko x -kb -y data.zip data.txt.damaged.gz` (a damaged `data.txt`) writes the gzip's output
+     over the kept file. The ZIP and tar engines rename apart; route the gzip engine through the
+     same rule, with a test.
+  2. A good entry `a.txt.damaged/x.bin` after a damaged `a.txt` fails at `CreateDirectory`, since
+     the staged kept file holds the name: with `-kb` a good entry fails that extracts without it.
+  3. SingleFolder: when `a2.zip` keeps a file under a name `a1.zip` wrote, `a1.zip` is counted
+     Partial and is not deleted after, though its file is untouched. Safe side; fix only if cheap.
+- **Reported by:** the agent (opus review), 2026-11-23.
