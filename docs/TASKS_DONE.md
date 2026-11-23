@@ -17597,3 +17597,22 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 - **Sources:** Microsoft Learn, "Add and edit Store listing info for MSIX app", "App screenshots,
   images, and trailers for MSIX app", "Import and export store listings for your MSIX app".
 - **Reported by:** user, 2026-10-05.
+
+### T-F561 - tar.exe wrote more than its listing declared: a 7 KB gzip filled 4 GiB (P2, batch 6's review)
+
+- [x] **Status:** done 2026-11-23: the App and Explorer show the error on the device (1.11.0.13, the CLI-073 archive): "Content is larger than its declared size (0 bytes)" with the Ukrainian text in front, nothing written (`docs/DECISIONS.md`, "v1.12.0 - the release record")
+  Before: fixed on `fix/tf561-write-cap` (2026-11-21); `CLI-073` passed on 1.11.0.4, the 4 GiB
+  file stopped in 1.1 s with nothing written; the App's and Explorer's view of the error waits for batch 8.
+  The premise "no such format is reachable" was wrong: a gzip (or any filter tar.exe reads) holding a
+  ZIP written as a stream, its sizes in data descriptors after the data, is detected as GZip and read
+  by tar.exe, whose streaming ZIP reader lists the entry as 0 bytes, so T-F94's ratio check saw 0.
+  Measured on 3.8.9 and on PakkoW10's 3.5.2: `pakko x` of a 65 KB file wrote 64 MiB, exit 0; a 6.9 KB
+  one is 4 GiB, written at about 1.3 GB/s; the job's CPU limit (an hour at least) would allow terabytes.
+  Fix: every `-x` run (extraction, the first copies, Test's `-O`, the scan's) is held by
+  `JobWriteLimit` to the declared bytes of what it extracts: the job's own `WriteTransferCount`
+  less the stderr Pakko read, over the declared bytes and 1 MiB, stops the job; the run fails with
+  `ContentLargerThanDeclared`. `docs/DECISIONS.md`, "T-F561".
+- **Before:** P3. T-F554 refuses a `-tv` line whose size does not parse, but the bomb check
+  (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) trusted the sizes libarchive prints, and
+  nothing capped what tar.exe then wrote.
+- **Reported by:** the batch 6 closing reviewer, 2026-11-18; reproduced by the agent, 2026-11-21.
