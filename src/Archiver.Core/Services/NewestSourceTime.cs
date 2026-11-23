@@ -29,10 +29,22 @@ internal static class NewestSourceTime
                     newest = Later(newest, File.GetLastWriteTimeUtc(source));
                 continue;
             }
-            foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name), spelledBelow: true)
-                .Where(entry => entry.Kind is WalkEntryKind.Directory or WalkEntryKind.File))
+            foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name), spelledBelow: true))
             {
-                newest = Later(newest, entry.Info.LastWriteTimeUtc);
+                switch (entry.Kind)
+                {
+                    case WalkEntryKind.Directory:
+                    case WalkEntryKind.File:
+                        newest = Later(newest, entry.Info.LastWriteTimeUtc);
+                        break;
+                    // Not archived as content, so its time is not the archive's.
+                    case WalkEntryKind.ReparsePoint:
+                    case WalkEntryKind.UnreadableDirectory:
+                    case WalkEntryKind.LeftOut:
+                    case WalkEntryKind.TrimmedName:
+                    case WalkEntryKind.DeviceName:
+                        break;
+                }
             }
         }
         return newest;
