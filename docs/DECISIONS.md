@@ -15064,6 +15064,29 @@ the AppContainer and the ratio check, not this limit, answer.
 libarchive has others), and a `SECURITY.md` line that the bomb check rests on libarchive's sizes
 (a 7 KB file filling a disk is not a rule to document).
 
+## Batch 12 (v1.12.0) - distribution and the user's own steps (2026-11-23)
+
+The user left every item to the agent ("На твій вибір", 2026-11-23).
+
+- **Closed:**
+  - T-F119: its winget half has been T-F317's first half since 2026-10-03; scoop only when asked.
+  - T-F127: Wikipedia's software notability rule wants coverage in independent sources; Pakko has
+    none yet. Reopen when it has.
+  - T-F152: the user's decision of 2026-08-10 stands. Pakko's privacy text says, without a
+    qualifier, that it makes no network requests and uses no third-party service, and the user
+    kept that text over a VirusTotal link.
+  - T-F332: every field worth filling is filled. The super hero art needs an image the user would
+    have to want; the sort title, license terms and a trailer stay the user's call.
+- **Open past the wave:**
+  - T-F10: it waits on a signing provider (SignPath rejected 2026-07-23).
+  - T-F144: the user's own post, after the release.
+- **T-F331 to batch 8.** The public catalog (`displaycatalog`, market SE, sv-SE) has the file's
+  description and short description, but only 9 of its 13 features: the four format lines are
+  missing. It also has the older search terms. en-US and cs-CZ equal their files. So the sv-SE
+  refusal of 2026-10-05 still holds for features and search terms. Partner Center's form names a
+  refused field where the CSV import does not, so the user enters those two fields by hand with
+  the 1.12.0 submission, and the agent writes 1.12.0's "What's new" lines.
+
 ## Batch 11 (v1.12.0) - App, localization, UI (2026-11-23)
 
 One deploy (package 1.11.0.12, the title bar's build time two minutes old), every check by the agent.

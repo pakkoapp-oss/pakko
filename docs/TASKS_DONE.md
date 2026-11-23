@@ -17436,3 +17436,164 @@ don't ship an unreviewed MT dump under a locale folder.
   Next: reproduce, then try a second dialog in the stuck window. Does not hold the v1.8.1 tag:
   seen once in five tries, with no known trigger.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`APP-001`), 2026-10-12.
+
+### T-F119 — Archiver.CLI PATH Distribution (winget/scoop manifest)
+- [x] **Status:** closed 2026-11-23 (batch 12): its winget half is T-F317's first half since 2026-10-03 (the user); scoop only when asked for (`docs/DECISIONS.md`, "Batch 12 (v1.12.0)")
+- **Folded into T-F317 (2026-10-03, user):** the winget part is T-F317's first half; `scoop` stays
+  out of scope until asked for. The text below is kept as background.
+  Before: future — flagged 2026-07-18 during T-F116's naming/distribution discussion. See
+      `CLI.md`'s Distribution section and `DECISIONS.md`'s T-F116 follow-up entry.
+- **Depends on:** T-F09 (CLI Core)
+
+**What:** `pakko.exe` currently ships only as a manually-downloaded, manually-unzipped artifact —
+confirmed (via research into ripgrep/fd/bat) that this matches the norm for zip-distributed CLI
+tools, but it means there is no "install once, available everywhere" path today. A `winget`
+manifest (Microsoft's own package manager, pre-installed on Windows 10 1709+/Windows 11) is the
+natural next step — its `Portable` installer type registers the exe in a PATH-managed `Links`
+folder without needing a custom installer or elevated MSI. `scoop` is a plausible second target
+for the same reason (also PATH-shim-based, no admin rights needed) but lower priority.
+
+**Acceptance criteria:**
+- [ ] `winget` manifest (`pakkoapp.pakko` or similar id — check availability) targeting the
+      `win-x64`/`win-arm64` zips already produced by `scripts/Publish-Cli.ps1`, using the
+      `Portable` installer type
+- [ ] Manifest validated via `winget validate` and a real local install
+      (`winget install --manifest <path>`) confirming `pakko` resolves from a fresh terminal with
+      no manual PATH edit
+- [ ] Submission process to `microsoft/winget-pkgs` documented in `scripts/README.md` (this is a
+      recurring release step, not a one-time action — new manifest version needed per release)
+- [ ] `CLI.md`'s Distribution section updated once this ships, replacing the "not yet scheduled"
+      note
+
+### T-F127 — Wikipedia page (Ukrainian + English)
+- [x] **Status:** closed 2026-11-23 by decision (batch 12, the user left it to the agent): Wikipedia's software notability rule wants coverage of Pakko in independent sources, and there is none yet. Reopen when there is (`docs/DECISIONS.md`, "Batch 12 (v1.12.0)")
+  Before: future, added 2026-07-19 at the user's explicit request. **Real risk flagged
+      before any work starts, per this project's pre-implementation-research norm:** checked
+      Wikipedia's actual notability guideline for software (`WP:NSOFT`/
+      `Wikipedia:Notability (software)`) — it requires significant coverage of the *software
+      itself* in independent, reliable secondary sources (press reviews, printed manuals, or
+      recognized historical/technical significance), not just an active public GitHub repo. As of
+      2026-07-19 Pakko has no independent press coverage at all (GitHub-only releases for early
+      testers, no reviews, no news mentions found) — an article created now would very likely be
+      speedy-deleted (`WP:CSD` A7) or fail an Articles-for-Deletion discussion for lack of
+      notability, on both `en.wikipedia.org` and `uk.wikipedia.org` (Ukrainian Wikipedia applies
+      an equivalent standard). This is not a formatting/writing problem, it's an eligibility
+      problem — no amount of good prose fixes it.
+- **Depends on:** none technically, but see the note above — realistically blocked on Pakko
+      accumulating independent secondary-source coverage first (e.g. a tech-press review, a
+      notable government/enterprise adoption case covered by a third party). **Not blocked on**
+      T-F124/T-F10 (code signing) or the Microsoft Store listing — those aren't Wikipedia
+      notability sources either.
+
+**Scope (once notability is realistically met):**
+- Draft the article once via a shared source (English first, then a Ukrainian translation, or
+  vice versa — not two independently-drafted articles, to avoid the two language versions
+  drifting on basic facts like license/version/feature list)
+- Disclose the conflict of interest: per `WP:COI`, the project's own maintainer writing about
+  their own project is a connected contribution — must be disclosed on the article's talk page
+  (`{{connected contributor}}` template) and the editor's own user page, and the recommended path
+  is submitting via Articles for Creation (`WP:AFC`) as a draft for independent review, not
+  publishing directly to mainspace
+- Cite only independent secondary sources for notability-relevant claims — this repo's own
+  `README.md`/`SECURITY.md`/`TASKS.md` are primary sources and don't establish notability, only
+  factual detail once notability is otherwise established
+
+**Acceptance criteria:**
+- [x] Real notability check redone at implementation time (sources may exist by then that don't
+      today) — record what was found, don't assume the 2026-07-19 "not yet notable" finding still
+      holds without rechecking. **Rechecked 2026-07-19 (same day):** live web search for "Pakko"
+      alongside archiver/WinUI/zip/GitHub terms returned zero results referencing this project at
+      all — no press coverage, no reviews, no third-party mentions of any kind exist yet. Same
+      conclusion as the original finding above; task stays blocked, not started.
+- [ ] If proceeding: COI disclosed per `WP:COI` before any mainspace edit
+- [ ] English draft submitted via AfC (or mainspace, if a competent Wikipedia editor advises
+      notability is clearly met and AfC is unnecessary)
+- [ ] Ukrainian draft submitted via Ukrainian Wikipedia's equivalent process
+- [ ] Both articles survive their respective new-article review process without deletion
+
+### T-F152 — VirusTotal Hash Lookup Link in Archive Browser (deferred — rejected as-scoped)
+
+- [x] **Status:** closed 2026-11-23 (batch 12): the user's decision of 2026-08-10 stands, no feature and the privacy text unchanged. Reopen only if the user changes that text (`docs/DECISIONS.md`, "Batch 12 (v1.12.0)")
+  Before: deferred 2026-08-10, user-directed — **not implemented, kept as a real backlog
+  entry rather than silently dropped.**
+- **Context:** user proposed replacing (or adding alongside) the Archive Browser's per-entry CRC32
+  column with a SHA256/MD5 value, shown as a clickable link that opens
+  `virustotal.com/gui/file/<hash>` in the user's default browser — hash-only lookup, no file
+  upload, nothing sent from Pakko's own code (`Launcher.LaunchUriAsync`, the same mechanism
+  already used for the About dialog's GitHub/Ko-fi/Privacy links). Later refined during scoping:
+  keep CRC32 as-is (it's free — already read from the ZIP header, zero extra compute), and only
+  compute SHA256/MD5 on an explicit double-click (opens the link), with a single click copying the
+  hash to the clipboard instead — so the cost only exists at the moment a user asks for it, not on
+  every browse.
+- **Why deferred, not designed further this round:** the real blocker isn't the UI or the compute
+  cost — both are solvable (the double-click/single-click split, and SHA256 needing a real
+  recompute since it isn't already available like CRC32 is, especially costly for tar-family
+  entries which would need the same quarantine/sandbox path a real Extract uses). The blocker is
+  that Pakko's published Privacy Policy (`docs/privacy.html`), `SECURITY.md`, and `README.md` all
+  currently make an unqualified claim: "Pakko does not make any network requests... does not
+  integrate with any third-party services." A VirusTotal link is not a network call *from Pakko's
+  own code* — it opens the user's own browser, the user's own click, the user's own hash — but
+  Pakko's specific audience (Ukrainian government/defense, per `CLAUDE.md`'s stated positioning)
+  chose this app partly *because of* that unqualified "zero network" claim, and a third-party-
+  service link risks reading as a quiet walk-back of that promise even though it's technically
+  accurate that the app itself stays offline. Asked the user whether to draft an explicit, honest
+  carve-out for the Privacy Policy/SECURITY.md/README ("Pakko does not make network requests,
+  except when you explicitly click a VirusTotal link, which opens your own browser") before
+  writing any UI code — **user's answer: leave the policy text as-is; don't implement this
+  feature.** Recorded here as the actual decision, not as an open question, so this isn't
+  re-litigated from scratch in a future session without this context.
+- **If ever revisited:** this is not a "come back once you've done more design work" deferral —
+  it's a "the user weighed the tradeoff and chose the current unqualified policy text over this
+  feature" deferral. Revisiting it means asking the user again whether that tradeoff has changed
+  (e.g. if a herметичний, hash-only VirusTotal *file-scan* extension of the existing sandboxed
+  AMSI scanning is what's wanted instead — see the CI-side "upload release artifacts to VirusTotal"
+  idea floated in the same conversation, which is a different, also-deferred idea about signing
+  releases, not this per-entry Archive Browser feature).
+- **Reported by:** user, 2026-08-10 — floated the idea, then explicitly declined once the Privacy
+  Policy conflict was surfaced: "ні нехай буде як є просто додай беклог як і рішення по цьому."
+- **Depends on:** none
+
+### T-F332 — Store listing: the optional fields worth filling (P2)
+
+- [x] **Status:** closed 2026-11-23 by decision (batch 12, the user left it to the agent): every field worth filling is filled; the super hero art needs an image the user would have to want, and the sort title, the license terms and a trailer stay the user's call. Reopen when the user wants one (`docs/DECISIONS.md`, "Batch 12 (v1.12.0)")
+- **Deferred past 1.9.0 (2026-10-24):** the super hero art needs the user's image; every other field is filled.
+  Before: text done 2026-10-05; the CSV import and the 300 x 300 icon went in with the v1.7.1 submission (the user's word, 2026-10-06). Open: the super hero art, if wanted. Follows
+  T-F331; the listing CSV has every field, and these
+  are empty in all 37 languages.
+- **Text, through the listing CSV** (Partner Center, submission overview, "Export listing" /
+  "Import listings"; rows `ShortDescription`,
+  `CopyrightTrademarkInformation`):
+  - [x] short description at most 270 characters in every language (Microsoft: some views show
+    only the first 270): the clause about the right-click menu is gone from all 37 (feature 5 and
+    the description have it), the longest is el-GR at 270; the test limit went from 1,000 to 270
+    and 29 locales failed it before the text changed
+  - [x] copyright line, the same in every language: `Copyright © 2026 Pakko Contributors`, the
+    notice in `LICENSE`; kept in `docs/store-listing/README.md`, not in the 37 files
+  - [x] the fill script is `scripts/Fill-StoreListing.py` (2026-10-06): the export, the output
+    and the listing folder are parameters, `--add-locale` and `--keep-lists` replace the edited
+    constants. Run on `listingData-9P5MW010D8PR-filled-4.csv` with `--keep-lists sv-SE` it wrote a
+    byte-identical file. Described in `scripts/README.md`
+  - [x] the third CSV imported: the next export has the 270-character short description and the
+    copyright line in 36 languages (not sv-se, see T-F331)
+  - [x] the user imported `listingData-9P5MW010D8PR-filled-4.csv` (the user's word, 2026-10-06): the icon URL copied from uk-ua,
+    where it was uploaded, to all 37 languages
+- **Images, uploaded by hand:**
+  - [x] (uploaded by the user, 2026-10-06 word) 1:1 app tile icon, 300 x 300 ("strongly recommended" for apps; without it the Store uses
+    the package's icon): drawn from the rectangles of `src/Archiver.App/Assets/pakko-icon.svg` as
+    `docs/assets/store/app-tile-icon-300.png`, 2026-10-05; the user uploads it
+  - [ ] 16:9 super hero art, 1920 x 1080: no text, no title, no app UI. Needed to be considered
+    for the Store's featured layouts. The user decides whether it is worth drawing
+- **Decided against:** screenshot captions (the user, 2026-10-05: the seven screenshots were
+  uploaded in one order for every language — 03, 04, 05, 01, 08, 02, 09 of
+  `docs/assets/store/CAPTIONS.md` — and Partner Center shows them in a different order from
+  language to language, so caption N would sit under a different picture in each; the CSV has
+  only URLs, the order cannot be read or set from it); short title, voice title, Xbox images
+  (Xbox only); 2:3 poster and 1:1 box art (games); hardware requirements (none beyond the
+  package's); "Developed by".
+- **The user's call, not started:** sort title ("Pako"), additional license terms (Apache 2.0),
+  a trailer.
+- **Watch:** a Microsoft Q&A report says a submission with all seven search terms would not
+  publish and one with six did (seen only as a search summary, not read).
+- **Sources:** Microsoft Learn, "Add and edit Store listing info for MSIX app", "App screenshots,
+  images, and trailers for MSIX app", "Import and export store listings for your MSIX app".
+- **Reported by:** user, 2026-10-05.
