@@ -15069,20 +15069,24 @@ libarchive has others), and a `SECURITY.md` line that the bomb check rests on li
 One deploy (package 1.11.0.12, the title bar's build time two minutes old), every check by the agent.
 The user's language list was saved first (`Export-Clixml`) and put back after, keyboards included.
 
-- **T-F393 closed by measurement.** Under uk-UA, 20 cold starts of `Archiver.App.exe`, a topmost
-  window over the window's right half, About invoked through UI Automation as soon as the button
-  exists (about 0.5 s after the start). The dialog came in 33-74 ms each time; the button was
-  disabled while it was open and enabled after. With the 25 tries of 2026-10-29 that is 45 of 45
-  since the one sighting of 2026-10-12. Reopen on a repro.
+- **T-F393 closed by measurement.** Under uk-UA, 20 cold starts of `Archiver.App.exe` (package
+  1.11.0.13), a topmost window over the window's right half, About invoked through UI Automation
+  as soon as the button exists (about 0.5 s after the start). The dialog came in 32-68 ms each
+  time; the button was disabled while it was open and enabled after. With the 25 tries of
+  2026-10-29 that is 45 of 45 since the one sighting of 2026-10-12. Reopen on a repro.
+  A first series on 1.11.0.12 is not counted. Its cover window, a form started from a PowerShell
+  run with `-WindowStyle Hidden`, never showed: the hidden start reached the form too. The series
+  that counts finds the form by its title, shows it, and saved a screen capture of the first try.
 - **T-F91 and T-F328 done on the device.** One language at a time as the whole list, no sign-out,
-  the App restarted each time, and three views each: the main window, a damaged ZIP opened through
+  the App restarted each time, and three views each at the default window size (the smallest is
+  `APP-014`, batch 8): the main window, a damaged ZIP opened through
   `Archiver.Shell.exe --open-ui --browse` (a Core error), and an ordinary ZIP's archive view.
 
   | Language | Result |
   |---|---|
   | ar-SA, he-IL, ur-PK | The window and the error dialog mirrored; the title bar stays left to right on purpose |
   | de-DE, ja-JP | Nothing cut; the PAR2 percentage box inside its card (T-F387) |
-  | es-ES, el-GR | Test and Close archive fit; the extraction note wraps and scrolls with the cards |
+  | es-ES, el-GR | The second archive-mode radio button was cut at the card's edge ("Archivos comprimidos se"); 7833d4f5 puts the two buttons in a Grid so it wraps, seen wrapped on 1.11.0.13. Test and Close archive fit; the extraction note wraps and scrolls with the cards |
   | hu-HU, vi-VN | Clear fits; the radio buttons fit |
   | ru-RU alone | en-US throughout (no language Pakko has, so the neutral one) |
 

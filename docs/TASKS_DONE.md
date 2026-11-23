@@ -17197,13 +17197,13 @@ question, not just AppContainer/Job-Object setup cost (which this spike shows is
 
 ### T-F02 — Dedicated Archive Window
 - [x] **Status:** closed 2026-11-23 by decision (batch 11, the user's OK in the batch plan): one line, no criteria, named nowhere else; the App's option cards already hold the archive settings. Reopen when the user describes what the window should hold (`docs/DECISIONS.md`, "Batch 11 (v1.12.0)")
-- [ ] **Status:** future
+  Before: future
 
 Separate window for archive configuration instead of inline controls.
 
 ### T-F91 — Multi-Language Localization (OS-Language Auto-Match, English Fallback)
-- [x] **Status:** done 2026-11-23 (batch 11, package 1.11.0.12, agent-driven): the user's language list set to one language at a time, no sign-out, the App restarted each time. ar-SA, he-IL and ur-PK lay out right to left (the title bar stays left to right on purpose; the "never sets `FlowDirection`" note below predates T-F386); de-DE, ja-JP, es-ES, el-GR, hu-HU and vi-VN cut no label, the archive view included; a Core error (a damaged ZIP) is translated in each; ru-RU alone falls back to en-US. Only English left: the caption buttons (WinAppSDK, T-F268 (g) closed upstream). The native-speaker review is closed by the user's decision (2026-10-05: no native reviewers); a sign-out and a regional variant stay `APP-021` (batch 8) (`docs/DECISIONS.md`, "Batch 11 (v1.12.0)")
-- [~] **Status:** (2026-10-03) all 37 locales ship in every localized frontend (the CLI stays English by design, T-F209): the App's `.resw`, Shell's `OperationText.resx`, the Explorer menu table and `Archiver.Messages` (App and Messages key parity are test-enforced). Left for the release: a native-speaker review and an on-screen layout check per language, RTL (he/ar/ur) included, plus T-F268 (g)'s caption-button tooltips. Earlier status: partial — first batch (all 24 European locales) implemented 2026-07-07;
+- [x] **Status:** done 2026-11-23 (batch 11, package 1.11.0.12, agent-driven): the user's language list set to one language at a time, no sign-out, the App restarted each time. ar-SA, he-IL and ur-PK lay out right to left (the title bar stays left to right on purpose; the "never sets `FlowDirection`" note below predates T-F386); at the default window size de-DE, ja-JP, hu-HU and vi-VN cut no label, the archive view included, and es-ES and el-GR cut the second archive-mode radio button until 7833d4f5 let it wrap (1.11.0.13); the smallest window is `APP-014` (batch 8); a Core error (a damaged ZIP) is translated in each; ru-RU alone falls back to en-US. Only English left: the caption buttons (WinAppSDK, T-F268 (g) closed upstream). The native-speaker review is closed by the user's decision (2026-10-05: no native reviewers); a sign-out and a regional variant stay `APP-021` (batch 8) (`docs/DECISIONS.md`, "Batch 11 (v1.12.0)")
+  Before: (2026-10-03) all 37 locales ship in every localized frontend (the CLI stays English by design, T-F209): the App's `.resw`, Shell's `OperationText.resx`, the Explorer menu table and `Archiver.Messages` (App and Messages key parity are test-enforced). Left for the release: a native-speaker review and an on-screen layout check per language, RTL (he/ar/ur) included, plus T-F268 (g)'s caption-button tooltips. Earlier status: partial — first batch (all 24 European locales) implemented 2026-07-07;
       Arabic/Japanese/Chinese/etc. (the non-European half of the target list) not started;
       on-device verification, layout-corruption check, and native-speaker translation review
       still outstanding for the European batch. See `DECISIONS.md`'s T-F91 entry.
@@ -17335,7 +17335,7 @@ don't ship an unreviewed MT dump under a locale folder.
   prompt shows both sizes and times, asks again after an unknown answer, `u` renames both (`a (1).txt`),
   `q` stops with "operation stopped by user", exit 255; Ctrl+C at the prompt exits 255 and writes
   nothing. Windows PowerShell 5.1 is `CLI-009`; the keyboard-only pass is `APP-012`.
-- [ ] **Status:** open — a required gate for closing this batch (user instruction 2026-09-24: the
+  Before: open — a required gate for closing this batch (user instruction 2026-09-24: the
   app is live on the Microsoft Store and earlier self-testing missed real defects). Agent-driven via
   `windows` MCP against the freshly deployed MSIX, with a written checklist and a pass/fail per item:
   every button and option of the main window in both modes; every Explorer context-menu command
@@ -17360,8 +17360,8 @@ don't ship an unreviewed MT dump under a locale folder.
 
 ### T-F328 — Localization audit fixes: wrong meanings and one term per action in 36 locales (P2)
 
-- [x] **Status:** done 2026-11-23 (batch 11, package 1.11.0.12): the on-device look under a non-English language list: the main window and the archive view in es, el, hu, vi, de, ja, ar, he and ur cut nothing (es and el Test and Close archive, the radio buttons, hu and vi Clear included), a Core error in each, and Explorer's Pakko submenu in es-ES (it reads the user language list at each call; no sign-out). The left-out style points are closed by decision: none changes a meaning and each touches many strings (`docs/DECISIONS.md`, "Batch 11 (v1.12.0)")
-- [~] **Status:** in progress. A read-through of every translated string (339 keys, 36 locales,
+- [x] **Status:** done 2026-11-23 (batch 11, package 1.11.0.12): the on-device look under a non-English language list: at the default window size the main window and the archive view in es, el, hu, vi, de, ja, ar, he and ur cut nothing (es and el Test and Close archive, hu and vi Clear included) except the archive-mode radio buttons in es and el, which 7833d4f5 lets wrap (seen cut on 1.11.0.12, wrapped on 1.11.0.13); a Core error in each, and Explorer's Pakko submenu in es-ES (it reads the user language list at each call; no sign-out). The left-out style points are closed by decision: none changes a meaning and each touches many strings (`docs/DECISIONS.md`, "Batch 11 (v1.12.0)")
+  Before: in progress. A read-through of every translated string (339 keys, 36 locales,
   2026-10-05) found 10 strings with a wrong meaning, 68 with a wrong or inconsistent term and
   ~226 style points. Root cause of most: `CoreMessages` was translated apart from the App and the
   Explorer menu, with no glossary, so one action has two or three words depending on the surface.
@@ -17417,8 +17417,8 @@ don't ship an unreviewed MT dump under a locale folder.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 
-- [x] **Status:** closed 2026-11-23 by measurement (batch 11, package 1.11.0.12, uk-UA): 20 more cold starts under the original conditions (a topmost window over the right half, About invoked through UI Automation as soon as the button exists, about 0.5 s after the start): the dialog in 33-74 ms each time, the button disabled while it is open and enabled after; 45 of 45 since the one sighting. Reopen on a repro; the next step stays a second dialog in the stuck window
-- [ ] **Status:** deferred past 1.9.0 (2026-10-29, agent: P3, no repro). Package 1.8.1.19, uk-UA: About opened
+- [x] **Status:** closed 2026-11-23 by measurement (batch 11, package 1.11.0.13, uk-UA): 20 more cold starts under the original conditions (a topmost window over the right half, seen on a screen capture, About invoked through UI Automation as soon as the button exists, about 0.5 s after the start): the dialog in 32-68 ms each time, the button disabled while it is open and enabled after; 45 of 45 since the one sighting. A first series on 1.11.0.12 is not counted: its cover window never showed. Reopen on a repro; the next step stays a second dialog in the stuck window
+  Before: deferred past 1.9.0 (2026-10-29, agent: P3, no repro). Package 1.8.1.19, uk-UA: About opened
   25 times out of 25 - 15 in one window through UI Automation's Invoke (the dialog in ~140 ms, the button
   disabled while it is open, enabled after), and 10 cold starts of `Archiver.App.exe` with a topmost window
   over the window's right half, About invoked as soon as the window had a handle (dialog in 139-159 ms).
