@@ -315,7 +315,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
                 string named = relative.Replace(Path.DirectorySeparatorChar, '/');
                 if (reader._droppedFiles is not null && reader._droppedFiles.Contains(named))
                     continue;
-                yield return new QuarantinedFile(file, relative, _renamed.Contains(named), _trimmed.Contains(named));
+                // T-F461 item 5: tar.exe writes an explicit "d./" entry as "d.", which the listing's
+                // prediction ("d") does not key; the name on disk trims either way.
+                yield return new QuarantinedFile(file, relative, _renamed.Contains(named), _trimmed.Contains(named) || EntryDiskName.Trims(named));
             }
         }
 
