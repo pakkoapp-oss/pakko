@@ -70,14 +70,17 @@ internal sealed class ExtractionNameRegistry
     /// there.</summary>
     public bool IsTaken(string fullPath) => _claimed.Contains(fullPath) || _folders.Contains(fullPath);
 
-    /// <summary>T-F570: a folder this run writes, by its final path.</summary>
-    public void ClaimFolder(string folderPath) => _folders.Add(Path.TrimEndingDirectorySeparator(folderPath));
+    /// <summary>T-F570: a folder this run writes, by its final path, and the folders above it up to
+    /// <paramref name="root"/>: an entry "a/b/" with no "a/" entry still writes "a".</summary>
+    public void ClaimFolder(string folderPath, string root) =>
+        ClaimFoldersUpTo(Path.TrimEndingDirectorySeparator(folderPath), root);
 
     /// <summary>T-F570: the folders above <paramref name="filePath"/>, up to <paramref name="root"/>.</summary>
-    public void ClaimParents(string filePath, string root)
+    public void ClaimParents(string filePath, string root) => ClaimFoldersUpTo(Path.GetDirectoryName(filePath), root);
+
+    private void ClaimFoldersUpTo(string? folder, string root)
     {
         string top = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-        string? folder = Path.GetDirectoryName(filePath);
         while (folder is not null && folder.Length > top.Length)
         {
             // A folder already claimed had its own parents claimed with it.

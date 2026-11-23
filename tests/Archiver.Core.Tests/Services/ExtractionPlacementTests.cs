@@ -185,4 +185,27 @@ public sealed class ExtractionPlacementTests : IDisposable
         File.ReadAllText(Path.Combine(Dest, "x (2).txt")).Should().Be("from the zip");
         File.ReadAllText(Path.Combine(Dest, "x.txt")).Should().Be("was here");
     }
+
+    // A folder entry claims its parents too: "x (1).txt/sub/" with no "x (1).txt/" entry of its own
+    // still leaves "x (1).txt" taken for the file numbered after it.
+    [Fact]
+    public async Task Rename_PassesTheParentOfAnEarlierFolderEntry()
+    {
+        string zip = Path.Combine(_temp.Path, "nested.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        {
+            archive.CreateEntry("x (1).txt/sub/");
+            using var writer = new StreamWriter(archive.CreateEntry("x.txt").Open());
+            writer.Write("from the zip");
+        }
+        Directory.CreateDirectory(Dest);
+        File.WriteAllText(Path.Combine(Dest, "x.txt"), "was here");
+
+        ArchiveResult result = await ExtractAsync([zip], ConflictBehavior.Rename);
+
+        result.Errors.Should().BeEmpty();
+        Directory.Exists(Path.Combine(Dest, "x (1).txt", "sub")).Should().BeTrue();
+        File.ReadAllText(Path.Combine(Dest, "x (2).txt")).Should().Be("from the zip");
+        File.ReadAllText(Path.Combine(Dest, "x.txt")).Should().Be("was here");
+    }
 }

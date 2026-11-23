@@ -212,13 +212,17 @@ internal sealed class ZipCatalog : IDisposable
         _data.Seek(start, SeekOrigin.Begin);
         _data.ReadExactly(raw);
 
-        List<LocatedZipEntry>? located = locate switch
+        // T-F571 review: an entry whose headers disagree is never located - its local header may
+        // claim what no reader can read, and one entry is refused, not the whole archive.
+        bool[]? disagree = compareHeaders || locate == ZipLocate.Required
+            ? [.. records.Select(record => HeadersDisagree(_data, record))]
+            : null;
+        IReadOnlyList<LocatedZipEntry?>? located = locate switch
         {
-            ZipLocate.Required => LocateAll(_data, [.. records.Select(ResolveZip64)]),
+            ZipLocate.Required => LocateAgreeing(records, disagree!),
             ZipLocate.BestEffort => TryLocate(records),
             _ => null,
         };
-        bool[]? disagree = compareHeaders ? [.. records.Select(record => HeadersDisagree(_data, record))] : null;
         using var overlay = new CentralDirectoryOverlayStream(_data, raw, records.Count, _extent.DiskNumber, _settings.ForceZip64Overlay);
         using var archive = new ZipArchive(overlay, ZipArchiveMode.Read, leaveOpen: true);
         System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
@@ -232,8 +236,22 @@ internal sealed class ZipCatalog : IDisposable
             int index = firstIndex + i;
             string name = Decode(record, names);
             yield return new NamedZipEntry(entries[i], name, Collides(firstRawByName, name, record.NameBytes),
-                ZipExtendedTime.TryReadModifiedUtc(record.Extra), located?[i]) { Index = index, HeadersDisagree = disagree?[i] == true };
+                ZipExtendedTime.TryReadModifiedUtc(record.Extra), located?[i]) { Index = index, HeadersDisagree = compareHeaders && disagree![i] };
         }
+    }
+
+    private LocatedZipEntry?[] LocateAgreeing(List<CentralDirectoryRecord> records, bool[] disagree)
+    {
+        List<CentralDirectoryRecord> agreeing = [.. records.Where((_, i) => !disagree[i]).Select(ResolveZip64)];
+        List<LocatedZipEntry> found = LocateAll(_data, agreeing);
+        var located = new LocatedZipEntry?[records.Count];
+        int next = 0;
+        for (int i = 0; i < records.Count; i++)
+        {
+            if (!disagree[i])
+                located[i] = found[next++];
+        }
+        return located;
     }
 
     // T-F529: every walk counts the names it decodes - as decoded, since a 0x7075 extra field can

@@ -79,7 +79,7 @@ reviewer at the batch's close, with the user's OK.
 | 6 | Taskbar, the file list | T-F564, T-F566 | `APP-031`, `OPW-006` and T-F566's new APP row on the device |
 | 7 | A damaged entry kept | T-F496 | The failure matrix (CRC, length, deflate) at every test level, one deploy |
 | 9 | Owners where fixes were patches (the defect review, 2026-11-23) | T-F570 (with T-F569), T-F571, T-F572, T-F573, T-F574 | Each owner with its Single Owners row and guard test; every fix it absorbs keeps its test green; an opus reviewer for T-F570 and T-F571 (they decide what is written from untrusted input) |
-| 10 | The tar.exe fallback and the engine backlog | T-F453 (not a placement defect, batch 9), T-F445, T-F461, T-F464, T-F469, T-F568, T-F359, T-F121, T-F132 (each: done, or closed by a measurement or a decision recorded in DECISIONS) | Both tar builds; measured before and after where it is a speed task |
+| 10 | The tar.exe fallback and the engine backlog | T-F453 (not a placement defect, batch 9), T-F575, T-F445, T-F461, T-F464, T-F469, T-F568, T-F359, T-F121, T-F132 (each: done, or closed by a measurement or a decision recorded in DECISIONS) | Both tar builds; measured before and after where it is a speed task |
 | 11 | App, localization, UI | T-F02, T-F91, T-F202, T-F328, T-F329, T-F393 | One deploy; the APP rows each one names |
 | 12 | Distribution and the user's own steps | T-F10, T-F119, T-F127, T-F144, T-F152 (close or rescope), T-F331, T-F332 | Only with the user's OK, item by item: T-F127 and T-F144 are the user's own posts, T-F10 waits on a signing provider |
 | 8 | Device, user, release | T-F432 (`APP-032` by eye), `POL-011` (T-F496's policy, elevated), T-F494, T-F444, T-F446, T-F447, T-F254, T-F508, T-F317 (only with the user's OK); `STO-005`, `STO-006`, `STO-008` for 1.11.0 after certification; the release tier; the tag after the user's OK | As batch 8 of v1.11.0 |
@@ -1233,6 +1233,17 @@ re-measured with T-F346's script before and after.
   (`EncryptedZipEntryReader` checks it before any byte today). ZipCrypto's one-byte check and no
   MAC leave no such proof short of a good CRC-32 on another entry; decide here whether that counts.
 - **Reported by:** the agent (T-F496's plan), 2026-11-22.
+
+### T-F575 - The tar engine claims no folder entry: a numbered name can land on one (P3, batch 10, from batch 9's review)
+
+- [ ] **Status:** open. ZIP claims each folder entry and its parents in `ExtractionNameRegistry`
+  (T-F570), so a file numbered by Rename passes them. tar creates its folder entries after the files
+  are placed (`quarantine.CreateFolderEntriesIn`, `HelperReader` and `TarExeReader` each list their
+  own) and claims only a file's parents: a folder entry "x (1)/" with no file under it, then a file
+  "x" meeting a file there, numbers the file "x (1)", onto the folder created later. Needs a reader
+  method that gives the folder entries before placement, in both readers, and a run on both tar
+  builds (3.8.x and 3.5.2). Predates batch 9.
+- **Reported by:** the opus reviewer of PR #283 (D2), 2026-11-23.
 
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)
 

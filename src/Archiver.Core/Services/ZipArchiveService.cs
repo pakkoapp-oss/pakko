@@ -1958,7 +1958,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Directory.CreateDirectory(folder);
-        plan.Names.ClaimFolder(Path.GetFullPath(Path.Combine(plan.ActualDest, relativePath)));
+        plan.Names.ClaimFolder(Path.GetFullPath(Path.Combine(plan.ActualDest, relativePath)), plan.ActualDest);
         plan.Staging.RecordFolderTime(relativePath, named.ModifiedUtc);
         return !Directory.Exists(Path.Combine(plan.ActualDest, relativePath));
     }

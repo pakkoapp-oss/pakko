@@ -15128,6 +15128,18 @@ extraction reports `kHeadersError` and skips the item.
   archive's item of that name is numbered; "the later item keeps the name" holds within one archive.
   APP-040 OK (kept and reported, the box unticked after, Extract here keeps nothing, Delete after
   leaves the archive), and Extract here on a tar with trimmed twins keeps both.
+- *The opus review (2026-11-23) found no P1, one P2 and two P3s.* Each fix's test seen red first:
+  - D1 (P2): a ZIP folder entry claimed only itself, so "x (1)/sub/" with no "x (1)/" entry left
+    "x (1)" free, and Rename numbered a file onto the folder staged there (Access denied at the
+    commit). `ClaimFolder` now claims the folder's parents up to the destination, as `ClaimParents`
+    does for a file.
+  - D3 (P3, predates the batch): with a password resolved, every entry was located by its local
+    header before any was compared, so a plain central record whose local header said method 99 with
+    bit 0 and no AES field failed the whole archive as corrupt. `ZipCatalog` now compares first and
+    locates only the entries whose headers agree; the other one is refused as T-F571 refuses it.
+  - D2 (P3, predates the batch): the tar engine creates its folder entries after placing files and
+    never claims them. It needs a reader method in both readers and a run on both tar builds, so it
+    is T-F575 in batch 10.
 
 ## Batch 7 (v1.12.0) - a damaged entry kept on request (T-F496; 2026-11-22)
 
