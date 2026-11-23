@@ -112,6 +112,10 @@ internal interface IQuarantinedEntries
     /// <summary>The files to move out, in the order they claim names (first copies first, T-F171).</summary>
     IEnumerable<QuarantinedFile> Files();
 
+    /// <summary>T-F453: whether what was written has one top-level name, as the listing that chose to
+    /// drop the root said; false when two true roots were listed as one.</summary>
+    bool HoldsOneRoot();
+
     /// <summary>T-F462: throws when a file entry reached neither the quarantine nor a report.</summary>
     void EnsureNoneMissing();
 

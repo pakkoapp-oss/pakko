@@ -574,6 +574,9 @@ internal sealed class HelperReader : ISandboxedArchiveReader
                 EntryDiskName.Renames(e.Name),
                 EntryDiskName.Trims(e.Name)));
 
+        // The helper names each entry exactly, so the listing's root is the root on disk.
+        public bool HoldsOneRoot() => true;
+
         // Every file was checked present in out\ before this quarantine was made.
         public void EnsureNoneMissing()
         {
