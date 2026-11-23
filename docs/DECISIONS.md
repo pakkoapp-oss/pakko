@@ -15829,6 +15829,26 @@ would be a separate decision of the user's. bz2, xz, lzma and 7z stay on tar.exe
 - **Inventory:** every task the v1.11.0 release carried over is in a batch or named as not in this
   wave in `docs/TASKS.md`'s wave section; T-F427 was graduated after the tag.
 
+### Defect sources (2026-11-23)
+
+The user asked whether the last twenty defect fixes share a source that was patched rather than
+fixed, and whether one owner holds it. Each fix was classified by the files it changed (`git show
+--stat`), against `docs/ARCHITECTURE.md`'s Single Owners table:
+
+| Class | Fixes | Owner | Where the fixes landed | Verdict |
+|---|---|---|---|---|
+| A path's spelling: names Windows trims, `\\?\` and `\??\`, device names, case | T-F509, T-F517, T-F519, T-F531 (and its P1), T-F547, T-F549, T-F552, T-F556, T-F557, T-F558, T-F559, T-F563 | `InputPaths`, `PathIdentity`, `SourceTree`, `DirectoryWalker` (rows and guard tests) | The owner each time, plus the consumers: T-F559 touched nine files, T-F557 seven, T-F531 eleven. The walker classifies, and each of seven consumers decides what a kind means. | The owner answers the question; deciding what it means is per call site. T-F572 |
+| The final name of an extracted item | T-F443, T-F453, T-F496's later-entry overwrite, its review's staged folder, T-F569 | none: `ExtractionNameRegistry` is a public mutable set that four engines fill | Each engine, one at a time; bare gzip never asks `MustKeepApart`, and folders are never claimed | Patches. T-F570 |
+| One ZIP fact read from two headers | T-F538, T-F521, the T-F496 review's P3-1 | `ZipCatalog` for names; none for encryption or method | Encryption is decided in four places; T-F280's check skips flags and method | Patches. T-F571 |
+| A numbered name's length | the T-F496 review's P3-4 | `ArchiveNaming` | `EntryDiskName.NumberRoom`, for the kept name only | Patch. T-F573 |
+| What kind of failure an exception is | T-F496's content-damage codes | the table says "none yet" | `IsContentDamage` in `ZipArchiveService` | Patch. T-F574 |
+| Work folders, the quarantine, temp | T-F546, T-F547, T-F555 | `WorkRoot`, `TempOwner`, `QuarantineFiles` (T-F528, T-F474) | The owners | Fixed in the owner: no new task |
+| Memory, listings, tar.exe's output | T-F545, T-F551, T-F554, T-F561 | `ArchiveLimits`, `ZipCatalog`, `TarSandboxScope`, `JobWriteLimit` | The owners | Fixed in the owner: no new task |
+| A scan read as Clean without an answer | T-F448, T-F449, open T-F446 | `AmsiScanner` maps the result in one place | The owner | No new task; T-F446 fixes the owner |
+
+T-F496's three review fixes (e4c59a8c) are correct and tested, but they are call-site fixes; T-F570,
+T-F571 and T-F573 take them into their owners. Batch 9 of the wave holds the five.
+
 ## Pakko against NanaZip and 7-Zip, measured 2026-11-20 (for the Store listing)
 
 Asked by the user for the Store description: the general ratios, compression levels set the same.
