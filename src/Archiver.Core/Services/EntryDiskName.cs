@@ -43,24 +43,29 @@ public static class EntryDiskName
     /// <summary>The ending <see cref="Damaged"/> adds.</summary>
     public const string DamagedSuffix = ".damaged";
 
-    // NTFS's limit for one name, in UTF-16 units.
-    private const int MaxNameLength = 255;
-
-    // Room for the " (99999)" a taken kept name is numbered with (ArchiveNaming.GetUniqueName).
-    private const int NumberRoom = 8;
+    /// <summary>NTFS's limit for one name, in UTF-16 units.</summary>
+    internal const int MaxNameLength = 255;
 
     /// <summary>T-F496: the name a damaged entry's kept bytes get, from the name its file would have
     /// had (one part, as Pakko writes it): <see cref="DamagedSuffix"/> after the whole name
     /// ("a.txt" as "a.txt.damaged"), so no program opens it by the extension it had and an ".exe"
-    /// does not run. A name that would pass NTFS's 255 units once numbered loses the end of its own
-    /// part first.</summary>
-    public static string Damaged(string fileName)
+    /// does not run. A name that would pass NTFS's 255 units loses the end of its own part first.</summary>
+    public static string Damaged(string fileName) =>
+        Prefix(fileName, MaxNameLength - DamagedSuffix.Length) + DamagedSuffix;
+
+    /// <summary>At most <paramref name="length"/> units of <paramref name="text"/> from its start,
+    /// never ending in half of a surrogate pair.</summary>
+    internal static string Prefix(string text, int length)
     {
-        int keep = Math.Min(fileName.Length, MaxNameLength - NumberRoom - DamagedSuffix.Length);
-        if (keep < fileName.Length && keep > 0 && char.IsHighSurrogate(fileName[keep - 1]))
+        int keep = Math.Clamp(length, 0, text.Length);
+        if (keep < text.Length && keep > 0 && char.IsHighSurrogate(text[keep - 1]))
             keep--;
-        return fileName[..keep] + DamagedSuffix;
+        return text[..keep];
     }
+
+    /// <summary>T-F573: <see cref="Prefix"/> for the end of a name: without the trailing dots and
+    /// spaces Windows would drop.</summary>
+    internal static string EndingPrefix(string text, int length) => Prefix(text, length).TrimEnd('.', ' ');
 
     /// <summary>Whether Pakko writes <paramref name="name"/> under another name than its own parts
     /// ("a?b.txt" as "a_b.txt", "d./x.txt" as "d\x.txt"); a doubled separator or a "./" step is

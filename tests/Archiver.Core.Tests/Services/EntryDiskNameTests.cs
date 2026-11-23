@@ -18,19 +18,19 @@ public sealed class EntryDiskNameTests
         EntryDiskName.Damaged(name).Should().Be(expected);
 
     [Fact]
-    public void Damaged_NameAtTheLimit_LeavesRoomForANumber()
+    public void Damaged_NameAtTheLimit_StaysWithin255Units()
     {
         string damaged = EntryDiskName.Damaged(new string('n', 251) + ".txt");
 
-        damaged.Should().HaveLength(255 - " (99999)".Length).And.EndWith(EntryDiskName.DamagedSuffix).And.StartWith(new string('n', 239));
+        damaged.Should().HaveLength(255).And.EndWith(EntryDiskName.DamagedSuffix).And.StartWith(new string('n', 247));
     }
 
     [Fact]
     public void Damaged_CutNeverSplitsASurrogatePair()
     {
-        string damaged = EntryDiskName.Damaged(new string('n', 238) + "\U0001F600\U0001F600");
+        string damaged = EntryDiskName.Damaged(new string('n', 246) + "\U0001F600\U0001F600");
 
-        damaged.Should().Be(new string('n', 238) + EntryDiskName.DamagedSuffix);
+        damaged.Should().Be(new string('n', 246) + EntryDiskName.DamagedSuffix);
     }
 
     // T-F511: one name, never a path: its separators are characters, and "." or ".." is no step.
