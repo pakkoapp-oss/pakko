@@ -212,6 +212,32 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         Everything(dest).Should().BeEquivalentTo(["x.txt", "empty"], TarCodePage.Describe());
     }
 
+    // T-F461 item 5: "d./" then "d./x.txt" lands in "d", whose "x.txt" is already at the destination:
+    // a name Windows trims never replaces a file, under Overwrite too (as ZIP).
+    [Integration]
+    public async Task Extract_FileUnderAFolderEndingInDot_DoesNotReplaceTheFileThere()
+    {
+        string path = Path.Combine(_temp.Path, "dot-overwrite.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "d./", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "d./x.txt", Content = Encoding.ASCII.GetBytes("new") },
+        ]);
+        string dest = NewDestination();
+        Directory.CreateDirectory(Path.Combine(dest, "d"));
+        File.WriteAllText(Path.Combine(dest, "d", "x.txt"), "mine");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(dest, "d", "x.txt")).Should().Be("mine");
+        File.ReadAllText(Path.Combine(dest, "d", "x (1).txt")).Should().Be("new");
+    }
+
     // A filter decides on folder names too; a folder listed by best fit makes them untrustworthy.
     [Integration]
     public async Task Extract_FilterOverABestFitFolder_RefusedNothingWritten()
