@@ -62,7 +62,8 @@ takes 16.5 s, so most of it is Pakko's own. Creating tar, tar.gz and tar.zst thr
 was a real candidate (spiked, rejected 2026-11-21); reading stays in the sandbox. Plan and inventory: `docs/DECISIONS.md`,
 "v1.12.0 wave plan".
 
-Same rules as the v1.11.0 wave: one branch and one PR per batch, one commit per task, Sonar's rules
+Same rules as the v1.11.0 wave, but from batch 10 on one branch and one PR for the rest of the wave
+(the user, 2026-11-23); one commit per task, Sonar's rules
 checked before the push; a speed change is measured before and after with
 `scripts/Measure-Comparison.ps1` on the same data, real-time protection on, on a Dev Drive and on
 plain NTFS, and against 7-Zip at the same archive size, never the same `-mx`; every change to the tar
