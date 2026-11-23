@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>仅从 ZIP 压缩包中保留损坏的文件；此压缩包中的损坏文件不会留下任何内容。</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>条目“{0}”已损坏：其本地文件头与中央目录在加密或压缩方法上不一致，因此其他程序可能会从中读取到不同的内容。</value>
+  </data>
 </root>

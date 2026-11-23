@@ -1056,8 +1056,8 @@ public sealed class ZipArchiveService : IArchiveService
     {
         if (!IsEncryptedZip(archivePath))
             return false;
-        if (passes is null)
-            return true;
+        // T-F571: the central directory's bit alone is not enough - an entry whose local header says
+        // otherwise is refused, not decrypted - so the probe the password is checked on decides.
         try
         {
             return SmallestEncryptedEntryThatPasses(archivePath, codePages, passes, cancellationToken) is not null;
@@ -1310,7 +1310,7 @@ public sealed class ZipArchiveService : IArchiveService
                 // then each entry goes to the caller as the walk reads it, never kept.
                 catalog.Check(locate, cancellationToken);
                 long count = 0;
-                foreach (NamedZipEntry named in catalog.Entries(locate: locate))
+                foreach (NamedZipEntry named in catalog.Entries(locate: locate, compareHeaders: false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     onEntry(ToEntryInfo(named));
@@ -1434,7 +1434,13 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
-            if (named.Located is { GeneralPurposeEncryptedBit: true } located2)
+            if (named.HeadersDisagree)
+            {
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryHeadersDisagree, named.FullName)));
+                continue;
+            }
+
+            if (named.Encrypted is { } located2)
             {
                 TestEncryptedEntry(archivePath, named.FullName, located2, rawArchiveStream!, password!, errors, cancellationToken);
                 continue;
@@ -1754,7 +1760,7 @@ public sealed class ZipArchiveService : IArchiveService
         string? firstPassing = null, firstRoot = null;
         bool allUnderOneRoot = true, allUnderNamedRoot = namedRoot is not null, anyEntry = false;
         long declaredFileBytes = 0;
-        foreach (NamedZipEntry entry in catalog.Entries(locate: locate))
+        foreach (NamedZipEntry entry in catalog.Entries(locate: locate, compareHeaders: false))
         {
             cancellationToken.ThrowIfCancellationRequested();
             string name = entry.FullName;
@@ -1857,6 +1863,13 @@ public sealed class ZipArchiveService : IArchiveService
         if (named.CollidesAfterDecoding)
         {
             context.Errors.Add(CoreMessages.Error(archivePath, CollisionMessage(named.FullName)));
+            return (false, named.Entry.Length);
+        }
+
+        // T-F571: nothing of it is decoded, so nothing of it is kept either.
+        if (named.HeadersDisagree)
+        {
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryHeadersDisagree, named.FullName)));
             return (false, named.Entry.Length);
         }
 
@@ -2090,7 +2103,7 @@ public sealed class ZipArchiveService : IArchiveService
     private static (bool Success, Stream? Stream, CoreText? Error) OpenEntryContentStream(
         NamedZipEntry named, ExtractionPlan plan, ZipExtractionContext context)
     {
-        if (named.Located is { GeneralPurposeEncryptedBit: true } located)
+        if (named.Encrypted is { } located)
         {
             // Located is only read after a password resolved (ExtractWithSmartFolderingAsync).
             ResolvedZipPassword password = context.Password
@@ -2153,8 +2166,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         // T-F496: only a plain entry's damage can keep a file: an encrypted one's cannot be told
         // from a wrong password that passed the check value.
-        // The local header picks decryption (OpenEntryContentStream), so both headers must say plain.
-        bool plain = named.Located is not { GeneralPurposeEncryptedBit: true } && !named.Entry.IsEncrypted;
+        bool plain = named.IsPlain;
         VerifyingReadStream? keepFrom = context.KeepDamaged && plain ? entryStream as VerifyingReadStream : null;
         long totalUncompressedBytes = plan.TotalUncompressedBytes;
         if (context.Progress != null && totalUncompressedBytes > 0)

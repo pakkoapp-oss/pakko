@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Bojāti faili tiek saglabāti tikai no ZIP arhīviem; no bojāta faila šajā arhīvā nepaliek nekas.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Vienums “{0}” ir bojāts: tā lokālā galvene un centrālais direktorijs atšķiras šifrēšanā vai saspiešanas metodē, tāpēc citas programmas no tā var nolasīt citu saturu.</value>
+  </data>
 </root>

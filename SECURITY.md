@@ -178,7 +178,10 @@ decompression bug would run with the user's rights). bzip2 and xz of one file ar
   from the central directory only, so its own result is consistent; another program may take them
   from the local headers and extract different names or data from the same archive. "Test
   archive" reports such an archive as an error, and extraction warns about it while extracting by
-  the central directory (T-F280; before v1.7.1 extraction said nothing).
+  the central directory (T-F280; before v1.7.1 extraction said nothing). An entry whose two
+  headers disagree on encryption (general-purpose bits 0 and 6) or the compression method is
+  refused outright: extraction and Test report it and write nothing of it, and a scan reports it
+  as not scanned, since another program would decode other content from it (T-F571).
 
 **Minimal MSIX capabilities**
 `Package.appxmanifest` declares only `runFullTrust`. No `broadFileSystemAccess`, no `internetClient`, no device capabilities.

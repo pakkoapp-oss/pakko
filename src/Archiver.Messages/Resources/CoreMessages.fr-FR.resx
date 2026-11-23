@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Les fichiers endommagés ne sont conservés que depuis les archives ZIP ; d’un fichier endommagé dans cette archive, il ne reste rien.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>L’entrée « {0} » est endommagée : son en-tête local et le répertoire central divergent sur son chiffrement ou sa méthode de compression, d’autres programmes peuvent donc en lire un contenu différent.</value>
+  </data>
 </root>

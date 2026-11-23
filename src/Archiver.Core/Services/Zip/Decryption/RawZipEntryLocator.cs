@@ -211,7 +211,36 @@ internal static class RawZipEntryLocator
     /// bound its raw bytes in the archive (T-F529: a <see cref="ZipCatalog"/> batch copies them).</summary>
     internal sealed record CentralDirectoryRecord(
         byte[] NameBytes, long LocalHeaderOffset, uint Crc32, long CompressedSize, long UncompressedSize,
-        ushort GeneralPurposeFlag, byte HostOs, byte[] Extra, long RecordStart, long RecordEnd);
+        ushort GeneralPurposeFlag, byte HostOs, byte[] Extra, long RecordStart, long RecordEnd)
+    {
+        public ushort CompressionMethod { get; init; }
+    }
+
+    // Bit 0 (encrypted) and bit 6 (strong encryption).
+    private const ushort EncryptionFlags = 0x0041;
+
+    /// <summary>
+    /// T-F571: whether the entry's local header disagrees with <paramref name="central"/> on
+    /// encryption (bits 0 and 6) or the compression method. .NET reads an entry by its central record
+    /// and other programs by its local header, so the two would give different content; 7-Zip
+    /// (ZipIn.cpp, <c>AreItemsEqual</c>) reports it as a Headers Error and extracts nothing of it. A
+    /// local header that cannot be found or read is not decided here: .NET's reader fails it itself,
+    /// and T-F280 counts it.
+    /// </summary>
+    internal static bool HeadersDisagree(Stream zipStream, CentralDirectoryRecord central)
+    {
+        (_, _, long? localOffset) = TryResolveCentralZip64(central.Extra, central.UncompressedSize, central.CompressedSize, central.LocalHeaderOffset);
+        if (localOffset is not { } offset || offset < 0 || offset > zipStream.Length - LocalHeaderFixedLength)
+            return false;
+        Span<byte> header = stackalloc byte[LocalHeaderFixedLength];
+        zipStream.Seek(offset, SeekOrigin.Begin);
+        zipStream.ReadExactly(header);
+        if (BitConverter.ToUInt32(header) != LocalFileHeaderSignature)
+            return false;
+        ushort flags = BitConverter.ToUInt16(header[6..]);
+        ushort method = BitConverter.ToUInt16(header[8..]);
+        return ((flags ^ central.GeneralPurposeFlag) & EncryptionFlags) != 0 || method != central.CompressionMethod;
+    }
 
     private static IEnumerable<CentralDirectoryRecord> ReadCentralDirectory(
         Stream zipStream, bool resolveZip64 = true, int maxEntries = ArchiveLimits.MaxEntries) =>
@@ -255,7 +284,7 @@ internal static class RawZipEntryLocator
             ushort versionMadeBy = ReadUInt16(zipStream);
             ReadUInt16(zipStream); // version needed
             ushort generalPurposeFlag = ReadUInt16(zipStream);
-            ReadUInt16(zipStream); // compression method — the local header's copy is the one used
+            ushort compressionMethod = ReadUInt16(zipStream);
             ReadUInt16(zipStream); // last mod time
             ReadUInt16(zipStream); // last mod date
             uint crc32 = ReadUInt32(zipStream);
@@ -280,7 +309,7 @@ internal static class RawZipEntryLocator
             count++;
             yield return new CentralDirectoryRecord(
                 nameBytes, realLocalHeaderOffset, crc32, realCompressedSize, realUncompressedSize, generalPurposeFlag,
-                (byte)(versionMadeBy >> 8), extra, position, recordEnd);
+                (byte)(versionMadeBy >> 8), extra, position, recordEnd) { CompressionMethod = compressionMethod };
             position = recordEnd;
         }
 

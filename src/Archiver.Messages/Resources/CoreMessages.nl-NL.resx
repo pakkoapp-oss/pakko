@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Beschadigde bestanden worden alleen uit ZIP-archieven bewaard; van een beschadigd bestand in dit archief blijft niets over.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Item ‘{0}’ is beschadigd: de lokale header en de centrale map verschillen in versleuteling of compressiemethode, dus andere programma's kunnen er andere inhoud uit lezen.</value>
+  </data>
 </root>

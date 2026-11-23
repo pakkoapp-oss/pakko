@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Kahjustatud faile säilitatakse ainult ZIP-arhiividest; selle arhiivi kahjustatud failist ei jää midagi alles.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Kirje „{0}” on kahjustatud: selle kohalik päis ja keskne kataloog erinevad krüptimise või tihendusmeetodi poolest, seega võivad teised programmid sellest lugeda teistsugust sisu.</value>
+  </data>
 </root>

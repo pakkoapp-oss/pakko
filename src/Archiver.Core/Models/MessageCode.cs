@@ -199,4 +199,7 @@ public enum MessageCode
     // A damaged ZIP entry kept on request, and the formats that keep nothing (T-F496)
     EntryKeptDamaged,
     KeepDamagedZipOnly,
+
+    // T-F571: a ZIP entry whose two headers disagree on encryption or method
+    EntryHeadersDisagree,
 }

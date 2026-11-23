@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Fișierele deteriorate se păstrează doar din arhivele ZIP; dintr-un fișier deteriorat din această arhivă nu rămâne nimic.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Elementul „{0}” este deteriorat: antetul său local și directorul central diferă în privința criptării sau a metodei de comprimare, așa că alte programe pot citi din el alt conținut.</value>
+  </data>
 </root>

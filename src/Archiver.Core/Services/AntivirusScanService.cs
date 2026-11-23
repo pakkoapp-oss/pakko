@@ -411,7 +411,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         int count = 0;
         try
         {
-            foreach (NamedZipEntry named in catalog.Entries(locate: locate))
+            foreach (NamedZipEntry named in catalog.Entries(locate: locate, compareHeaders: false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (scanned(named))
@@ -429,9 +429,12 @@ public sealed class AntivirusScanService : IAntivirusScanService
         ZipArchiveService.ResolvedZipPassword? password, IAmsiScanner scanner, CancellationToken cancellationToken)
     {
         ZipArchiveEntry entry = named.Entry;
+        // T-F571: AMSI would see what .NET decodes, and another program would open something else.
+        if (named.HeadersDisagree)
+            return CoreMessages.Inconclusive(archivePath, named.FullName, CoreMessages.Text(MessageCode.EntryHeadersDisagree, named.FullName));
         try
         {
-            return named.Located is { GeneralPurposeEncryptedBit: true } located
+            return named.Encrypted is { } located
                 ? await ScanEncryptedEntryAsync(
                     archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
                     .ConfigureAwait(false)

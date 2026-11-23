@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Tệp bị hỏng chỉ được giữ lại từ tệp nén ZIP; tệp bị hỏng trong tệp nén này không để lại gì.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Mục "{0}" bị hỏng: tiêu đề cục bộ và thư mục trung tâm của mục này không khớp về mã hóa hoặc phương thức nén, vì vậy các chương trình khác có thể đọc ra nội dung khác từ mục này.</value>
+  </data>
 </root>

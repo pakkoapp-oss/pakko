@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Poškodené súbory sa uchovávajú len z archívov ZIP; z poškodeného súboru v tomto archíve nezostane nič.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Položka „{0}“ je poškodená: jej miestna hlavička a centrálny adresár sa líšia v šifrovaní alebo metóde kompresie, takže iné programy z nej môžu prečítať iný obsah.</value>
+  </data>
 </root>

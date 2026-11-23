@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Skadade filer behålls bara från ZIP-arkiv; av en skadad fil i det här arkivet blir ingenting kvar.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Posten ”{0}” är skadad: dess lokala huvud och den centrala katalogen är oense om kryptering eller komprimeringsmetod, så andra program kan läsa annat innehåll ur den.</value>
+  </data>
 </root>
