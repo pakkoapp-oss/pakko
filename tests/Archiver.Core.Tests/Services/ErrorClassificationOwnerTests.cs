@@ -68,6 +68,16 @@ public sealed partial class ErrorClassificationOwnerTests
         found.Should().BeEmpty("a Windows code is CoreMessages' to read (IsDiskFull, IsSharingViolation, IsAlreadyExists; T-F511)");
     }
 
+    // T-F574: what kind of failure an exception is, by the code Core gave it (content damage, or the
+    // BCL's own data error with no code), is CoreMessages' to say (IsContentDamage, IsUncoded).
+    [Fact]
+    public void DecisionOnAnExceptionsCode_IsOnlyByTheOwner()
+    {
+        string[] found = [.. SourceFiles().Where(f => f != Owner)
+            .SelectMany(f => CodeDecision().Matches(Code(f)).Select(m => $"{f}: {m.Value}"))];
+        found.Should().BeEmpty("an exception's kind is CoreMessages' to classify (T-F574)");
+    }
+
     [Fact]
     public void DecisionOnExceptionText_IsOnlyTheListedOnes()
     {
@@ -177,6 +187,10 @@ public sealed partial class ErrorClassificationOwnerTests
 
     [GeneratedRegex(@"\.HResult\b")]
     private static partial Regex HResult();
+
+    // A decision on the code an exception's text carries: Detail(ex).Code is ..., FromException(ex).Code == ...
+    [GeneratedRegex(@"\b(Detail|FromException)\([^()]*\)\.Code\s*(is|==|!=)")]
+    private static partial Regex CodeDecision();
 
     // A comparison or search of an exception's text, or the text handed to an Is... predicate.
     [GeneratedRegex(@"\.Message\s*(==|!=)|\.Message\.(Contains|StartsWith|EndsWith|Equals|IndexOf)\(|\bIs\w*\(\w+\.Message\)")]
