@@ -46,6 +46,18 @@ public sealed partial class ExtractionNameOwnerTests
             .Should().BeEmpty("a listed use that is gone leaves room for a new one");
     }
 
+    // T-F575: a reader that made a folder entry itself would make one the registry never claimed.
+    [Theory]
+    [InlineData("Archiver.Core/Services/Sandbox/HelperReader.cs")]
+    [InlineData("Archiver.Core/Services/Sandbox/TarExeReader.cs")]
+    public void SandboxReaders_CreateNoFolder_TheEngineClaimsAndCreatesThem(string file)
+    {
+        string code = File.ReadAllText(Path.Combine(SrcRoot, file));
+
+        code.Should().NotContain("Directory.CreateDirectory(", "folder entries are claimed and created by TarSandboxedService (T-F575)");
+        code.Should().Contain("FolderEntryPaths(");
+    }
+
     // Picking a free name, or claiming a path, directly.
     [GeneratedRegex(@"\bGetUnique(FilePath|Name)\(|\.Claim\(")]
     private static partial Regex NamingCall();

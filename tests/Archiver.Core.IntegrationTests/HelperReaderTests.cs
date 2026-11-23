@@ -341,6 +341,30 @@ public sealed class HelperReaderTests : IDisposable
         Tree(dest).Should().BeEquivalentTo(new Dictionary<string, string> { ["a.txt"] = "mine", ["a (1).txt"] = "dotted" });
     }
 
+    // T-F575: a folder entry is claimed before any file is placed, so a numbered name passes it.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Extract_ARenamedFile_PassesAnEmptyFolderEntryOfThatName(string backend)
+    {
+        string archive = Tar(("x (1)/", null), ("x", "new"));
+        string dest = Path.Combine(_temp.Path, "dest-folder-entry");
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, "x"), "mine");
+
+        ArchiveResult result = await Service(backend).ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Rename,
+        });
+
+        result.Errors.Should().BeEmpty();
+        result.SkippedFiles.Should().BeEmpty();
+        Tree(dest).Should().BeEquivalentTo(new Dictionary<string, string> { ["x"] = "mine", ["x (2)"] = "new" });
+        Directory.Exists(Path.Combine(dest, "x (1)")).Should().BeTrue();
+    }
+
     [Fact]
     public async Task Helper_ContentIsByteExact()
     {

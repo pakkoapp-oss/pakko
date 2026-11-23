@@ -336,23 +336,19 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
                 RecordFolderTimesFromDisk(foldersFromDisk, placement, outDir);
         }
 
-        public void CreateFolderEntriesIn(FolderPlacement placement)
-        {
-            if (foldersFromDisk is null)
-                CreateFolderEntries(_folderNames, placement.StripRootPrefix, placement.Staging.Path);
-            else
-                CreateFolderEntriesFromDisk(foldersFromDisk, placement);
-        }
+        public IEnumerable<string> FolderEntryPaths(FolderPlacement placement) =>
+            foldersFromDisk is null
+                ? FolderEntriesByName(_folderNames, placement.StripRootPrefix)
+                : FolderEntriesFromDisk(foldersFromDisk, placement);
 
         private static HashSet<string> QuarantinedAs(IEnumerable<(string Name, long Size)> fileEntries, Func<string, bool> which) =>
             new(fileEntries.Where(e => which(e.Name)).Select(e => EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(e.Name))),
                 StringComparer.OrdinalIgnoreCase);
 
-        // T-F197: the move phase walks files only, so folder entries are created here — from the
+        // T-F197: the move phase walks files only, so folder entries come from here — from the
         // names the pre-scan already validated (no "..", rooted, ADS or reserved names), with the
-        // same root strip the files get. Moving files first means a folder that also holds files
-        // already exists; only the empty ones are new.
-        private static void CreateFolderEntries(IEnumerable<string> names, bool stripRootPrefix, string actualDest)
+        // same root strip the files get.
+        private static IEnumerable<string> FolderEntriesByName(IEnumerable<string> names, bool stripRootPrefix)
         {
             foreach (string name in names)
             {
@@ -365,7 +361,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
                     relative = sep < 0 ? string.Empty : relative[(sep + 1)..];
                 }
                 if (relative.Length > 0)
-                    Directory.CreateDirectory(Path.Combine(actualDest, relative));
+                    yield return relative;
             }
         }
 
@@ -415,13 +411,13 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             return Path.GetRelativePath(plan.ActualDest, Path.GetFullPath(Path.Combine(plan.ActualDest, relative)));
         }
 
-        private static void CreateFolderEntriesFromDisk(IEnumerable<string> folders, FolderPlacement plan)
+        private static IEnumerable<string> FolderEntriesFromDisk(IEnumerable<string> folders, FolderPlacement plan)
         {
             foreach (string folder in folders)
             {
                 string relative = FolderRelativeToDest(folder, plan);
                 if (relative.Length > 0 && relative != ".")
-                    Directory.CreateDirectory(Path.Combine(plan.Staging.Path, relative));
+                    yield return relative;
             }
         }
 

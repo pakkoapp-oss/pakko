@@ -592,6 +592,10 @@ public sealed class TarSandboxedService : ITarService
             NameRegistry(catalog.FileEntryNames, actualDest, stripRootPrefix, context.Names ?? new ExtractionNameRegistry()));
         var placement = new FolderPlacement(staging, actualDest, stripRootPrefix);
         quarantine.RecordFolderTimesInto(placement);
+        // T-F575: as ZIP, every folder entry is claimed before a file is placed, so a numbered name
+        // passes it; the same paths are created after the move.
+        foreach (string folder in quarantine.FolderEntryPaths(placement))
+            plan.Names.ClaimFolder(Path.GetFullPath(Path.Combine(actualDest, folder)), actualDest);
 
         int totalFiles = 0;
         int extractedCount = 0;
@@ -637,7 +641,8 @@ public sealed class TarSandboxedService : ITarService
         }
         quarantine.EnsureNoneMissing();
 
-        quarantine.CreateFolderEntriesIn(placement);
+        foreach (string folder in quarantine.FolderEntryPaths(placement))
+            Directory.CreateDirectory(Path.Combine(staging.Path, folder));
 
         cancellationToken.ThrowIfCancellationRequested();
         Action<string>? committed = context.OnItemExtracted;

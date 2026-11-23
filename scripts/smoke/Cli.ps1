@@ -1163,6 +1163,26 @@ Add-SmokeStep 'CLI-076' {
     'the kept file stayed whole, the gzip''s output was numbered, exit 2'
 }
 
+# T-F575: a folder entry is claimed before a file is numbered, through either reader.
+Add-SmokeStep 'CLI-077' {
+    $folder = Get-StepFolder 'cli077'
+    $tar = Join-Path $folder 'fe.tar'
+    New-TarFile -Path $tar -Entries @(@{ Name = 'x (1)/'; Folder = $true }, @{ Name = 'x'; Content = 'new' })
+    $results = foreach ($reader in 'helper', 'tar.exe') {
+        $out = Join-Path $folder "out-$reader"
+        $null = [System.IO.Directory]::CreateDirectory($out)
+        [System.IO.File]::WriteAllText((Join-Path $out 'x'), 'mine')
+        $exe = if ($reader -eq 'tar.exe') { Get-TarExePakko -Folder $folder } else { $Smoke.Pakko }
+        $run = Invoke-Pakko @('x', '-aou', "-o$out", $tar) -Exe $exe
+        Assert-Smoke ($run.ExitCode -eq 0) "${reader}: exit $($run.ExitCode) $($run.Text)"
+        Assert-Smoke ([System.IO.File]::ReadAllText((Join-Path $out 'x')) -eq 'mine') "${reader}: the old x changed"
+        Assert-Smoke ([System.IO.File]::ReadAllText((Join-Path $out 'x (2)')) -eq 'new') "${reader}: x (2) missing or not the new bytes"
+        Assert-Smoke ([System.IO.Directory]::Exists((Join-Path $out 'x (1)'))) "${reader}: the folder x (1) is missing"
+        "${reader}: x (2), folder x (1)"
+    }
+    $results -join '; '
+}
+
 Add-SmokeStep 'CLI-057' {
     $folder = Get-StepFolder 'cli057'
     $source = Join-Path $folder 'cs'
