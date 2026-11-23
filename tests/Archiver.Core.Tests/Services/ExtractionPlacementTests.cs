@@ -166,4 +166,23 @@ public sealed class ExtractionPlacementTests : IDisposable
         File.ReadAllText(Path.Combine(Dest, "one", "doc.txt" + EntryDiskName.DamagedSuffix)).Should().Be(Flipped);
         File.ReadAllText(Path.Combine(Dest, "two", "doc.txt" + EntryDiskName.DamagedSuffix)).Should().Be(Flipped);
     }
+
+    // A numbered name passes over a folder already there too, as over a file: else the commit finds
+    // the folder in the file's place and the entry fails.
+    [Fact]
+    public async Task Rename_PassesAFolderOfTheNumberedName()
+    {
+        string zip = Path.Combine(_temp.Path, "plain.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        using (var writer = new StreamWriter(archive.CreateEntry("x.txt").Open()))
+            writer.Write("from the zip");
+        Directory.CreateDirectory(Path.Combine(Dest, "x (1).txt"));
+        File.WriteAllText(Path.Combine(Dest, "x.txt"), "was here");
+
+        ArchiveResult result = await ExtractAsync([zip], ConflictBehavior.Rename);
+
+        result.Errors.Should().BeEmpty();
+        File.ReadAllText(Path.Combine(Dest, "x (2).txt")).Should().Be("from the zip");
+        File.ReadAllText(Path.Combine(Dest, "x.txt")).Should().Be("was here");
+    }
 }
