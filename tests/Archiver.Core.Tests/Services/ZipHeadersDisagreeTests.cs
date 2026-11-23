@@ -169,6 +169,60 @@ public sealed class ZipHeadersDisagreeTests : IDisposable
         ShouldRefuseB(result, archive);
     }
 
+    // With a password resolved every entry's local header is read for its raw facts; a plain central
+    // record whose local header says "AES" (method 99, bit 0) with no AES field is that one entry's
+    // refusal, not the whole archive failing.
+    private string PasswordArchiveWithForgedLocalHeader(string name)
+    {
+        string path = Path.Combine(_temp.Path, name);
+        File.Copy(FixtureHelper.Archive("mixed_encrypted_and_plain.zip"), path);
+        Patch(path, "readme.txt", central: false, (bytes, _, flags, method) =>
+        {
+            bytes[flags] |= 0x01;
+            BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(method), 99);
+        });
+        return path;
+    }
+
+    private static Task<PasswordDecision> RealPassword(PasswordPromptInfo _) =>
+        Task.FromResult(new PasswordDecision { Password = "testpassword" });
+
+    private static void ShouldRefuseOnly(ArchiveResult result, string archive, string entry)
+    {
+        ArchiveError error = result.Errors.Should().ContainSingle().Subject;
+        error.SourcePath.Should().Be(archive);
+        error.Text!.Code.Should().Be(MessageCode.EntryHeadersDisagree);
+        error.Text.Arguments.Select(a => a.ToString()).Should().Equal(entry);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_WithAPassword_ALocalHeaderSayingAes_RefusesOnlyThatEntry()
+    {
+        string archive = PasswordArchiveWithForgedLocalHeader("forged-x.zip");
+        string destination = Path.Combine(_temp.Path, "forged-out");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = destination,
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = RealPassword,
+        });
+
+        ShouldRefuseOnly(result, archive, "readme.txt");
+        Directory.EnumerateFileSystemEntries(destination).Select(Path.GetFileName).Should().Equal("compressible.txt");
+    }
+
+    [Fact]
+    public async Task TestAsync_WithAPassword_ALocalHeaderSayingAes_ReportsOnlyThatEntry()
+    {
+        string archive = PasswordArchiveWithForgedLocalHeader("forged-t.zip");
+
+        ArchiveResult result = await _sut.TestAsync([archive], resolvePasswordAsync: RealPassword);
+
+        ShouldRefuseOnly(result, archive, "readme.txt");
+    }
+
     [Theory]
     [MemberData(nameof(Disagreements))]
     public async Task ScanAsync_HeadersDisagree_ThatEntryIsInconclusiveAndNotScanned(string kind)
