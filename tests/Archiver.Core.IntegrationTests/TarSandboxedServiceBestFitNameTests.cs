@@ -239,6 +239,57 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         File.ReadAllText(Path.Combine(dest, fixture.ListedFolder, "y.txt")).Should().Be("Y", TarCodePage.Describe());
     }
 
+    // T-F453 review: one true root with no entry of its own - Pakko pre-creates its best-fit name, which
+    // is not a second root - is still dropped.
+    [Integration]
+    public async Task Extract_OneRootWithoutItsOwnEntry_ListedByBestFit_StillDropped()
+    {
+        if (await BestFitFolderArchiveAsync("implicitroot", f =>
+            [
+                TarBuilder.PaxPath(f + "/sub/x.txt"),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("X") },
+            ]) is not { } fixture)
+            return;
+        string named = Path.Combine(_temp.Path, fixture.ListedFolder + ".tar");
+        File.Copy(fixture.Path, named);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [named], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            EliminateDuplicateRootFolder = true,
+        });
+
+        result.Errors.Should().BeEmpty(TarCodePage.Describe());
+        Everything(dest).Should().BeEquivalentTo(["sub", "sub/x.txt"], TarCodePage.Describe());
+    }
+
+    // T-F461 item 5 review: a file under "d." in a later archive of the same run does not name the
+    // earlier archive's "d/x.txt", so Overwrite keeps both, as ZIP does (T-F419, T-F420).
+    [Integration]
+    public async Task Extract_FileUnderAFolderEndingInDot_DoesNotReplaceAnEarlierArchivesFile()
+    {
+        string plain = Path.Combine(_temp.Path, "a-plain.tar");
+        TarBuilder.WriteTar(plain, [new TarBuilder.Entry { Name = "d/x.txt", Content = Encoding.ASCII.GetBytes("plain") }]);
+        string dotted = Path.Combine(_temp.Path, "b-dotted.tar");
+        TarBuilder.WriteTar(dotted,
+        [
+            new TarBuilder.Entry { Name = "d./", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "d./x.txt", Content = Encoding.ASCII.GetBytes("dotted") },
+        ]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [plain, dotted], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(dest, "d", "x.txt")).Should().Be("plain");
+        File.ReadAllText(Path.Combine(dest, "d", "x (1).txt")).Should().Be("dotted");
+    }
+
     // T-F461 item 5: "d./" then "d./x.txt" lands in "d", whose "x.txt" is already at the destination:
     // a name Windows trims never replaces a file, under Overwrite too (as ZIP).
     [Integration]
