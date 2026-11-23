@@ -31,23 +31,29 @@ internal static class NewestSourceTime
             }
             foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name), spelledBelow: true))
             {
-                switch (entry.Kind)
-                {
-                    case WalkEntryKind.Directory:
-                    case WalkEntryKind.File:
-                        newest = Later(newest, entry.Info.LastWriteTimeUtc);
-                        break;
-                    // Not archived as content, so its time is not the archive's.
-                    case WalkEntryKind.ReparsePoint:
-                    case WalkEntryKind.UnreadableDirectory:
-                    case WalkEntryKind.LeftOut:
-                    case WalkEntryKind.TrimmedName:
-                    case WalkEntryKind.DeviceName:
-                        break;
-                }
+                if (IsArchivedContent(entry.Kind))
+                    newest = Later(newest, entry.Info.LastWriteTimeUtc);
             }
         }
         return newest;
+    }
+
+    private static bool IsArchivedContent(WalkEntryKind kind)
+    {
+        switch (kind)
+        {
+            case WalkEntryKind.Directory:
+            case WalkEntryKind.File:
+                return true;
+            // Not archived as content, so its time is not the archive's.
+            case WalkEntryKind.ReparsePoint:
+            case WalkEntryKind.UnreadableDirectory:
+            case WalkEntryKind.LeftOut:
+            case WalkEntryKind.TrimmedName:
+            case WalkEntryKind.DeviceName:
+                return false;
+        }
+        throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
     }
 
     private static DateTime Later(DateTime? current, DateTime candidate) =>

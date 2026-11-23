@@ -1441,22 +1441,25 @@ public sealed class ZipArchiveService : IArchiveService
             }
 
             if (named.Encrypted is { } located2)
-            {
                 TestEncryptedEntry(archivePath, named.FullName, located2, rawArchiveStream!, password!, errors, cancellationToken);
-                continue;
-            }
+            else
+                TestPlainEntry(archivePath, named.FullName, entry, errors, cancellationToken);
+        }
+    }
 
-            // T-F246/T-F231: the same wrapper extraction uses, so Test and Extract agree (a stored
-            // entry longer than declared fails both).
-            try
-            {
-                using var verified = VerifyingReadStream.OpenEntry(entry);
-                DrainForTest(verified, cancellationToken);
-            }
-            catch (InvalidDataException ex)
-            {
-                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryFailed, named.FullName, CoreMessages.FromException(ex)), ex));
-            }
+    // T-F246/T-F231: the same wrapper extraction uses, so Test and Extract agree (a stored entry
+    // longer than declared fails both).
+    private static void TestPlainEntry(
+        string archivePath, string name, ZipArchiveEntry entry, List<ArchiveError> errors, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var verified = VerifyingReadStream.OpenEntry(entry);
+            DrainForTest(verified, cancellationToken);
+        }
+        catch (InvalidDataException ex)
+        {
+            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryFailed, name, CoreMessages.FromException(ex)), ex));
         }
     }
 
