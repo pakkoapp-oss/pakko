@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>קבצים פגומים נשמרים רק מארכיוני ZIP; מקובץ פגום בארכיון זה לא נשאר דבר.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>הפריט "{0}" פגום: הכותרת המקומית שלו והספרייה המרכזית חלוקות לגבי ההצפנה או שיטת הדחיסה שלו, ולכן תוכנות אחרות עשויות לקרוא ממנו תוכן שונה.</value>
+  </data>
 </root>

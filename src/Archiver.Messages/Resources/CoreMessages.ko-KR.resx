@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>손상된 파일은 ZIP 압축 파일에서만 보존됩니다. 이 압축 파일의 손상된 파일은 아무것도 남지 않습니다.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>항목 "{0}"이(가) 손상되었습니다. 로컬 헤더와 중앙 디렉터리의 암호화 또는 압축 방식이 일치하지 않으므로 다른 프로그램은 다른 내용을 읽을 수 있습니다.</value>
+  </data>
 </root>

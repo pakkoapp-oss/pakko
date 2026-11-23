@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>I file danneggiati vengono conservati solo dagli archivi ZIP; di un file danneggiato in questo archivio non resta nulla.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>La voce «{0}» è danneggiata: la sua intestazione locale e la directory centrale non concordano sulla crittografia o sul metodo di compressione, quindi altri programmi potrebbero leggerne un contenuto diverso.</value>
+  </data>
 </root>

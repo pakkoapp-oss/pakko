@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Sugadinti failai išsaugomi tik iš ZIP archyvų; iš sugadinto failo šiame archyve nelieka nieko.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Elementas „{0}“ sugadintas: jo vietinė antraštė ir centrinis katalogas nesutampa dėl šifravimo ar suspaudimo metodo, todėl kitos programos iš jo gali perskaityti kitą turinį.</value>
+  </data>
 </root>

@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>破損したファイルは ZIP アーカイブからのみ保持されます。このアーカイブ内の破損したファイルは何も残りません。</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>エントリ「{0}」は破損しています。ローカル ヘッダーとセントラル ディレクトリで暗号化または圧縮方式が一致しないため、他のプログラムでは異なる内容が読み取られる可能性があります。</value>
+  </data>
 </root>

@@ -27,6 +27,17 @@ internal sealed record NamedZipEntry(ZipArchiveEntry Entry, string FullName, boo
 
     /// <summary>T-F529: the entry's place in the central directory.</summary>
     public int Index { get; init; }
+
+    /// <summary>T-F571: its local header and central record disagree on encryption or method; no
+    /// reader decodes its content.</summary>
+    public bool HeadersDisagree { get; init; }
+
+    /// <summary>T-F571: the facts to decrypt it by, when both headers say it is encrypted and they
+    /// were read; the one place a reader learns that an entry is encrypted.</summary>
+    public LocatedZipEntry? Encrypted => Located is { GeneralPurposeEncryptedBit: true } located && Entry.IsEncrypted ? located : null;
+
+    /// <summary>T-F571: neither header says it is encrypted.</summary>
+    public bool IsPlain => Located is not { GeneralPurposeEncryptedBit: true } && !Entry.IsEncrypted;
 }
 
 /// <summary>One entry's name from <see cref="ZipCatalog.Names"/>: no .NET entry, no data.</summary>
@@ -87,14 +98,16 @@ internal sealed class ZipCatalog : IDisposable
     public string Path => _directory.Name;
 
     /// <summary>Each entry's decoded name and raw facts, read from its local header, without .NET's
-    /// reader (T-F189's password check). Throws what a local header that cannot be read throws.</summary>
+    /// reader (T-F189's password check). Throws what a local header that cannot be read throws.
+    /// T-F571: an entry whose two headers disagree is not given: no reader decodes it.</summary>
     public IEnumerable<(string FullName, LocatedZipEntry Located)> Located()
     {
         var names = new NameBudget(_settings.MaxNameChars);
         foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: true, _settings.MaxEntries))
         {
             string name = Decode(record, names);
-            yield return (name, LocateAll(_data, [record])[0]);
+            if (!HeadersDisagree(_data, record))
+                yield return (name, LocateAll(_data, [record])[0]);
         }
     }
 
@@ -152,7 +165,9 @@ internal sealed class ZipCatalog : IDisposable
     /// check .NET's reader made of the whole archive; a caller that acts on entries before the end
     /// (extract, test, scan) walks once first without acting.
     /// </summary>
-    public IEnumerable<NamedZipEntry> Entries(bool collisions = false, ZipLocate locate = ZipLocate.None)
+    /// T-F571: each entry's local header is compared with its central record unless
+    /// <paramref name="compareHeaders"/> is false (a walk that reads no content: a list, a count).
+    public IEnumerable<NamedZipEntry> Entries(bool collisions = false, ZipLocate locate = ZipLocate.None, bool compareHeaders = true)
     {
         Dictionary<string, RawName>? firstRawByName = collisions ? new(StringComparer.Ordinal) : null;
         var names = new NameBudget(_settings.MaxNameChars);
@@ -165,7 +180,7 @@ internal sealed class ZipCatalog : IDisposable
             batchBytes += record.RecordEnd - record.RecordStart;
             if (batch.Count < _settings.BatchEntries && batchBytes < BatchBytes)
                 continue;
-            foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, names, firstRawByName, locate))
+            foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, names, firstRawByName, locate, compareHeaders))
                 yield return entry;
             firstIndex += batch.Count;
             batch.Clear();
@@ -173,7 +188,7 @@ internal sealed class ZipCatalog : IDisposable
         }
         if (batch.Count > 0)
         {
-            foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, names, firstRawByName, locate))
+            foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, names, firstRawByName, locate, compareHeaders))
                 yield return entry;
         }
     }
@@ -183,13 +198,14 @@ internal sealed class ZipCatalog : IDisposable
     /// T-F543: it takes seconds at millions of entries, so it stops at a cancel.</summary>
     public void Check(ZipLocate locate = ZipLocate.None, CancellationToken cancellationToken = default)
     {
-        foreach (NamedZipEntry _ in Entries(locate: locate))
+        foreach (NamedZipEntry _ in Entries(locate: locate, compareHeaders: false))
             cancellationToken.ThrowIfCancellationRequested();
     }
 
     // The batch's records are contiguous in the directory: one read copies them for the overlay.
     private IEnumerable<NamedZipEntry> ReadBatch(
-        List<CentralDirectoryRecord> records, int firstIndex, NameBudget names, Dictionary<string, RawName>? firstRawByName, ZipLocate locate)
+        List<CentralDirectoryRecord> records, int firstIndex, NameBudget names, Dictionary<string, RawName>? firstRawByName, ZipLocate locate,
+        bool compareHeaders)
     {
         long start = records[0].RecordStart;
         byte[] raw = new byte[records[^1].RecordEnd - start];
@@ -202,6 +218,7 @@ internal sealed class ZipCatalog : IDisposable
             ZipLocate.BestEffort => TryLocate(records),
             _ => null,
         };
+        bool[]? disagree = compareHeaders ? [.. records.Select(record => HeadersDisagree(_data, record))] : null;
         using var overlay = new CentralDirectoryOverlayStream(_data, raw, records.Count, _extent.DiskNumber, _settings.ForceZip64Overlay);
         using var archive = new ZipArchive(overlay, ZipArchiveMode.Read, leaveOpen: true);
         System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
@@ -215,7 +232,7 @@ internal sealed class ZipCatalog : IDisposable
             int index = firstIndex + i;
             string name = Decode(record, names);
             yield return new NamedZipEntry(entries[i], name, Collides(firstRawByName, name, record.NameBytes),
-                ZipExtendedTime.TryReadModifiedUtc(record.Extra), located?[i]) { Index = index };
+                ZipExtendedTime.TryReadModifiedUtc(record.Extra), located?[i]) { Index = index, HeadersDisagree = disagree?[i] == true };
         }
     }
 

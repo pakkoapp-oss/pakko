@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Beskadigede filer gemmes kun fra ZIP-arkiver; en beskadiget fil i dette arkiv efterlader intet.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Elementet „{0}“ er beskadiget: dets lokale header og det centrale bibliotek er uenige om kryptering eller komprimeringsmetode, så andre programmer kan læse andet indhold fra det.</value>
+  </data>
 </root>

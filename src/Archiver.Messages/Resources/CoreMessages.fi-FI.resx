@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Vioittuneet tiedostot säilytetään vain ZIP-arkistoista; tämän arkiston vioittuneesta tiedostosta ei jää mitään.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Kohde ”{0}” on vioittunut: sen paikallinen otsake ja keskushakemisto eroavat salauksen tai pakkausmenetelmän osalta, joten muut ohjelmat voivat lukea siitä eri sisällön.</value>
+  </data>
 </root>

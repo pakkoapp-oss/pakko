@@ -432,4 +432,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Damaged files are kept only from ZIP archives; a damaged file in this archive leaves nothing.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Entry '{0}' is damaged: its local header and the central directory disagree on its encryption or compression method, so other programs may read other content from it.</value>
+  </data>
 </root>

@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>File yang rusak hanya disimpan dari arsip ZIP; dari file yang rusak dalam arsip ini tidak ada yang tersisa.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Entri "{0}" rusak: header lokalnya dan direktori pusat tidak sesuai dalam enkripsi atau metode kompresinya, sehingga program lain mungkin membaca konten yang berbeda darinya.</value>
+  </data>
 </root>

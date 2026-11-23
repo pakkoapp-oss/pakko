@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Faili zilizoharibika huhifadhiwa kutoka kwa kumbukumbu za ZIP pekee; hakuna kinachobaki kutoka kwa faili iliyoharibika katika kumbukumbu hii.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>Kipengee "{0}" kimeharibika: kichwa chake cha ndani na saraka kuu vinatofautiana kuhusu usimbaji fiche au mbinu ya kubana, hivyo programu nyingine zinaweza kusoma maudhui tofauti kutoka kwake.</value>
+  </data>
 </root>

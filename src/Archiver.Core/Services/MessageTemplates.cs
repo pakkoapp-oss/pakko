@@ -129,6 +129,8 @@ public static class MessageTemplates
         [MessageCode.CatalogTooLarge] = "The names in this archive are too long in total for Pakko to open. Limit: {0} characters.",
         [MessageCode.ListingLineTooLong] = "An entry in this archive has a name or details too long for Pakko to open. Limit: {0} bytes.",
         [MessageCode.EntryKeptDamaged] = "'{0}' is damaged; what could be read of it is kept as '{1}': {2}",
+        [MessageCode.EntryHeadersDisagree] =
+            "Entry '{0}' is damaged: its local header and the central directory disagree on its encryption or compression method, so other programs may read other content from it.",
         [MessageCode.KeepDamagedZipOnly] = "Damaged files are kept only from ZIP archives; a damaged file in this archive leaves nothing.",
         [MessageCode.TarUnreadableNames] =
             "The archive contains file names tar.exe cannot represent on this system (code page {0}), " +

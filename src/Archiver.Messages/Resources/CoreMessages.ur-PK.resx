@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>خراب فائلیں صرف ZIP آرکائیوز سے محفوظ کی جاتی ہیں؛ اس آرکائیو میں خراب فائل سے کچھ باقی نہیں رہتا۔</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>اندراج "{0}" خراب ہے: اس کا مقامی ہیڈر اور مرکزی ڈائریکٹری اس کی خفیہ کاری یا کمپریشن کے طریقے پر متفق نہیں ہیں، اس لیے دوسرے پروگرام اس سے مختلف مواد پڑھ سکتے ہیں۔</value>
+  </data>
 </root>

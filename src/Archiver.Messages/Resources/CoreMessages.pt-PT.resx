@@ -405,4 +405,7 @@
   <data name="KeepDamagedZipOnly" xml:space="preserve">
     <value>Os ficheiros danificados só são guardados a partir de arquivos ZIP; de um ficheiro danificado neste arquivo não fica nada.</value>
   </data>
+  <data name="EntryHeadersDisagree" xml:space="preserve">
+    <value>A entrada «{0}» está danificada: o cabeçalho local e o diretório central divergem na encriptação ou no método de compressão, pelo que outros programas podem ler dela um conteúdo diferente.</value>
+  </data>
 </root>
