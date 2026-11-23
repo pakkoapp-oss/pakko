@@ -77,11 +77,13 @@ internal sealed class ExtractionNameRegistry
     public void ClaimParents(string filePath, string root)
     {
         string top = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-        for (string? folder = Path.GetDirectoryName(filePath);
-             folder is not null && folder.Length > top.Length && _folders.Add(folder);
-             folder = Path.GetDirectoryName(folder))
+        string? folder = Path.GetDirectoryName(filePath);
+        while (folder is not null && folder.Length > top.Length)
         {
-            // each parent claimed by the condition; one already claimed has its own parents claimed
+            // A folder already claimed had its own parents claimed with it.
+            if (!_folders.Add(folder))
+                break;
+            folder = Path.GetDirectoryName(folder);
         }
     }
 
@@ -165,7 +167,7 @@ internal sealed class ExtractionNameRegistry
         return Path.Combine(folder, ArchiveNaming.GetUniqueName(name, candidate =>
         {
             string full = Path.Combine(folder, candidate);
-            return candidate == name || File.Exists(full) || IsTaken(full);
+            return candidate == name || File.Exists(full) || Directory.Exists(full) || IsTaken(full);
         }));
     }
 
