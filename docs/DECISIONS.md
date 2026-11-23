@@ -15131,6 +15131,31 @@ alone; pax fixtures written by Python's `tarfile`):
 | T-F461 item 5: `d./` + `d./x.txt`, `d\x.txt` there, `-aoa` | `d\x (1).txt` new, `d\x.txt` kept; both readers | the same |
 | T-F453: `caf<accent>/x.txt` + plain `/y.txt`, named by the plain root, `-spe` | the tar.exe reader lists both roots as the plain one (e-acute and a-macron); the helper lists them exactly; every run keeps both folders | no helper on Windows 10; the a-macron pair is listed as one; both folders kept every run |
 
+**The opus review (the user's OK, 2026-11-23)** found no P1. It found two P2s, each fixed with a
+test seen red first:
+- `HoldsOneRoot` counted the folder Pakko pre-creates under a listed best-fit name as a second root.
+  An archive holding only `caf<e-acute>/sub/x.txt` therefore kept its root where T-F443 drops it.
+  The roots now come from what tar.exe wrote: its folders (`foldersFromDisk`, which leaves out the
+  pre-created ones) and its files.
+- T-F461 item 5 set `Trimmed` but not `Renamed`. In one run of two archives, the file `d./x.txt` met
+  the earlier archive's `d/x.txt` under Overwrite and replaced it. The quarantined name now sets both.
+
+Three P3s stay as they are. Each errs on the safe side: a file is numbered where it could have
+overwritten, and nothing is replaced.
+- The listing's key for `d./x.txt` is `d/x.txt`, so a plain `d/x.txt` in the same archive is also
+  treated as trimmed. This predates batch 10, and keying explicit against implicit `d.` is T-F461's
+  closed trade.
+- `Trims` also sees a root that is then stripped (`pkg./`). ZIP decides on the full name too.
+- The check now walks the quarantine's files once more, only for a non-faithful archive whose root
+  is dropped.
+
+Both builds, by `pakko -spe` into a folder named like the plain root:
+- One accented root with no entry of its own is dropped where the listing shows it by best fit:
+  3.8.9 for e-acute and a-macron, 3.5.2 for a-macron only, since e-acute is in ACP 1252. Where the
+  name is shown exactly it is kept, as are the helper's exact names.
+- The two-archive Overwrite case keeps `d\x.txt` and writes `d\x (1).txt`, with both readers on
+  both builds.
+
 **Moved:** **T-F359** (the parallel writer on a disk with a seek penalty) can be measured only on a
 spinning disk. Whether one is at hand is a question for the user, so it goes to batch 8's list with
 the other user checks. If no disk is at hand, it is closed by decision there; the code acts only on

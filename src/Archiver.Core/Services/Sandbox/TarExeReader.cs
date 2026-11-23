@@ -316,17 +316,20 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
                 if (reader._droppedFiles is not null && reader._droppedFiles.Contains(named))
                     continue;
                 // T-F461 item 5: tar.exe writes an explicit "d./" entry as "d.", which the listing's
-                // prediction ("d") does not key; the name on disk trims either way.
-                yield return new QuarantinedFile(file, relative, _renamed.Contains(named), _trimmed.Contains(named) || EntryDiskName.Trims(named));
+                // prediction ("d") does not key; the name on disk is renamed and trims either way.
+                yield return new QuarantinedFile(file, relative, _renamed.Contains(named) || EntryDiskName.Renames(named),
+                    _trimmed.Contains(named) || EntryDiskName.Trims(named));
             }
         }
 
         // A faithful listing (no folders taken from the disk) decided the root on true names; else
-        // the quarantine's top level decides it (T-F453), first copies included.
+        // what tar.exe wrote decides it (T-F453): its folders and its files, never a folder Pakko
+        // pre-created by a listed name. First copies share the roots of the main pass.
         public bool HoldsOneRoot() =>
             foldersFromDisk is null
-            || QuarantineFiles.Walk(outDir).Select(item => QuarantineFiles.Relative(outDir, item.Path))
-                .Select(relative => relative.Split(Path.DirectorySeparatorChar)[0])
+            || foldersFromDisk.Select(folder => folder.Split('/')[0])
+                .Concat(QuarantineFiles.EnumerateFiles(outDir)
+                    .Select(file => QuarantineFiles.Relative(outDir, file).Split(Path.DirectorySeparatorChar)[0]))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Take(2)
                 .Count() == 1;
