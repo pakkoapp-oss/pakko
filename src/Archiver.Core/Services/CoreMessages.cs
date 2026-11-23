@@ -92,6 +92,16 @@ internal static class CoreMessages
     /// <summary>T-F511: the name is taken (ERROR_FILE_EXISTS, or ERROR_ALREADY_EXISTS from a move).</summary>
     internal static bool IsAlreadyExists(Exception exception) => Win32Code(exception) is ErrorFileExists or ErrorAlreadyExists;
 
+    /// <summary>T-F496, T-F574: an entry's content is damaged (its CRC-32, its declared size, or its
+    /// compressed stream), as <c>VerifyingReadStream</c> words it.</summary>
+    internal static bool IsContentDamage(Exception exception) =>
+        exception is InvalidDataException && Detail(exception).Code is MessageCode.ContentCrcMismatch
+            or MessageCode.ContentLargerThanDeclared or MessageCode.ContentSmallerThanDeclared or MessageCode.ContentDamaged;
+
+    /// <summary>T-F574: a data error Core did not word: the BCL's own, whose English text says little
+    /// (T-F341, T-F382).</summary>
+    internal static bool IsUncoded(Exception exception) => Detail(exception).Code == MessageCode.None;
+
     private const int ErrorSharingViolation = 0x20;
     private const int ErrorLockViolation = 0x21;
     private const int ErrorHandleDiskFull = 0x27;

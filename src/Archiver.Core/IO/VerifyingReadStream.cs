@@ -88,8 +88,7 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
 
     // T-F382: .NET's text for a broken Deflate stream ("unsupported compression method") is English
     // and wrong about the cause. An error Core wrote below this stream keeps its own code.
-    private static bool IsDecompressorFailure(InvalidDataException exception) =>
-        CoreMessages.Detail(exception).Code == MessageCode.None;
+    private static bool IsDecompressorFailure(InvalidDataException exception) => CoreMessages.IsUncoded(exception);
 
     // .NET 11 checks the CRC-32 only on the read that brings its count to exactly the declared size,
     // so the bytes that read wrote into the buffer are the rest up to it. Both callers wrap

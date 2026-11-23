@@ -1327,7 +1327,7 @@ public sealed class ZipArchiveService : IArchiveService
             // empty or garbage stdin, a text file) said nothing useful.
             return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.Text(MessageCode.NotAnArchiveList)));
         }
-        catch (InvalidDataException ex) when (CoreMessages.FromException(ex).Code == MessageCode.None)
+        catch (InvalidDataException ex) when (CoreMessages.IsUncoded(ex))
         {
             // T-F341: .NET's own reader text is English only; say what Test and Extract say.
             return CoreMessages.Summary(CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ZipCorrupted)));
@@ -2199,17 +2199,13 @@ public sealed class ZipArchiveService : IArchiveService
             await source.CopyToAsync(file, CopyBufferSize, cancellationToken).ConfigureAwait(false);
             return null;
         }
-        catch (InvalidDataException ex) when (keepFrom is not null && IsContentDamage(ex)
+        catch (InvalidDataException ex) when (keepFrom is not null && CoreMessages.IsContentDamage(ex)
                                               && (file.Position > 0 || keepFrom.DamagedTail.Length > 0))
         {
             await file.WriteAsync(keepFrom.DamagedTail, CancellationToken.None).ConfigureAwait(false);
             return ex;
         }
     }
-
-    private static bool IsContentDamage(InvalidDataException exception) =>
-        CoreMessages.Detail(exception).Code is MessageCode.ContentCrcMismatch or MessageCode.ContentLargerThanDeclared
-            or MessageCode.ContentSmallerThanDeclared or MessageCode.ContentDamaged;
 
     // T-F45, T-F298: the archive's mark, then the entry's own time, as 7-Zip restores it - the
     // mark changes the time, so the time goes last; the commit's moves keep both. T-F358: both
