@@ -80,10 +80,10 @@ reviewer at the batch's close, with the user's OK.
 | 6 | Taskbar, the file list | T-F564, T-F566 | `APP-031`, `OPW-006` and T-F566's new APP row on the device |
 | 7 | A damaged entry kept | T-F496 | The failure matrix (CRC, length, deflate) at every test level, one deploy |
 | 9 | Owners where fixes were patches (the defect review, 2026-11-23) | T-F570 (with T-F569), T-F571, T-F572, T-F573, T-F574 | Each owner with its Single Owners row and guard test; every fix it absorbs keeps its test green; an opus reviewer for T-F570 and T-F571 (they decide what is written from untrusted input) |
-| 10 | The tar.exe fallback and the engine backlog | T-F453 (not a placement defect, batch 9), T-F575, T-F445, T-F461, T-F464, T-F469, T-F568, T-F359, T-F121, T-F132 (each: done, or closed by a measurement or a decision recorded in DECISIONS) | Both tar builds; measured before and after where it is a speed task |
+| 10 | The tar.exe fallback and the engine backlog | T-F453 (not a placement defect, batch 9), T-F575, T-F445, T-F461, T-F464, T-F469, T-F568, T-F121, T-F132 (T-F359 moved to batch 8, 2026-11-23) (each: done, or closed by a measurement or a decision recorded in DECISIONS) | Both tar builds; measured before and after where it is a speed task |
 | 11 | App, localization, UI | T-F02, T-F91, T-F202, T-F328, T-F329, T-F393 | One deploy; the APP rows each one names |
 | 12 | Distribution and the user's own steps | T-F10, T-F119, T-F127, T-F144, T-F152 (close or rescope), T-F331, T-F332 | Only with the user's OK, item by item: T-F127 and T-F144 are the user's own posts, T-F10 waits on a signing provider |
-| 8 | Device, user, release | T-F432 (`APP-032` by eye), `POL-011` (T-F496's policy, elevated), T-F494, T-F444, T-F446, T-F447, T-F254, T-F508, T-F317 (only with the user's OK); `STO-005`, `STO-006`, `STO-008` for 1.11.0 after certification; the release tier; the tag after the user's OK | As batch 8 of v1.11.0 |
+| 8 | Device, user, release | T-F359 (is a spinning disk at hand? if not, closed by decision), T-F432 (`APP-032` by eye), `POL-011` (T-F496's policy, elevated), T-F494, T-F444, T-F446, T-F447, T-F254, T-F508, T-F317 (only with the user's OK); `STO-005`, `STO-006`, `STO-008` for 1.11.0 after certification; the release tier; the tag after the user's OK | As batch 8 of v1.11.0 |
 
 Order: this plan, then batch 1, then 2 and 3; 4 to 7 between them while no long series runs; then
 9, 10 and 11; 12 alongside, as the user decides; 8 last.
@@ -127,43 +127,6 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
       recurring release step, not a one-time action — new manifest version needed per release)
 - [ ] `CLI.md`'s Distribution section updated once this ships, replacing the "not yet scheduled"
       note
-
----
-
-### T-F121 — Explore true zero-copy streaming for `-so` extraction output
-- [ ] **Status:** future, low priority — exploratory only, no committed design yet. Raised
-      2026-07-18 when the user asked whether T-F116's `-si`/`-so` could avoid buffering entirely;
-      confirmed the current design is deliberately buffer-then-proceed (temp-file staged), not a
-      technical gap — see `CLI.md`'s "Stdin/stdout streaming" section and `DECISIONS.md`'s T-F116
-      entry. `-si` (reading a ZIP) can't be made zero-copy at all — `ZipArchive` needs a seekable
-      stream since the central directory sits at the end of the file, and `TarSandboxedService`'s
-      T-F49 pre-scan is a deliberate security requirement (full archive on disk before extraction
-      runs), not an implementation shortcut. The one side worth a second look is `-so` on `x`:
-      instead of extracting to a private temp folder then copying the one result file to stdout,
-      stream bytes to stdout as they're produced during extraction.
-- **Depends on:** T-F116 (CLI stdin/stdout streaming)
-
-**Open questions to resolve before this becomes a real design, not yet answered:**
-- [ ] How to preserve the "never emit partial bytes on failure" guarantee without a completed file
-      to check first — today a failed operation writes nothing to stdout at all
-      (`CliStreamStaging`'s current design's central property)
-- [ ] How to know upfront that extraction resolves to exactly one file (today discovered by
-      enumerating the temp folder afterward) without either pre-listing the archive first or
-      accepting that a multi-file case fails only after streaming has already started
-- [ ] Whether tar-family extraction (subprocess + quarantine ACL, not an in-process stream) can
-      participate in this at all, or whether true streaming would end up ZIP-only — a format-
-      dependent capability split that would need to be documented clearly, not silently assumed
-- [ ] Whether the payoff (avoiding transient temp-disk use for one archive's worth of bytes) is
-      worth the added failure-mode complexity, given `-so` archives are already expected to fit on
-      disk once (the archive itself gets written to a temp file either way in the current design)
-
-**Acceptance criteria (once a design is agreed — not before):**
-- [ ] A short design note in `DECISIONS.md` before any implementation, per this project's
-      pre-implementation-research convention
-- [ ] `Archiver.Core.PerformanceTests`-style before/after evidence that it's actually faster or
-      lower-overhead for a real large single-file extraction, not just theoretically cleaner
-- [ ] Existing `-so`/`-si` test coverage (T-F116, `Subprocess/CliSubprocessTests.cs`) stays green,
-      plus new tests for the harder failure-mode edge cases raised above
 
 ---
 
@@ -433,68 +396,6 @@ don't ship an unreviewed MT dump under a locale folder.
       speaker per locale
 
 ---
-
-### T-F132 — Sandbox the ZIP Path Like tar.exe (speculative, not scheduled)
-- [ ] **Status:** future, deferred indefinitely — recorded so the idea isn't lost, not because it's
-      planned work. Added 2026-07-24 after a hypothetical raised during a Reddit-thread security
-      discussion (see `SECURITY.md`'s "Native decompression 0-day in the ZIP path" row in Known
-      Limitations, added the same session). **Do not pick this up without a real trigger** — see
-      Acceptance criteria below for what that trigger looks like.
-- **Depends on:** none
-
-**The question:** could `ZipArchiveService`'s ZIP handling (`System.IO.Compression`) be sandboxed
-the same way `TarSandboxedService` sandboxes tar.exe (T-F52)?
-
-**Answer: technically yes, but not justified today.** The sandbox subsystem
-(`AppContainerProfile`/`QuarantineAcl`/`SandboxJobObject`/`SandboxedProcessLauncher`) is already
-generic, not tar.exe-specific — but AppContainer confines a *process*, not a code region within
-one. ZIP currently runs as an in-process library call inside `Archiver.App`/`Archiver.Shell`
-itself; sandboxing it the same way would require carving it out into a new standalone worker
-executable (a real new build/sign/ship artifact) launched via the existing launcher, not a config
-flag on the current code.
-
-**Why not now:**
-- **No confirmed exploit to close.** T-F52's tar.exe sandbox was justified by a *demonstrated*
-  exploit (T-F49's symlink escape) — this would be preemptive hardening against a theoretical
-  native-decompression memory-corruption bug with no track record against this specific code path.
-  `System.IO.Compression` is one of the most widely used, most audited parts of the entire .NET
-  BCL — arguably broader real-world scrutiny than libarchive ever had.
-- **Real performance cost, not hypothetical.** T-F35's parallel ZIP pipeline gets its speed from
-  multiple threads inside one process; T-F114 already measured process-spawn overhead as the
-  dominant cost in the many-small-files scenario for an *external* tool (7za.exe) — the same
-  overhead would apply here, on every operation (or every batch, if redesigned to spawn once per
-  batch instead of per file — a real design question, not solved by this entry).
-- **New artifact, new attack surface of its own** (a new signed exe, new IPC protocol for
-  progress/results across the process boundary) — not free to add.
-
-**What would actually trigger picking this up:**
-- [ ] A real CVE lands against `System.IO.Compression`'s Deflate path (or the native zlib-derived
-      component it calls into) that plausibly affects Pakko's usage — not a CVE in an unrelated
-      part of the BCL.
-- [ ] Or: a concrete threat-model change for the target audience makes the current "accepted risk"
-      framing in `SECURITY.md` no longer acceptable to them.
-
-**If it's ever picked up, first design questions to answer (not answered here):** spawn a fresh
-sandboxed worker per archive operation, or per batch (perf tradeoff above)? Reuse
-`Archiver.Shell.exe`/`pakko.exe` as the worker, or a new dedicated executable? What IPC shape
-carries `ProgressReport`/`ArchiveResult` back across the process boundary without reintroducing the
-same "opening every file just to check" cost class T-F86 already rejected for a different reason?
-
-**Empirical spike run 2026-07-24 — real numbers, still doesn't flip the decision above.** Built
-`tools/ZipSandboxSpike/` (a committed, not throwaway, worker calling `ZipArchiveService` directly
-inside the real sandbox primitives — new profile `Pakko.ZipSandboxSpike`, independent of
-production `Pakko.TarSandbox`) plus `tests/Archiver.Core.PerformanceTests/ZipSandboxSpikePerformanceTests.cs`
-to actually measure the "real performance cost" bullet above instead of leaving it asserted.
-See `DECISIONS.md`'s new T-F132 entry for the full results table and machine spec. Headline: pure
-launch/AppContainer/Job-Object overhead is a real, consistent **~90 ms fixed cost per operation**
-(not per file — confirms the "amortizes" framing). But relative impact turned out to hinge on
-operation length, not file count: negligible (3.6%) for a 10 s archive, dominant (37–77%) for
-sub-second operations — and a second, previously-unconsidered cost (worker-process JIT cold-start,
-which a discarded warmup *launch* cannot remove since each launch is a fresh process) contributed
-more to the delta than the sandbox primitives themselves in 3 of 4 scenarios. Still no confirmed
-CVE, so the "no confirmed exploit to close" reasoning above is unchanged and this stays deferred —
-but if ever revisited, `PublishReadyToRun`/a persistent pre-warmed worker is now a known real
-question, not just AppContainer/Job-Object setup cost (which this spike shows is already cheap).
 
 ### T-F144 — Community: r/dotnet post about Pakko (post-Store-release)
 
@@ -1168,35 +1069,6 @@ re-measured with T-F346's script before and after.
   measured. Roll the VM back to the checkpoint afterwards.
 - **Reported by:** the user, 2026-10-31.
 
-### T-F445 — Each tar.exe launch blocks two or three pool threads for the child's whole life (P4, from T-F428)
-
-- [ ] **Status:** open, P4, out of the v1.12.0 wave (2026-11-21): no code in `src` starts two sandboxed
-  launches at once (one archive at a time; batch 2's step 2, threads for the move out, was rejected), so the
-  condition below is still unmet and the change would be sandbox code for a test run's sake only.
-  Measured 2026-11-08, no code for v1.10.0. A temporary test listed a tar.gz of
-  150,000 entries through `TarSandboxedService.ListEntriesAsync`, N launches at once, while a
-  dedicated thread sampled the pool and the start delay of a queued work item (12 CPUs, minimum 12
-  workers):
-
-  | Launches at once | Pool threads | Longest start delay |
-  |---|---|---|
-  | 1 (what an operation does) | 11, unchanged | 0 ms |
-  | 8, pool already grown | 41, unchanged | 9 ms |
-  | 16, cold pool | 20 -> 41 | 6.2 s |
-  | 16, six 256 MB zero entries (little output, 1 s) | 11 -> 20 | 0.4 s |
-
-  The delay is the pool's injection ramp under many launches, with the listing's own parsing on the
-  same pool; one operation reads one archive at a time, so only a parallel test run meets it (as
-  T-F428 and T-F425 did). P4: revisit if Pakko ever runs launches in parallel.
-- **Before:** open, not measured. `SandboxedProcessLauncher` reads stdout and stderr through
-  `FileStream`s over synchronous pipe handles, so `ReadToEndAsync`/`ReadAsync` run as blocking reads
-  on pool threads, and `WriteStdIn` holds a third through `Task.Run`. A parallel test run multiplies
-  it; T-F428 took the cancel off this path, but a starved pool still delays a launch's return. Next:
-  count pool threads during a parallel run of the sandbox tests; if it matters, overlapped pipes
-  (`CreateNamedPipe` with `FILE_FLAG_OVERLAPPED`) or one dedicated thread per launch. Sandbox code:
-  plan mode + advisor at both ends.
-- **Reported by:** T-F428's hypothesis (2), 2026-10-31.
-
 ### T-F446 — An AMSI "blocked by admin" result reads as Clean (P3, from T-F444's fresh review)
 
 - [ ] **Status:** fixed, merged in #144 (`fix/tf446-amsi-blocked-by-admin`), awaiting the device check (stream E) (2026-11-03): the range is
@@ -1224,27 +1096,6 @@ re-measured with T-F346's script before and after.
   run as written (an elevated `testhost` held `Archiver.App.Core.Tests`' bin, so the release ran it
   project by project).
 - **Reported by:** the agent, 2026-11-11.
-
-### T-F568 - Keep a damaged AES entry when the run proved the password (P4, from T-F496)
-
-- [ ] **Status:** open. T-F496 keeps only plain entries: AES's two-byte check value passes a wrong
-  password once in 65,536 times, and its HMAC then fails exactly as damage does. A damaged AES
-  entry could be kept when another entry of the same archive passed its HMAC with the same
-  password in the same run; that needs a decrypting path that does not stop at the HMAC
-  (`EncryptedZipEntryReader` checks it before any byte today). ZipCrypto's one-byte check and no
-  MAC leave no such proof short of a good CRC-32 on another entry; decide here whether that counts.
-- **Reported by:** the agent (T-F496's plan), 2026-11-22.
-
-### T-F575 - The tar engine claims no folder entry: a numbered name can land on one (P3, batch 10, from batch 9's review)
-
-- [ ] **Status:** open. ZIP claims each folder entry and its parents in `ExtractionNameRegistry`
-  (T-F570), so a file numbered by Rename passes them. tar creates its folder entries after the files
-  are placed (`quarantine.CreateFolderEntriesIn`, `HelperReader` and `TarExeReader` each list their
-  own) and claims only a file's parents: a folder entry "x (1)/" with no file under it, then a file
-  "x" meeting a file there, numbers the file "x (1)", onto the folder created later. Needs a reader
-  method that gives the folder entries before placement, in both readers, and a run on both tar
-  builds (3.8.x and 3.5.2). Predates batch 9.
-- **Reported by:** the opus reviewer of PR #283 (D2), 2026-11-23.
 
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)
 
@@ -1313,70 +1164,6 @@ re-measured with T-F346's script before and after.
   (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) trusted the sizes libarchive prints, and
   nothing capped what tar.exe then wrote.
 - **Reported by:** the batch 6 closing reviewer, 2026-11-18; reproduced by the agent, 2026-11-21.
-
-### T-F469 - A tar.exe 3.8.9 listing that leaves out an unreadable name refuses every selection (P4, stream I, the tar.exe fallback)
-
-- [ ] **Status:** open (found by T-F467's exhaustive test, 2026-11-07). Where libarchive reads a raw
-  header name only with the default character, 3.8.9 skips that entry ("Archive entry has empty or
-  unreadable filename ... skipping", exit 1; measured on el-GR, lt-LT, he-IL, ar-SA). The listing then
-  holds fewer names than the headers, and T-F441's count check refuses every selection and filter from
-  that archive, including names that are fine. Decide whether the header walk can account for the
-  skipped entries (same conversion, `TextBoundaries.TarRawHeaderNames`) so only they are refused; keep
-  it fail closed. Both builds; `TarSendsAsListedExhaustiveTests` asserts today's behaviour.
-- **Scope since 2026-11-08 (T-F470 step 4):** the tar.exe fallback only. Where `ArchiveintGate`
-  chooses the archive helper (native x64 or ARM64, a signed `archiveint.dll` of libarchive 3.5 to 3.8,
-  the helper beside Pakko) names come from the helper by index, never through tar.exe's listing or its
-  writes. This is left for an x64 process under emulation, a libarchive version not measured,
-  and a build or run without the helper (`pakko i` and the App log name the reader; smoke `CLI-050`,
-  `CLI-051`, `APP-037`). P4: the fallback reaches few machines. The same holds for T-F464, T-F461 and T-F453.
-- **Reported by:** the agent, 2026-11-07.
-
-### T-F464 - The quarantine as the source of truth instead of predicting tar.exe's names (P4, stream I, research done, the tar.exe fallback)
-
-- [ ] **Status:** research done 2026-11-07, decided in `docs/DECISIONS.md`, "T-F464 and T-F465". Code
-  after T-F465, T-F466, T-F467 and T-F468. The quarantine's files are matched to the file entries in scope by the
-  measured relation: the decoded listed name is the disk name or its best-fit round trip through the
-  system ACP. Rules:
-  - The match is in addition to T-F462's count, never in place of it.
-  - Every quarantine file is scanned before anything is dropped (fresh review): the relation decides moves
-    and the report, never what is scanned; on an unmeasured page or build a choice by name is Inconclusive.
-  - A unique match is required wherever a name picks a file. These cases come from #170's review and
-    from T-F461 item 5:
-    - the filter's drop;
-    - a duplicate group's first copy, judged per group;
-    - the trimmed and renamed keying.
-  - Anything ambiguous stays fail-closed.
-  
-  Tests first, on both builds. The unmeasured cases are listed in the entry.
-- **Scope since 2026-11-08 (T-F470 step 4):** the tar.exe fallback only, as T-F469 says. P4.
-- **Reported by:** the agent's root-cause review, 2026-11-06.
-
-### T-F461 — tar folders ending in a dot or a space: the shapes still refused (P4, from T-F460, the tar.exe fallback)
-
-- [ ] **Status:** open. Each fails loudly, none loses a file (`docs/DECISIONS.md`, "T-F460 and T-F454"):
-  1. A file before its own `d /` entry: tar.exe fails on both builds whatever Pakko makes first.
-  2. `d ./x.txt` with a filter: tar.exe also makes `d`, which the listing does not name; refused.
-  3. Implicit `d../x.txt`: tar.exe asks for `d..`, Pakko makes `d`; the run fails.
-  4. Explicit `d./` with a filter: the listing says `d`, tar.exe writes `d.`; refused.
-  5. Explicit `d./` then `d./x.txt`, with `d\x.txt` already at the destination and Overwrite: the
-     plan keys the trimmed name `d/x.txt`, the quarantine holds `d./x.txt`, so T-F419's "a trimmed name
-     never replaces a file" misses and the file is replaced (ZIP keeps it apart). From #169's fresh review.
-  Lead (3.8.9 only): a folder made by its literal name takes the file there. Making every pre-created
-  folder literal fixes 2-4 but breaks a file followed by its `d./` entry unless that folder is not
-  pre-created, which leans on tar.exe's implicit mkdir in the AppContainer (T-F52 saw it fail).
-  Next: measure both on 3.5.2 and inside the sandbox before choosing.
-- **Scope since 2026-11-08 (T-F470 step 4):** the tar.exe fallback only, as T-F469 says. P4.
-- **Reported by:** the agent, 2026-11-06.
-
-### T-F453 — Two true root folders that tar.exe lists by one best-fit name merge when the root is dropped (P4, from T-F443, the tar.exe fallback)
-
-- [ ] **Status:** open. Probed 2026-11-05 (bsdtar 3.8.9, ACP 1251): a tar with `caf<e-acute>/x.txt`
-  and `cafe/y.txt`, named `cafe.tar`, extracted with `EliminateDuplicateRootFolder`: the listing shows
-  one root `cafe`, the root is dropped, and `x.txt` and `y.txt` land side by side with no error.
-  Without the drop both folders arrive. Next: when the quarantine disagrees with the listing
-  (T-F443's verdict), decide the root shape on the quarantine's top level, or keep the root.
-- **Scope since 2026-11-08 (T-F470 step 4):** the tar.exe fallback only, as T-F469 says. P4.
-- **Reported by:** T-F443's probe, 2026-11-05.
 
 ### T-F447 — More AMSI providers on the PakkoW10 VM, through winget, no Russian products (P2, user-requested, stream B)
 

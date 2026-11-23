@@ -13,7 +13,7 @@ namespace Archiver.Core.PerformanceTests;
 /// baseline <see cref="CompressionPerformanceTests"/> already times. Data-gathering, not a
 /// regression gate — numbers are reported via <see cref="ITestOutputHelper"/>, not asserted
 /// against a tolerance ratio, since there is no calibrated-baseline history for this scenario yet.
-/// See docs/DECISIONS.md's T-F132 entry for the real results and docs/TASKS.md's T-F132 entry for
+/// See docs/DECISIONS.md's T-F132 entry for the real results and docs/TASKS_DONE.md's T-F132 entry for
 /// what (if anything) they change about the "not sandboxed by design" status quo.
 ///
 /// Deliberately simpler than TarSandboxScope's production ACL split (read-only on source, modify
