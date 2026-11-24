@@ -15088,6 +15088,24 @@ libarchive has others), and a `SECURITY.md` line that the bomb check rests on li
     `a_b.txt`, the real `a_b.txt` numbered.
 - **Not done here:** `STO-008` on ARM64 (no ARM64 machine at hand; T-F562 stays `[~]`, the helper tested
   on the `windows-11-arm` runner); the other `mcp` rows of the tier stay "manual", as for v1.11.0.
+- **Before the tag, on `9de3a972`** (the bump commit, 2026-11-24): the canary run 45255852557, every
+  job green, `canary-failed-day` skipped, `canary-fuzz` success; build run 45255753852 green, its
+  `pakko-msix-x64` (1.12.0.0) for the package rows with v1.11.0's release as the previous one.
+  `PKG-001..004`, `PKG-006..009` (1.11.0.0 to 1.12.0.0) and `REL-002` OK. `PKG-005`, elevated (the user
+  confirmed UAC): appcert PASS, 24 tests, only the two known findings. `PKG-010`
+  (`-Only PKG-009 -PackageLifecycle -Hold`): with the package removed, the user saw no Pakko item on a
+  file, a folder or a ZIP, in the menu or under "Show more options"; the dev package came back.
+- **The tag** `v1.12.0` went on `9de3a972` with the user's OK; build run 45317648106 green and the
+  release has both bundles, the CLI zips, the SBOMs and `SHA256SUMS`. The Store bundle from the
+  dispatch run 45320381695 (Identity 1.12.0.0, x64 and arm64, 37 languages in the package) was
+  submitted with the listing CSV that changes only "What's new" (sv-SE's features and search terms
+  left as exported, T-F331); published the same day. The public catalog lists
+  `PavloRybchenko.Pakko_1.12.0.0`, and its release notes equal the files in all 37 languages.
+- **`-Tier store -PackageLifecycle -Tag v1.12.0`:** 131 OK, 2 FAIL, 83 manual. Both failures came from a
+  build the agent ran at the same time on another branch: `SHL-009` (no result window in 60 s under
+  that load) passed alone; `REL-001` (a locked `bin`) ran again from a clean worktree of the tag: the
+  Slow tests green, the performance project 29 of 29 once the worktree had its own
+  `artifacts/zip-sandbox-spike` (the tool is not in git; `tools/ZipSandboxSpike/README.md`).
 
 ## Batch 8 (v1.12.0) - the release holds only this wave's own checks (2026-11-23)
 
